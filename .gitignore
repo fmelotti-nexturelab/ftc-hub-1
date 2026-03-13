@@ -1,0 +1,32 @@
+﻿#python
+.env
+*.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+dist/
+.vite/
+postgres_data/
+.vscode/
+.idea/
+*.swp
+
+# FastAPI / logs
+*.log
+
+#docker
+*.pid
+
+#VS Code
+.vscode/
+
+#OS
+.DS_Store
+Thumbs.db
+
