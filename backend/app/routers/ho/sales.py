@@ -63,11 +63,17 @@ async def remove_excluded_store(
     store_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    await db.execute(
-        update(ExcludedStore)
-        .where(ExcludedStore.id == store_id)
-        .values(is_active=False)
+    result = await db.execute(
+        select(ExcludedStore).where(
+            ExcludedStore.id == store_id,
+            ExcludedStore.is_active == True,
+        )
     )
+    store = result.scalar_one_or_none()
+    if not store:
+        raise HTTPException(status_code=404, detail="Store non trovato")
+
+    store.is_active = False
     await db.commit()
     return {"message": "Store rimosso dalla lista esclusi"}
 
