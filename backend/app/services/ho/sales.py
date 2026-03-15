@@ -88,7 +88,7 @@ def parse_tsv_nav(
         if not row or len(row) <= code_idx:
             continue
 
-        store_code = row[code_idx].strip() if len(row) > code_idx else ""
+        store_code = row[code_idx].strip().upper() if len(row) > code_idx else ""
         store_name = row[name_idx].strip() if name_idx and len(row) > name_idx else store_code
 
         if not store_code or store_code.lower() in ("total", "totale", ""):

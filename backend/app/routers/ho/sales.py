@@ -84,7 +84,7 @@ async def parse_sales_data(
     result = await db.execute(
         select(ExcludedStore).where(ExcludedStore.is_active == True)
     )
-    excluded = {s.store_code for s in result.scalars().all()}
+    excluded = {s.store_code.upper() for s in result.scalars().all()}
 
     return SalesParseResponse(
         it01=parse_tsv_nav(data.raw_tsv_it01, "IT01", excluded) if data.raw_tsv_it01 else None,
