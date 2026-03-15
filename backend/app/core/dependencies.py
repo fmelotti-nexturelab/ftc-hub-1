@@ -355,20 +355,10 @@ def require_permission(
 # -----------------------------------------------------------------------------
 # BACKWARD COMPATIBILITY
 # -----------------------------------------------------------------------------
-def require_admin() -> Callable:
-    """
-    Compatibilità con il codice esistente che usa require_admin.
-    """
-    return require_permission("system.admin")
-
-
-def require_ho() -> Callable:
-    """
-    Compatibilità con il codice esistente HO.
-    Per ora viene mappato sul permesso sales.view, che è coerente
-    con il modulo HO Sales già presente nel progetto.
-    """
-    return require_permission("sales.view")
+# Assegnazioni dirette: Depends(require_admin) chiama la dependency interna
+# e restituisce un User, come atteso dai router esistenti.
+require_admin = require_permission("system.admin")
+require_ho = require_permission("sales.view")
 
 
 # -----------------------------------------------------------------------------
