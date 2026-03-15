@@ -1,4 +1,5 @@
-﻿from pydantic import BaseModel, EmailStr
+﻿import uuid
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 from app.models.auth import UserRole
@@ -18,7 +19,7 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 class UserInfo(BaseModel):
-    id: str
+    id: uuid.UUID
     username: str
     email: str
     full_name: Optional[str]
