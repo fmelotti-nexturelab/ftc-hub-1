@@ -8,3 +8,4 @@
     RolePermission,
 )
 from app.models.ho import ExcludedStore, SalesSession, ExclusionReason
+from app.models.rbac_scope import Scope, RolePermissionScope, UserPermissionScope, UserAssignment

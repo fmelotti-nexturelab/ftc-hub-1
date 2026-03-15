@@ -1,19 +1,28 @@
-﻿from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 
-from app.database import engine, Base
-from app.models import auth, ho
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Engine importato se ti serve in futuro per health più avanzati o startup hook
+from app.database import engine
+
+# Import modelli per registrazione metadata / mapper
+from app.models import auth, ho, rbac_scope
 
 from app.routers import auth as auth_router
+from app.routers import test_rbac
 from app.routers.ho import sales as sales_router
-from app.routers import test_rbac   # ← nuovo router RBAC test
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """
+    IMPORTANT:
+    Non usare Base.metadata.create_all() in produzione o in ambienti
+    dove lo schema viene gestito da Alembic.
+
+    Le tabelle devono essere create e versionate SOLO tramite migration.
+    """
     yield
 
 
@@ -28,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://127.0.0.1:3000"
+        "http://127.0.0.1:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,8 +48,6 @@ app.add_middleware(
 # ROUTERS
 app.include_router(auth_router.router)
 app.include_router(sales_router.router)
-
-# router per test RBAC
 app.include_router(test_rbac.router)
 
 
@@ -48,5 +55,5 @@ app.include_router(test_rbac.router)
 async def health():
     return {
         "status": "ok",
-        "service": "FTC HUB"
+        "service": "FTC HUB",
     }
