@@ -49,13 +49,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
         access_token=access_token,
         refresh_token=raw_refresh,
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserInfo(
-            id=str(user.id),
-            username=user.username,
-            email=user.email,
-            full_name=user.full_name,
-            role=user.role,
-        ),
+        user=UserInfo.model_validate(user),
     )
 
 @router.post("/refresh", response_model=TokenResponse)

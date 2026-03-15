@@ -31,7 +31,6 @@ router = APIRouter(prefix="/api/ho/sales", tags=["HO - Sales"])
 )
 async def get_excluded_stores(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
 ):
     result = await db.execute(
         select(ExcludedStore).where(ExcludedStore.is_active == True)
@@ -63,7 +62,6 @@ async def add_excluded_store(
 async def remove_excluded_store(
     store_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
 ):
     await db.execute(
         update(ExcludedStore)
@@ -82,7 +80,6 @@ async def remove_excluded_store(
 async def parse_sales_data(
     data: SalesDataInput,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
 ):
     result = await db.execute(
         select(ExcludedStore).where(ExcludedStore.is_active == True)
