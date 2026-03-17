@@ -1,20 +1,20 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.auth import Permission, Role, RolePermission, User, UserRole, UserRoleAssignment
-from app.models.rbac_scope import RolePermissionScope, Scope, UserPermissionScope
+from app.models.auth import AdminModuleBlacklist, User, UserType
+from app.models.modules import UserModulePermission, UserTypeModuleAccess
+from app.models.rbac_scope import UserAssignment
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -37,16 +37,6 @@ class ForbiddenError(HTTPException):
         )
 
 
-@dataclass
-class ResolvedPermission:
-    permission_code: str
-    scope_type: str
-    scope_code: str
-    entity_code: str | None
-    store_code: str | None
-    effect: str = "allow"
-
-
 # -----------------------------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------------------------
@@ -66,7 +56,6 @@ def _is_valid_now(valid_from: datetime | None, valid_to: datetime | None) -> boo
     now = _utcnow()
     valid_from = _normalize_dt(valid_from)
     valid_to = _normalize_dt(valid_to)
-
     if valid_from and now < valid_from:
         return False
     if valid_to and now > valid_to:
@@ -88,26 +77,6 @@ def _extract_store_code(request: Request, store_param_name: str = "store_code") 
         or request.query_params.get(store_param_name)
         or request.headers.get("X-Store-Code")
     )
-
-
-def _scope_matches(
-    required_entity_code: str | None,
-    required_store_code: str | None,
-    granted: ResolvedPermission,
-) -> bool:
-    if granted.scope_type == "GLOBAL":
-        return True
-
-    if granted.scope_type == "ENTITY":
-        return required_entity_code is not None and granted.entity_code == required_entity_code
-
-    if granted.scope_type == "STORE":
-        return required_store_code is not None and granted.store_code == required_store_code
-
-    if granted.scope_type == "MODULE":
-        return required_entity_code is None and required_store_code is None
-
-    return False
 
 
 # -----------------------------------------------------------------------------
@@ -144,160 +113,110 @@ async def get_current_user(
 
 
 # -----------------------------------------------------------------------------
-# PERMISSION LOADERS
+# ASSIGNMENT LOADER
 # -----------------------------------------------------------------------------
-async def _load_role_permissions(
-    db: AsyncSession,
-    user_id,
-) -> list[ResolvedPermission]:
-    stmt = (
-        select(
-            Permission.code.label("permission_code"),
-            Scope.scope_type.label("scope_type"),
-            Scope.scope_code.label("scope_code"),
-            Scope.entity_code.label("entity_code"),
-            Scope.store_code.label("store_code"),
-        )
-        .select_from(UserRoleAssignment)
-        .join(Role, Role.id == UserRoleAssignment.role_id)
-        .join(RolePermission, RolePermission.role_id == Role.id)
-        .join(Permission, Permission.id == RolePermission.permission_id)
-        .join(
-            RolePermissionScope,
-            and_(
-                RolePermissionScope.role_id == Role.id,
-                RolePermissionScope.permission_id == Permission.id,
-                RolePermissionScope.is_active.is_(True),
-            ),
-        )
-        .join(
-            Scope,
-            and_(
-                Scope.id == RolePermissionScope.scope_id,
-                Scope.is_active.is_(True),
-            ),
-        )
-        .where(UserRoleAssignment.user_id == user_id)
-    )
-
-    result = await db.execute(stmt)
-    rows = result.all()
-
-    return [
-        ResolvedPermission(
-            permission_code=row.permission_code,
-            scope_type=row.scope_type,
-            scope_code=row.scope_code,
-            entity_code=row.entity_code,
-            store_code=row.store_code,
-            effect="allow",
-        )
-        for row in rows
-    ]
-
-
-async def _load_user_permission_overrides(
-    db: AsyncSession,
-    user_id,
-) -> list[ResolvedPermission]:
-    stmt = (
-        select(
-            Permission.code.label("permission_code"),
-            Scope.scope_type.label("scope_type"),
-            Scope.scope_code.label("scope_code"),
-            Scope.entity_code.label("entity_code"),
-            Scope.store_code.label("store_code"),
-            UserPermissionScope.effect.label("effect"),
-            UserPermissionScope.valid_from.label("valid_from"),
-            UserPermissionScope.valid_to.label("valid_to"),
-        )
-        .select_from(UserPermissionScope)
-        .join(Permission, Permission.id == UserPermissionScope.permission_id)
-        .join(
-            Scope,
-            and_(
-                Scope.id == UserPermissionScope.scope_id,
-                Scope.is_active.is_(True),
-            ),
-        )
-        .where(
-            UserPermissionScope.user_id == user_id,
-            UserPermissionScope.is_active.is_(True),
+async def _load_active_assignments(db: AsyncSession, user_id) -> list[UserAssignment]:
+    now = _utcnow()
+    result = await db.execute(
+        select(UserAssignment).where(
+            UserAssignment.user_id == user_id,
+            UserAssignment.is_active.is_(True),
+            (UserAssignment.valid_from == None) | (UserAssignment.valid_from <= now),
+            (UserAssignment.valid_to == None) | (UserAssignment.valid_to >= now),
         )
     )
-
-    result = await db.execute(stmt)
-    rows = result.all()
-
-    resolved: list[ResolvedPermission] = []
-
-    for row in rows:
-        if not _is_valid_now(row.valid_from, row.valid_to):
-            continue
-
-        resolved.append(
-            ResolvedPermission(
-                permission_code=row.permission_code,
-                scope_type=row.scope_type,
-                scope_code=row.scope_code,
-                entity_code=row.entity_code,
-                store_code=row.store_code,
-                effect=row.effect,
-            )
-        )
-
-    return resolved
+    return list(result.scalars().all())
 
 
-async def _resolve_all_permissions(
+# -----------------------------------------------------------------------------
+# MODULE PERMISSION CHECK
+# -----------------------------------------------------------------------------
+async def _is_module_blacklisted(db: AsyncSession, module_code: str) -> bool:
+    result = await db.execute(
+        select(AdminModuleBlacklist).where(AdminModuleBlacklist.module_code == module_code)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def _user_can_access_module(
     db: AsyncSession,
     user: User,
-) -> list[ResolvedPermission]:
-    role_permissions = await _load_role_permissions(db=db, user_id=user.id)
-    user_overrides = await _load_user_permission_overrides(db=db, user_id=user.id)
-    return [*role_permissions, *user_overrides]
+    module_code: str,
+    need_manage: bool = False,
+) -> bool:
+    """
+    Controlla se l'utente ha accesso a un modulo.
+    - SUPERUSER/ADMIN: sempre sì (ADMIN bloccato da blacklist)
+    - HO types (HR/FINANCE/etc), DM, STORE: verifica user_type_module_access + override utente
+    """
+    user_type = getattr(user, "user_type", None)
+
+    # SUPERUSER — bypass totale
+    if user_type == UserType.SUPERUSER:
+        return True
+
+    # ADMIN — bypass tranne blacklist
+    if user_type == UserType.ADMIN:
+        return not await _is_module_blacklisted(db, module_code)
+
+    # Tutti gli altri: check user_type_module_access
+    access_result = await db.execute(
+        select(UserTypeModuleAccess).where(
+            UserTypeModuleAccess.user_type == str(user_type),
+            UserTypeModuleAccess.module_code == module_code,
+        )
+    )
+    base_access = access_result.scalar_one_or_none()
+
+    # Check override per singolo utente
+    override_result = await db.execute(
+        select(UserModulePermission).where(
+            UserModulePermission.user_id == user.id,
+            UserModulePermission.module_code == module_code,
+        )
+    )
+    override = override_result.scalar_one_or_none()
+
+    if need_manage:
+        base = base_access.can_manage if base_access else False
+        if override and override.can_manage is not None:
+            return override.can_manage
+        return base
+    else:
+        base = base_access.can_view if base_access else False
+        if override and override.can_view is not None:
+            return override.can_view
+        return base
 
 
-def _has_admin_bypass(resolved_permissions: list[ResolvedPermission]) -> bool:
-    for item in resolved_permissions:
-        if (
-            item.effect == "allow"
-            and item.permission_code == "system.admin"
-            and item.scope_type == "GLOBAL"
-        ):
-            return True
-    return False
-
-
-def _has_explicit_deny(
-    resolved_permissions: list[ResolvedPermission],
-    permission_code: str,
+async def _user_can_reach_scope(
+    db: AsyncSession,
+    user: User,
     entity_code: str | None,
     store_code: str | None,
 ) -> bool:
-    for item in resolved_permissions:
-        if item.effect != "deny":
-            continue
-        if item.permission_code != permission_code:
-            continue
-        if _scope_matches(entity_code, store_code, item):
-            return True
-    return False
+    user_type = getattr(user, "user_type", None)
 
+    # SUPERUSER, ADMIN e tutti i tipi HO: accesso globale
+    if user_type in UserType.admin_types() | UserType.ho_types():
+        return True
 
-def _has_explicit_allow(
-    resolved_permissions: list[ResolvedPermission],
-    permission_code: str,
-    entity_code: str | None,
-    store_code: str | None,
-) -> bool:
-    for item in resolved_permissions:
-        if item.effect != "allow":
-            continue
-        if item.permission_code != permission_code:
-            continue
-        if _scope_matches(entity_code, store_code, item):
-            return True
+    assignments = await _load_active_assignments(db, user.id)
+    assigned_entities = {a.entity_code for a in assignments if a.entity_code}
+    assigned_stores = {a.store_code for a in assignments if a.store_code}
+
+    if user_type == UserType.DM:
+        if store_code:
+            return store_code in assigned_stores or entity_code in assigned_entities
+        if entity_code:
+            return entity_code in assigned_entities
+        return True
+
+    if user_type == UserType.STORE:
+        if store_code:
+            return store_code in assigned_stores
+        return False
+
     return False
 
 
@@ -305,8 +224,9 @@ def _has_explicit_allow(
 # MAIN RBAC DEPENDENCY
 # -----------------------------------------------------------------------------
 def require_permission(
-    permission_code: str,
+    module_code: str,
     *,
+    need_manage: bool = False,
     entity_param_name: str = "entity_code",
     store_param_name: str = "store_code",
     fixed_entity_code: str | None = None,
@@ -318,36 +238,23 @@ def require_permission(
         current_user: User = Depends(get_current_user),
     ) -> User:
         required_entity_code = fixed_entity_code or _extract_entity_code(
-            request,
-            entity_param_name=entity_param_name,
+            request, entity_param_name=entity_param_name
         )
         required_store_code = fixed_store_code or _extract_store_code(
-            request,
-            store_param_name=store_param_name,
+            request, store_param_name=store_param_name
         )
 
-        resolved_permissions = await _resolve_all_permissions(db=db, user=current_user)
+        # Check accesso modulo
+        if not await _user_can_access_module(db, current_user, module_code, need_manage):
+            raise ForbiddenError(f"Accesso al modulo '{module_code}' non consentito")
 
-        if _has_admin_bypass(resolved_permissions):
-            return current_user
+        # Check scope geografico (solo per DM e STORE)
+        user_type = getattr(current_user, "user_type", None)
+        if user_type not in UserType.admin_types() | UserType.ho_types():
+            if not await _user_can_reach_scope(db, current_user, required_entity_code, required_store_code):
+                raise ForbiddenError(f"Scope non accessibile per il modulo '{module_code}'")
 
-        if _has_explicit_deny(
-            resolved_permissions=resolved_permissions,
-            permission_code=permission_code,
-            entity_code=required_entity_code,
-            store_code=required_store_code,
-        ):
-            raise ForbiddenError(f"Permission denied: {permission_code}")
-
-        if _has_explicit_allow(
-            resolved_permissions=resolved_permissions,
-            permission_code=permission_code,
-            entity_code=required_entity_code,
-            store_code=required_store_code,
-        ):
-            return current_user
-
-        raise ForbiddenError(f"Missing permission: {permission_code}")
+        return current_user
 
     return dependency
 
@@ -355,29 +262,35 @@ def require_permission(
 # -----------------------------------------------------------------------------
 # BACKWARD COMPATIBILITY
 # -----------------------------------------------------------------------------
-# Assegnazioni dirette: Depends(require_admin) chiama la dependency interna
-# e restituisce un User, come atteso dai router esistenti.
 require_admin = require_permission("system.admin")
-require_ho = require_permission("sales.view")
+require_ho = require_permission("sales", need_manage=False)
 
 
 # -----------------------------------------------------------------------------
-# DEBUG / TEST HELPERS
+# DEBUG HELPERS
 # -----------------------------------------------------------------------------
 async def get_current_user_permissions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    resolved = await _resolve_all_permissions(db=db, user=current_user)
+    """Restituisce i permessi modulo effettivi dell'utente corrente."""
+    from sqlalchemy import select as sa_select
+    from app.models.modules import Module
 
-    return [
-        {
-            "permission_code": item.permission_code,
-            "scope_type": item.scope_type,
-            "scope_code": item.scope_code,
-            "entity_code": item.entity_code,
-            "store_code": item.store_code,
-            "effect": item.effect,
-        }
-        for item in resolved
-    ]
+    modules_result = await db.execute(
+        sa_select(Module).where(Module.is_active == True).order_by(Module.sort_order)
+    )
+    modules = modules_result.scalars().all()
+
+    result = []
+    for module in modules:
+        can_view = await _user_can_access_module(db, current_user, module.code, need_manage=False)
+        can_manage = await _user_can_access_module(db, current_user, module.code, need_manage=True)
+        result.append({
+            "module_code": module.code,
+            "module_name": module.name,
+            "can_view": can_view,
+            "can_manage": can_manage,
+        })
+
+    return result

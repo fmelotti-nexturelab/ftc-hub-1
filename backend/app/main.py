@@ -7,11 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine
 
 # Import modelli per registrazione metadata / mapper
-from app.models import auth, ho, rbac_scope
+from app.models import auth, ho, rbac_scope, modules
 
 from app.routers import auth as auth_router
 from app.routers import test_rbac
 from app.routers.ho import sales as sales_router
+from app.routers.admin import rbac as admin_rbac_router
+from app.routers.admin import users as admin_users_router
+from app.routers.admin import modules as admin_modules_router
 
 
 @asynccontextmanager
@@ -49,6 +52,9 @@ app.add_middleware(
 app.include_router(auth_router.router)
 app.include_router(sales_router.router)
 app.include_router(test_rbac.router)
+app.include_router(admin_rbac_router.router)
+app.include_router(admin_users_router.router)
+app.include_router(admin_modules_router.router)
 
 
 @app.get("/api/health")

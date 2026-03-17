@@ -12,6 +12,7 @@ import SalesIT03 from "@/pages/ho/sales/SalesIT03"
 import SalesReport from "@/pages/ho/sales/SalesReport"
 import ExcludedStores from "@/pages/ho/sales/ExcludedStores"
 import NavisionPage from "@/pages/ho/NavisionPage"
+import AdminUsers from "@/pages/admin/AdminUsers"
 
 
 function RoleRedirect() {
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="ho/sales/report" element={<RoleRoute roles={["ADMIN", "HO"]}><SalesReport /></RoleRoute>} />
         <Route path="ho/sales/excluded" element={<RoleRoute roles={["ADMIN", "HO"]}><ExcludedStores /></RoleRoute>} />
         <Route path="ho/navision" element={<RoleRoute roles={["ADMIN", "HO"]}><NavisionPage /></RoleRoute>} />
+        <Route path="admin" element={<RoleRoute roles={["ADMIN"]}><AdminUsers /></RoleRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

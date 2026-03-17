@@ -17,9 +17,23 @@ class UserRole(str, enum.Enum):
 class UserType(str, enum.Enum):
     SUPERUSER = "SUPERUSER"
     ADMIN = "ADMIN"
-    HO = "HO"
+    HR = "HR"
+    FINANCE = "FINANCE"
+    MARKETING = "MARKETING"
+    IT = "IT"
+    COMMERCIAL = "COMMERCIAL"
     DM = "DM"
     STORE = "STORE"
+
+    @classmethod
+    def ho_types(cls) -> set:
+        """Tipi HO (accesso globale, nessuna restrizione geografica)."""
+        return {cls.HR, cls.FINANCE, cls.MARKETING, cls.IT, cls.COMMERCIAL}
+
+    @classmethod
+    def admin_types(cls) -> set:
+        """Tipi con bypass totale."""
+        return {cls.SUPERUSER, cls.ADMIN}
 
 
 class User(Base):
