@@ -21,8 +21,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create userrole enum
-    op.execute("CREATE TYPE auth.userrole AS ENUM ('ADMIN', 'HO', 'DM', 'STORE')")
+    # Create userrole enum (idempotent)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE auth.userrole AS ENUM ('ADMIN', 'HO', 'DM', 'STORE');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+    """)
 
     # Create auth.users
     op.create_table(
