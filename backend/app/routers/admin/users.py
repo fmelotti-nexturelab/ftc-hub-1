@@ -144,6 +144,11 @@ async def create_user(
         UserType.SUPERUSER: UserRole.ADMIN,
         UserType.ADMIN: UserRole.ADMIN,
         UserType.HO: UserRole.HO,
+        UserType.HR: UserRole.HO,
+        UserType.FINANCE: UserRole.HO,
+        UserType.MARKETING: UserRole.HO,
+        UserType.IT: UserRole.HO,
+        UserType.COMMERCIAL: UserRole.HO,
         UserType.DM: UserRole.DM,
         UserType.STORE: UserRole.STORE,
     }
