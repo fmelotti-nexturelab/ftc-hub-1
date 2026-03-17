@@ -1,0 +1,241 @@
+import os
+import shutil
+import uuid
+from pathlib import Path
+from typing import List, Optional
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
+from app.database import get_db
+from app.models.auth import User
+from app.models.tickets import TicketAttachment
+from app.schemas.tickets import (
+    AttachmentResponse,
+    CommentCreate,
+    CommentResponse,
+    TicketAssignUpdate,
+    TicketCreate,
+    TicketResponse,
+    TicketStatusUpdate,
+    UserBrief,
+    UserListResponse,
+)
+from app.core.dependencies import get_current_user, require_permission
+from app.services.tickets import ticket_service, comment_service
+
+router = APIRouter(prefix="/api/tickets", tags=["Tickets"])
+
+# Permessi e tipi file accettati
+ALLOWED_MIME = {"image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf"}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+async def _check_manage(db: AsyncSession, user: User) -> bool:
+    """Restituisce True se l'utente ha tickets.manage."""
+    from app.core.dependencies import _resolve_all_permissions, _has_admin_bypass, _has_explicit_allow
+    resolved = await _resolve_all_permissions(db=db, user=user)
+    if _has_admin_bypass(resolved):
+        return True
+    return _has_explicit_allow(resolved, "tickets.manage", None, None)
+
+
+# ── Ticket CRUD ───────────────────────────────────────────────────────────────
+
+@router.post(
+    "",
+    response_model=TicketResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("tickets.create"))],
+)
+async def create_ticket(
+    data: TicketCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await ticket_service.create_ticket(db, data, current_user)
+
+
+@router.get(
+    "",
+    response_model=List[TicketResponse],
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def list_tickets(
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None),
+    team_id: Optional[int] = Query(None),
+    created_by_id: Optional[UUID] = Query(None),
+    assigned_to_id: Optional[UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    is_manager = await _check_manage(db, current_user)
+    return await ticket_service.get_tickets(
+        db, current_user, is_manager,
+        status=status, priority=priority, category_id=category_id,
+        team_id=team_id, created_by_id=created_by_id, assigned_to_id=assigned_to_id,
+    )
+
+
+@router.get(
+    "/users",
+    response_model=UserListResponse,
+    dependencies=[Depends(require_permission("tickets.manage"))],
+)
+async def list_users(db: AsyncSession = Depends(get_db)):
+    """Lista utenti per dropdown 'assegna a'."""
+    result = await db.execute(select(User).where(User.is_active == True).order_by(User.full_name))
+    users = [UserBrief.model_validate(u) for u in result.scalars().all()]
+    return UserListResponse(users=users)
+
+
+@router.get(
+    "/{ticket_id}",
+    response_model=TicketResponse,
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def get_ticket(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    is_manager = await _check_manage(db, current_user)
+    return await ticket_service.get_ticket(db, ticket_id, current_user, is_manager)
+
+
+@router.put(
+    "/{ticket_id}/status",
+    response_model=TicketResponse,
+    dependencies=[Depends(require_permission("tickets.manage"))],
+)
+async def update_status(
+    ticket_id: UUID,
+    data: TicketStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await ticket_service.update_status(db, ticket_id, data, current_user)
+
+
+@router.put(
+    "/{ticket_id}/assign",
+    response_model=TicketResponse,
+    dependencies=[Depends(require_permission("tickets.manage"))],
+)
+async def assign_ticket(
+    ticket_id: UUID,
+    data: TicketAssignUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ticket_service.assign_ticket(db, ticket_id, data)
+
+
+# ── Comments ──────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{ticket_id}/comments",
+    response_model=CommentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def add_comment(
+    ticket_id: UUID,
+    data: CommentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    is_manager = await _check_manage(db, current_user)
+    return await comment_service.add_comment(db, ticket_id, data, current_user, is_manager)
+
+
+@router.get(
+    "/{ticket_id}/comments",
+    response_model=List[CommentResponse],
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def get_comments(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    is_manager = await _check_manage(db, current_user)
+    return await comment_service.get_comments(db, ticket_id, current_user, is_manager)
+
+
+# ── Attachments ───────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{ticket_id}/attachments",
+    response_model=AttachmentResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def upload_attachment(
+    ticket_id: UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(status_code=400, detail="Tipo file non consentito")
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File troppo grande (max 5 MB)")
+
+    # Salva su disco
+    dest_dir = Path(settings.TICKET_ATTACHMENTS_PATH) / str(ticket_id)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = f"{uuid.uuid4()}_{file.filename}"
+    dest_path = dest_dir / safe_name
+    dest_path.write_bytes(content)
+
+    attachment = TicketAttachment(
+        ticket_id=ticket_id,
+        filename=file.filename,
+        file_path=str(dest_path),
+        file_size=len(content),
+        mime_type=file.content_type,
+        uploaded_by=current_user.id,
+    )
+    db.add(attachment)
+    await db.commit()
+    await db.refresh(attachment)
+    return AttachmentResponse.model_validate(attachment)
+
+
+@router.get(
+    "/attachments/{attachment_id}",
+    dependencies=[Depends(require_permission("tickets.view"))],
+)
+async def download_attachment(
+    attachment_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(TicketAttachment).where(TicketAttachment.id == attachment_id)
+    )
+    att = result.scalar_one_or_none()
+    if not att:
+        raise HTTPException(status_code=404, detail="Allegato non trovato")
+
+    is_manager = await _check_manage(db, current_user)
+    if not is_manager:
+        # Verifica che il ticket appartenga all'utente
+        from app.models.tickets import Ticket
+        t_res = await db.execute(select(Ticket).where(Ticket.id == att.ticket_id))
+        ticket = t_res.scalar_one_or_none()
+        if not ticket or ticket.created_by != current_user.id:
+            raise HTTPException(status_code=403, detail="Accesso negato")
+
+    if not os.path.isfile(att.file_path):
+        raise HTTPException(status_code=404, detail="File non trovato su disco")
+
+    return FileResponse(att.file_path, filename=att.filename, media_type=att.mime_type)
