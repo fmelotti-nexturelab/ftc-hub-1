@@ -41,6 +41,11 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://localhost",
+        "https://127.0.0.1",
+        "https://HO-SERVICES",
+        "https://10.74.0.110",
+        "https://hub.nexturelab.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
