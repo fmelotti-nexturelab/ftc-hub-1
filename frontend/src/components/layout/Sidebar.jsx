@@ -44,7 +44,7 @@ export default function Sidebar() {
           </div>
           <div>
             <div className="font-black text-lg leading-none">FTC HUB</div>
-            <div className="text-xs text-white/50 mt-0.5">{user?.role} Module</div>
+            <div className="text-xs text-white/50 mt-0.5">{user?.user_type || user?.role} Module</div>
           </div>
         </div>
       </div>
@@ -149,7 +149,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{user?.full_name || user?.username}</div>
-            <div className="text-xs text-white/50">{user?.role}</div>
+            <div className="text-xs text-white/50">{user?.user_type || user?.role}</div>
           </div>
         </div>
         <button

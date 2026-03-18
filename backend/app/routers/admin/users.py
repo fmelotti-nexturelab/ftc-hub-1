@@ -143,7 +143,6 @@ async def create_user(
     role_map = {
         UserType.SUPERUSER: UserRole.ADMIN,
         UserType.ADMIN: UserRole.ADMIN,
-        UserType.HO: UserRole.HO,
         UserType.HR: UserRole.HO,
         UserType.FINANCE: UserRole.HO,
         UserType.MARKETING: UserRole.HO,
@@ -151,6 +150,7 @@ async def create_user(
         UserType.COMMERCIAL: UserRole.HO,
         UserType.DM: UserRole.DM,
         UserType.STORE: UserRole.STORE,
+        UserType.STOREMANAGER: UserRole.STORE,
     }
 
     user = User(
@@ -281,7 +281,7 @@ async def change_user_type(
     user.user_type = data.user_type
 
     # Se promosso a HO/ADMIN/SUPERUSER, rimuovi assignments (non servono)
-    if data.user_type in (UserType.HO, UserType.ADMIN, UserType.SUPERUSER):
+    if data.user_type in (UserType.ADMIN, UserType.SUPERUSER):
         assignments_result = await db.execute(
             select(UserAssignment).where(
                 UserAssignment.user_id == user_id,

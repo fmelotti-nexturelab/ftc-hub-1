@@ -24,7 +24,8 @@ class UserInfo(BaseModel):
     email: str
     full_name: Optional[str]
     role: UserRole
-    
+    user_type: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 class UserCreate(BaseModel):

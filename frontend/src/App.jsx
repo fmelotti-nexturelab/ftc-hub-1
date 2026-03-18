@@ -18,7 +18,7 @@ import AdminUsers from "@/pages/admin/AdminUsers"
 function RoleRedirect() {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
-  const roleHome = { ADMIN: "/ho", HO: "/ho", DM: "/dm", STORE: "/store" }
+  const roleHome = { ADMIN: "/ho", HO: "/ho", DM: "/ho", STORE: "/ho" }
   return <Navigate to={roleHome[user.role] || "/ho"} replace />
 }
 
@@ -37,13 +37,13 @@ export default function App() {
         }
       >
         <Route index element={<RoleRedirect />} />
-        <Route path="ho" element={<RoleRoute roles={["ADMIN", "HO"]}><HODashboard /></RoleRoute>} />
-        <Route path="ho/sales/it01" element={<RoleRoute roles={["ADMIN", "HO"]}><SalesIT01 /></RoleRoute>} />
-        <Route path="ho/sales/it02" element={<RoleRoute roles={["ADMIN", "HO"]}><SalesIT02 /></RoleRoute>} />
-        <Route path="ho/sales/it03" element={<RoleRoute roles={["ADMIN", "HO"]}><SalesIT03 /></RoleRoute>} />
-        <Route path="ho/sales/report" element={<RoleRoute roles={["ADMIN", "HO"]}><SalesReport /></RoleRoute>} />
-        <Route path="ho/sales/excluded" element={<RoleRoute roles={["ADMIN", "HO"]}><ExcludedStores /></RoleRoute>} />
-        <Route path="ho/navision" element={<RoleRoute roles={["ADMIN", "HO"]}><NavisionPage /></RoleRoute>} />
+        <Route path="ho" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><HODashboard /></RoleRoute>} />
+        <Route path="ho/sales/it01" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT01 /></RoleRoute>} />
+        <Route path="ho/sales/it02" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT02 /></RoleRoute>} />
+        <Route path="ho/sales/it03" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT03 /></RoleRoute>} />
+        <Route path="ho/sales/report" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesReport /></RoleRoute>} />
+        <Route path="ho/sales/excluded" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><ExcludedStores /></RoleRoute>} />
+        <Route path="ho/navision" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><NavisionPage /></RoleRoute>} />
         <Route path="admin" element={<RoleRoute roles={["ADMIN"]}><AdminUsers /></RoleRoute>} />
       </Route>
 
