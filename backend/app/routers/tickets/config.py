@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/tickets", tags=["Tickets - Config"])
 @router.get(
     "/categories",
     response_model=List[CategoryResponse],
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def list_categories(db: AsyncSession = Depends(get_db)):
     """Lista categorie attive ordinate per sort_order."""
@@ -58,7 +58,7 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/categories/{category_id}/subcategories",
     response_model=List[SubcategoryResponse],
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def list_subcategories(
     category_id: int,
@@ -79,7 +79,7 @@ async def list_subcategories(
 @router.get(
     "/categories/{category_id}/routing-preview",
     response_model=RoutingPreviewResponse,
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def routing_preview(
     category_id: int,

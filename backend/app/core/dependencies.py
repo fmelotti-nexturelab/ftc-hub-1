@@ -162,7 +162,7 @@ async def _user_can_access_module(
     # Tutti gli altri: check user_type_module_access
     access_result = await db.execute(
         select(UserTypeModuleAccess).where(
-            UserTypeModuleAccess.user_type == str(user_type),
+            UserTypeModuleAccess.user_type == user_type.value,
             UserTypeModuleAccess.module_code == module_code,
         )
     )

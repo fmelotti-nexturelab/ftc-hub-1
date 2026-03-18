@@ -50,7 +50,7 @@ async def _check_admin(db: AsyncSession, user: User) -> bool:
 @router.get(
     "/categories",
     response_model=List[CategoryResponse],
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def admin_list_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -80,7 +80,7 @@ async def admin_list_categories(db: AsyncSession = Depends(get_db)):
     "/categories",
     response_model=CategoryResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def create_category(
     data: CategoryCreate,
@@ -102,7 +102,7 @@ async def create_category(
 @router.put(
     "/categories/{category_id}",
     response_model=CategoryResponse,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_category(
     category_id: int,
@@ -137,7 +137,7 @@ async def update_category(
 
 @router.delete(
     "/categories/{category_id}",
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def delete_category(
     category_id: int,
@@ -159,7 +159,7 @@ async def delete_category(
 @router.get(
     "/subcategories",
     response_model=List[SubcategoryResponse],
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def admin_list_subcategories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -176,7 +176,7 @@ async def admin_list_subcategories(db: AsyncSession = Depends(get_db)):
     "/subcategories",
     response_model=SubcategoryResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def create_subcategory(
     data: SubcategoryCreate,
@@ -197,7 +197,7 @@ async def create_subcategory(
 @router.put(
     "/subcategories/{subcategory_id}",
     response_model=SubcategoryResponse,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_subcategory(
     subcategory_id: int,
@@ -221,7 +221,7 @@ async def update_subcategory(
 
 @router.delete(
     "/subcategories/{subcategory_id}",
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def delete_subcategory(
     subcategory_id: int,
@@ -243,7 +243,7 @@ async def delete_subcategory(
 @router.get(
     "/teams",
     response_model=List[TeamResponse],
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def list_teams(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -256,7 +256,7 @@ async def list_teams(db: AsyncSession = Depends(get_db)):
     "/teams",
     response_model=TeamResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def create_team(
     data: TeamCreate,
@@ -276,7 +276,7 @@ async def create_team(
 @router.put(
     "/teams/{team_id}",
     response_model=TeamResponse,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_team(
     team_id: int,
@@ -298,7 +298,7 @@ async def update_team(
 
 @router.delete(
     "/teams/{team_id}",
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def delete_team(
     team_id: int,
@@ -318,7 +318,7 @@ async def delete_team(
 @router.get(
     "/teams/{team_id}/members",
     response_model=List[TeamMemberResponse],
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def list_team_members(
     team_id: int,
@@ -351,7 +351,7 @@ async def list_team_members(
     "/teams/{team_id}/members",
     response_model=TeamMemberResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def add_team_member(
     team_id: int,
@@ -385,7 +385,7 @@ async def add_team_member(
 
 @router.delete(
     "/teams/{team_id}/members/{user_id}",
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def remove_team_member(
     team_id: int,
@@ -409,7 +409,7 @@ async def remove_team_member(
 @router.put(
     "/teams/{team_id}/members/{user_id}",
     response_model=TeamMemberResponse,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_team_member(
     team_id: int,
@@ -449,7 +449,7 @@ async def update_team_member(
 @router.get(
     "/routing-rules",
     response_model=List[RoutingRuleResponse],
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def list_routing_rules(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -501,7 +501,7 @@ async def list_routing_rules(db: AsyncSession = Depends(get_db)):
     "/routing-rules",
     response_model=RoutingRuleResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def create_routing_rule(
     data: RoutingRuleCreate,
@@ -552,7 +552,7 @@ async def create_routing_rule(
 @router.put(
     "/routing-rules/{rule_id}",
     response_model=RoutingRuleResponse,
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_routing_rule(
     rule_id: int,
@@ -578,7 +578,7 @@ async def update_routing_rule(
 
 @router.delete(
     "/routing-rules/{rule_id}",
-    dependencies=[Depends(require_permission("tickets.admin"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def delete_routing_rule(
     rule_id: int,

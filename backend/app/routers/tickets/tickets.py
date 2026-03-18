@@ -36,12 +36,9 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
 async def _check_manage(db: AsyncSession, user: User) -> bool:
-    """Restituisce True se l'utente ha tickets.manage."""
-    from app.core.dependencies import _resolve_all_permissions, _has_admin_bypass, _has_explicit_allow
-    resolved = await _resolve_all_permissions(db=db, user=user)
-    if _has_admin_bypass(resolved):
-        return True
-    return _has_explicit_allow(resolved, "tickets.manage", None, None)
+    """Restituisce True se l'utente ha can_manage sul modulo tickets."""
+    from app.core.dependencies import _user_can_access_module
+    return await _user_can_access_module(db, user, "tickets", need_manage=True)
 
 
 # ── Ticket CRUD ───────────────────────────────────────────────────────────────
@@ -50,7 +47,7 @@ async def _check_manage(db: AsyncSession, user: User) -> bool:
     "",
     response_model=TicketResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.create"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def create_ticket(
     data: TicketCreate,
@@ -63,7 +60,7 @@ async def create_ticket(
 @router.get(
     "",
     response_model=List[TicketResponse],
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def list_tickets(
     status: Optional[str] = Query(None),
@@ -86,7 +83,7 @@ async def list_tickets(
 @router.get(
     "/users",
     response_model=UserListResponse,
-    dependencies=[Depends(require_permission("tickets.manage"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def list_users(db: AsyncSession = Depends(get_db)):
     """Lista utenti per dropdown 'assegna a'."""
@@ -98,7 +95,7 @@ async def list_users(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/{ticket_id}",
     response_model=TicketResponse,
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def get_ticket(
     ticket_id: UUID,
@@ -112,7 +109,7 @@ async def get_ticket(
 @router.put(
     "/{ticket_id}/status",
     response_model=TicketResponse,
-    dependencies=[Depends(require_permission("tickets.manage"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def update_status(
     ticket_id: UUID,
@@ -126,7 +123,7 @@ async def update_status(
 @router.put(
     "/{ticket_id}/assign",
     response_model=TicketResponse,
-    dependencies=[Depends(require_permission("tickets.manage"))],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def assign_ticket(
     ticket_id: UUID,
@@ -142,7 +139,7 @@ async def assign_ticket(
     "/{ticket_id}/comments",
     response_model=CommentResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def add_comment(
     ticket_id: UUID,
@@ -157,7 +154,7 @@ async def add_comment(
 @router.get(
     "/{ticket_id}/comments",
     response_model=List[CommentResponse],
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def get_comments(
     ticket_id: UUID,
@@ -174,7 +171,7 @@ async def get_comments(
     "/{ticket_id}/attachments",
     response_model=AttachmentResponse,
     status_code=201,
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def upload_attachment(
     ticket_id: UUID,
@@ -212,7 +209,7 @@ async def upload_attachment(
 
 @router.get(
     "/attachments/{attachment_id}",
-    dependencies=[Depends(require_permission("tickets.view"))],
+    dependencies=[Depends(require_permission("tickets"))],
 )
 async def download_attachment(
     attachment_id: UUID,

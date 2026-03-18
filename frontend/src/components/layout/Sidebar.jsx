@@ -1,8 +1,13 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
-import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, Settings, ChevronDown, ChevronRight, Monitor } from "lucide-react"
+import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, Settings, ChevronDown, ChevronRight, Monitor, Ticket, Wrench } from "lucide-react"
 import { useState } from "react"
+
+const displayUserType = (user) => {
+  const t = user?.user_type || user?.role
+  return t === "SUPERUSER" ? "ADMIN" : t
+}
 
 const SALES_SUBMENU = [
   { path: "/ho/sales/it01", label: "Sales Data IT01" },
@@ -44,7 +49,7 @@ export default function Sidebar() {
           </div>
           <div>
             <div className="font-black text-lg leading-none">FTC HUB</div>
-            <div className="text-xs text-white/50 mt-0.5">{user?.user_type || user?.role} Module</div>
+            <div className="text-xs text-white/50 mt-0.5">{displayUserType(user)} Module</div>
           </div>
         </div>
       </div>
@@ -123,6 +128,38 @@ export default function Sidebar() {
           </div>
         )}
 
+        <div className="mt-4">
+          <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+            UTILITIES
+          </div>
+          <NavLink
+            to="/utilities"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+            }
+          >
+            <Wrench size={17} />
+            <span>Utilities</span>
+          </NavLink>
+        </div>
+
+        <div className="mt-4">
+          <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+            SUPPORTO
+          </div>
+          <NavLink
+            to="/tickets"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+            }
+          >
+            <Ticket size={17} />
+            <span>Ticket</span>
+          </NavLink>
+        </div>
+
         {hasRole("ADMIN") && (
           <div className="mt-4">
             <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
@@ -149,7 +186,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">{user?.full_name || user?.username}</div>
-            <div className="text-xs text-white/50">{user?.user_type || user?.role}</div>
+            <div className="text-xs text-white/50">{displayUserType(user)}</div>
           </div>
         </div>
         <button

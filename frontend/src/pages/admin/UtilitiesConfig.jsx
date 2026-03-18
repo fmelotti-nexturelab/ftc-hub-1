@@ -2,7 +2,6 @@ import React from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { modulesApi } from "@/api/modules"
 
-// User types che hanno accesso configurabile (SUPERUSER e ADMIN bypassano sempre)
 const CONFIGURABLE_TYPES = ["HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL", "DM", "STORE", "STOREMANAGER", "RETAIL"]
 
 const TYPE_LABEL = {
@@ -16,6 +15,10 @@ const TYPE_LABEL = {
   STOREMANAGER: "StoreMgr",
   RETAIL:       "Retail",
 }
+
+const UTILITY_TABLES = [
+  { code: "utilities_stores", name: "Info Stores" },
+]
 
 function Toggle({ checked, onChange, disabled }) {
   return (
@@ -43,15 +46,10 @@ function Toggle({ checked, onChange, disabled }) {
   )
 }
 
-export default function ModuleConfig() {
+export default function UtilitiesConfig() {
   const qc = useQueryClient()
 
-  const { data: modules = [], isLoading: loadingModules } = useQuery({
-    queryKey: ["admin-modules"],
-    queryFn: () => modulesApi.listModules().then((r) => r.data.filter((m) => m.code !== "licenze")),
-  })
-
-  const { data: accessList = [], isLoading: loadingAccess } = useQuery({
+  const { data: accessList = [], isLoading } = useQuery({
     queryKey: ["admin-modules-access"],
     queryFn: () => modulesApi.getAllAccess().then((r) => r.data),
   })
@@ -62,7 +60,6 @@ export default function ModuleConfig() {
     onSuccess: () => qc.invalidateQueries(["admin-modules-access"]),
   })
 
-  // Crea una mappa { "user_type:module_code": { can_view, can_manage } }
   const accessMap = {}
   for (const a of accessList) {
     accessMap[`${a.user_type}:${a.module_code}`] = a
@@ -74,28 +71,26 @@ export default function ModuleConfig() {
   const handleToggle = (user_type, module_code, field, value) => {
     const current = getAccess(user_type, module_code)
     const next = { ...current, [field]: value }
-    // Se disabilito view, disabilito anche manage
     if (field === "can_view" && !value) next.can_manage = false
-    // Se abilito manage, abilito anche view
     if (field === "can_manage" && value) next.can_view = true
     updateAccess.mutate({ user_type, module_code, ...next })
   }
 
-  if (loadingModules || loadingAccess) {
+  if (isLoading) {
     return <div className="py-16 text-center text-gray-400 text-sm">Caricamento...</div>
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm text-gray-600">Configura quali moduli sono accessibili per ogni tipo di utente.</p>
+        <p className="text-sm text-gray-600">Configura quali tabelle sono visibili per ogni tipo di utente.</p>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="text-xs w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-4 py-3 text-left text-gray-600 font-semibold w-40">Modulo</th>
+              <th className="px-4 py-3 text-left text-gray-600 font-semibold w-40">Tabella</th>
               {CONFIGURABLE_TYPES.map((t) => (
                 <th key={t} className="px-2 py-3 text-center text-gray-600 font-semibold" colSpan={2}>
                   {TYPE_LABEL[t]}
@@ -113,31 +108,24 @@ export default function ModuleConfig() {
             </tr>
           </thead>
           <tbody>
-            {modules.map((module) => (
+            {UTILITY_TABLES.map((table) => (
               <tr
-                key={module.code}
+                key={table.code}
                 className="border-b border-gray-100 last:border-0 odd:bg-white even:bg-gray-50/50"
               >
                 <td className="px-4 py-2.5 text-gray-700 font-medium whitespace-nowrap">
-                  {module.name}
-                  {module.code === "licenze" && (
-                    <span className="ml-1.5 text-[10px] bg-red-100 text-red-600 px-1 py-0.5 rounded font-bold">
-                      SU
-                    </span>
-                  )}
+                  {table.name}
                 </td>
                 {CONFIGURABLE_TYPES.map((user_type) => {
-                  const access = getAccess(user_type, module.code)
-                  // Il modulo "licenze" è solo SUPERUSER, nessuno altro può vederlo
-                  const isLicenze = module.code === "licenze"
+                  const access = getAccess(user_type, table.code)
                   return (
                     <React.Fragment key={user_type}>
                       <td className="px-2 py-2.5 text-center">
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_view}
-                            onChange={(val) => handleToggle(user_type, module.code, "can_view", val)}
-                            disabled={isLicenze || !module.has_view}
+                            onChange={(val) => handleToggle(user_type, table.code, "can_view", val)}
+                            disabled={false}
                           />
                         </div>
                       </td>
@@ -145,8 +133,8 @@ export default function ModuleConfig() {
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_manage}
-                            onChange={(val) => handleToggle(user_type, module.code, "can_manage", val)}
-                            disabled={isLicenze || !module.has_manage || !access.can_view}
+                            onChange={(val) => handleToggle(user_type, table.code, "can_manage", val)}
+                            disabled={!access.can_view}
                           />
                         </div>
                       </td>

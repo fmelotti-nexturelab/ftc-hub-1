@@ -25,6 +25,7 @@ class UserType(str, enum.Enum):
     DM = "DM"
     STORE = "STORE"
     STOREMANAGER = "STOREMANAGER"
+    RETAIL = "RETAIL"
 
     @classmethod
     def ho_types(cls) -> set:

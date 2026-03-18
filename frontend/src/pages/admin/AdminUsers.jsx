@@ -4,8 +4,9 @@ import { Plus, Pencil, KeyRound, UserX, UserCheck, X, Check, Trash2, ShieldCheck
 import * as Tabs from "@radix-ui/react-tabs"
 import { authApi } from "@/api/auth"
 import ModuleConfig from "./ModuleConfig"
+import UtilitiesConfig from "./UtilitiesConfig"
 
-const USER_TYPES = ["ADMIN", "HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL", "DM", "STORE", "STOREMANAGER"]
+const USER_TYPES = ["ADMIN", "HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL", "DM", "STORE", "STOREMANAGER", "RETAIL"]
 
 const USER_TYPE_BADGE = {
   SUPERUSER:  "bg-red-100 text-red-700",
@@ -18,6 +19,7 @@ const USER_TYPE_BADGE = {
   DM:           "bg-violet-100 text-violet-700",
   STORE:        "bg-emerald-100 text-emerald-700",
   STOREMANAGER: "bg-teal-100 text-teal-700",
+  RETAIL:       "bg-lime-100 text-lime-700",
 }
 
 const USER_TABS = [
@@ -339,6 +341,7 @@ export default function AdminUsers() {
           {[
             { value: "users", label: "Utenti" },
             { value: "modules", label: "Accesso Moduli" },
+            { value: "utilities", label: "Utilities" },
           ].map((tab) => (
             <Tabs.Trigger key={tab.value} value={tab.value}
               className="px-4 py-2 rounded-lg text-sm font-medium transition data-[state=active]:bg-white data-[state=active]:text-[#1e3a5f] data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700">
@@ -392,6 +395,10 @@ export default function AdminUsers() {
 
         <Tabs.Content value="modules">
           <ModuleConfig />
+        </Tabs.Content>
+
+        <Tabs.Content value="utilities">
+          <UtilitiesConfig />
         </Tabs.Content>
       </Tabs.Root>
     </div>

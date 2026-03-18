@@ -151,6 +151,7 @@ async def create_user(
         UserType.DM: UserRole.DM,
         UserType.STORE: UserRole.STORE,
         UserType.STOREMANAGER: UserRole.STORE,
+        UserType.RETAIL: UserRole.STORE,
     }
 
     user = User(
