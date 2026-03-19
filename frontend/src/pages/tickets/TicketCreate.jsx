@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { LifeBuoy, AlertCircle, Info, Upload, X } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
@@ -95,9 +95,25 @@ export default function TicketCreate() {
     subcategory_id: "",
     priority: "",
     requester_name: "",
+    requester_email: "",
     requester_phone: "",
     teamviewer_code: "",
   })
+
+  // Pre-compila nome e email dal backend
+  const { data: defaults } = useQuery({
+    queryKey: ["ticket-requester-defaults"],
+    queryFn: () => ticketsApi.requesterDefaults().then(r => r.data),
+    staleTime: Infinity,
+  })
+  useEffect(() => {
+    if (!defaults) return
+    setForm(f => ({
+      ...f,
+      requester_name: f.requester_name || defaults.name || "",
+      requester_email: f.requester_email || defaults.email || "",
+    }))
+  }, [defaults])
   const [image, setImage] = useState(null)
 
   // Paste globale — cattura immagini da clipboard ovunque sulla pagina
@@ -145,6 +161,7 @@ export default function TicketCreate() {
         subcategory_id: form.subcategory_id ? parseInt(form.subcategory_id) : null,
         priority: form.priority,
         requester_name: form.requester_name,
+        requester_email: form.requester_email || null,
         requester_phone: form.requester_phone,
         teamviewer_code: form.teamviewer_code,
       }
@@ -219,6 +236,19 @@ export default function TicketCreate() {
                 value={form.requester_phone}
                 onChange={set("requester_phone")}
                 placeholder="+39 ..."
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Email richiedente
+                <span className="ml-1 font-normal text-gray-400 text-xs">(opzionale)</span>
+              </label>
+              <input
+                type="email"
+                value={form.requester_email}
+                onChange={set("requester_email")}
+                placeholder="es. mario.rossi@email.com"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
               />
             </div>

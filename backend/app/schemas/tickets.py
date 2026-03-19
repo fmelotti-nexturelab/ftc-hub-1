@@ -16,6 +16,7 @@ class TicketCreate(BaseModel):
     subcategory_id: Optional[int] = None
     priority: TicketPriority
     requester_name: str
+    requester_email: Optional[str] = None
     requester_phone: str
     teamviewer_code: str
 
@@ -49,6 +50,8 @@ class TicketResponse(BaseModel):
     requester_name: Optional[str] = None
     requester_phone: Optional[str] = None
     teamviewer_code: Optional[str] = None
+    store_number: Optional[str] = None
+    requester_email: Optional[str] = None
     created_by: UUID
     assigned_to: Optional[UUID] = None
     created_at: datetime

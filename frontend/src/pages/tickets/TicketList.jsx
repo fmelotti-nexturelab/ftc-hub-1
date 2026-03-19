@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Plus, Filter } from "lucide-react"
+import { Plus, Filter, ExternalLink } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -146,6 +146,7 @@ export default function TicketList() {
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
                 <th className="px-4 py-3 text-left">#</th>
                 <th className="px-4 py-3 text-left">Titolo</th>
+                <th className="px-4 py-3 text-left">Negozio / Richiedente</th>
                 <th className="px-4 py-3 text-left">Categoria</th>
                 <th className="px-4 py-3 text-left">Sottocategoria</th>
                 {isAdmin && <th className="px-4 py-3 text-left">Team</th>}
@@ -154,6 +155,7 @@ export default function TicketList() {
                 {isAdmin && <th className="px-4 py-3 text-left">Creato da</th>}
                 {isAdmin && <th className="px-4 py-3 text-left">Assegnato a</th>}
                 <th className="px-4 py-3 text-left">Data</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -168,6 +170,12 @@ export default function TicketList() {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">
                     {t.title}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {t.store_number
+                      ? <span className="font-mono font-semibold text-gray-700">{t.store_number}</span>
+                      : <span className="text-gray-500">{t.requester_name || "—"}</span>
+                    }
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
@@ -186,6 +194,15 @@ export default function TicketList() {
                   {isAdmin && <td className="px-4 py-3 text-xs text-gray-500">{t.assignee_name ?? "—"}</td>}
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {new Date(t.created_at).toLocaleDateString("it-IT")}
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/tickets/${t.id}`) }}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 transition"
+                      title="Apri ticket"
+                    >
+                      <ExternalLink size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}

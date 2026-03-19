@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.auth import User
+from app.models.auth import User, UserType
 from app.models.tickets import TicketAttachment
+from app.models.stores import Store
+from app.models.rbac_scope import UserAssignment
 from app.schemas.tickets import (
     AttachmentResponse,
     CommentCreate,
@@ -39,6 +41,42 @@ async def _check_manage(db: AsyncSession, user: User) -> bool:
     """Restituisce True se l'utente ha can_manage sul modulo tickets."""
     from app.core.dependencies import _user_can_access_module
     return await _user_can_access_module(db, user, "tickets", need_manage=True)
+
+
+# ── Requester defaults ────────────────────────────────────────────────────────
+
+@router.get(
+    "/requester-defaults",
+    dependencies=[Depends(require_permission("tickets"))],
+)
+async def requester_defaults(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    name = current_user.full_name or current_user.username
+    email: Optional[str] = None
+
+    if getattr(current_user, "user_type", None) == UserType.STOREMANAGER:
+        # Cerca il negozio tramite user_assignments
+        assignment_res = await db.execute(
+            select(UserAssignment).where(
+                UserAssignment.user_id == current_user.id,
+                UserAssignment.is_active.is_(True),
+                UserAssignment.store_code.is_not(None),
+            )
+        )
+        assignment = assignment_res.scalars().first()
+        if assignment:
+            store_res = await db.execute(
+                select(Store).where(Store.store_number == assignment.store_code)
+            )
+            store = store_res.scalar_one_or_none()
+            if store:
+                email = store.email
+    else:
+        email = current_user.email
+
+    return {"name": name, "email": email}
 
 
 # ── Ticket CRUD ───────────────────────────────────────────────────────────────
@@ -166,6 +204,33 @@ async def get_comments(
 
 
 # ── Attachments ───────────────────────────────────────────────────────────────
+
+@router.get(
+    "/{ticket_id}/attachments",
+    response_model=List[AttachmentResponse],
+    dependencies=[Depends(require_permission("tickets"))],
+)
+async def list_attachments(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    is_manager = await _check_manage(db, current_user)
+    from app.models.tickets import Ticket
+    t_res = await db.execute(select(Ticket).where(Ticket.id == ticket_id, Ticket.is_active == True))
+    ticket = t_res.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    if not is_manager and ticket.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Accesso negato")
+
+    result = await db.execute(
+        select(TicketAttachment)
+        .where(TicketAttachment.ticket_id == ticket_id)
+        .order_by(TicketAttachment.created_at)
+    )
+    return [AttachmentResponse.model_validate(a) for a in result.scalars().all()]
+
 
 @router.post(
     "/{ticket_id}/attachments",

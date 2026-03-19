@@ -45,7 +45,9 @@ class Ticket(Base):
         nullable=False,
         default=TicketStatus.OPEN,
     )
+    store_number = Column(String(20), nullable=True)  # auto-popolato per STORE/STOREMANAGER
     requester_name = Column(String(255), nullable=False, server_default="")
+    requester_email = Column(String(255), nullable=True)
     requester_phone = Column(String(50), nullable=False, server_default="")
     teamviewer_code = Column(String(100), nullable=False, server_default="")
     created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=False)

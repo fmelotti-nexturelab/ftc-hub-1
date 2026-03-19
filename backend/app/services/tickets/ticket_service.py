@@ -6,7 +6,8 @@ from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import User
+from app.models.auth import User, UserType
+from app.models.rbac_scope import UserAssignment
 from app.models.tickets import Ticket, TicketStatus
 from app.models.ticket_config import (
     TicketCategoryModel,
@@ -82,6 +83,19 @@ async def _load_name_maps(
     return cat_map, sub_map, team_map, team_email_map
 
 
+async def _get_user_store_number(db: AsyncSession, user_id) -> Optional[str]:
+    """Restituisce lo store_code primario dell'utente da user_assignments, se esiste."""
+    result = await db.execute(
+        select(UserAssignment).where(
+            UserAssignment.user_id == user_id,
+            UserAssignment.is_active.is_(True),
+            UserAssignment.store_code.is_not(None),
+        ).order_by(UserAssignment.assignment_type)  # PRIMARY prima
+    )
+    assignment = result.scalars().first()
+    return assignment.store_code if assignment else None
+
+
 async def create_ticket(
     db: AsyncSession,
     data: TicketCreate,
@@ -93,6 +107,12 @@ async def create_ticket(
     )
     next_num = result.scalar() + 1
 
+    # Auto-popola store_number per STORE e STOREMANAGER
+    store_number: Optional[str] = None
+    user_type = getattr(current_user, "user_type", None)
+    if user_type in (UserType.STORE, UserType.STOREMANAGER):
+        store_number = await _get_user_store_number(db, current_user.id)
+
     ticket = Ticket(
         ticket_number=next_num,
         title=data.title,
@@ -101,7 +121,9 @@ async def create_ticket(
         subcategory_id=data.subcategory_id,
         priority=data.priority,
         status=TicketStatus.OPEN,
+        store_number=store_number,
         requester_name=data.requester_name,
+        requester_email=data.requester_email,
         requester_phone=data.requester_phone,
         teamviewer_code=data.teamviewer_code,
         created_by=current_user.id,
@@ -171,7 +193,15 @@ async def get_tickets(
 ) -> list[TicketResponse]:
     stmt = select(Ticket).where(Ticket.is_active == True)
 
-    if not is_manager:
+    user_type = getattr(current_user, "user_type", None)
+    if user_type == UserType.STOREMANAGER:
+        # Vede solo i ticket del suo negozio
+        store_number = await _get_user_store_number(db, current_user.id)
+        if store_number:
+            stmt = stmt.where(Ticket.store_number == store_number)
+        else:
+            stmt = stmt.where(Ticket.created_by == current_user.id)
+    elif not is_manager:
         stmt = stmt.where(Ticket.created_by == current_user.id)
     else:
         if created_by_id:

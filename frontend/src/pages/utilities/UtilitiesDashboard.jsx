@@ -1,23 +1,31 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Store } from "lucide-react"
+import { Store, Users } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
+import { useAuthStore } from "@/store/authStore"
 
 const ALL_MODULES = [
   { path: "/utilities/stores", icon: Store, label: "Info Stores", color: "bg-blue-500", desc: "Consulta l'anagrafica stores OneItaly", moduleCode: "utilities_stores" },
 ]
 
+const ADMIN_MODULES = [
+  { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
+]
+
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()
+  const { hasRole } = useAuthStore()
+  const isAdmin = hasRole("ADMIN")
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["utilities-my-access"],
     queryFn: () => utilitiesApi.getMyAccess().then((r) => r.data),
   })
 
-  const visibleModules = isError || !access
-    ? []
-    : ALL_MODULES.filter((m) => access[m.moduleCode]?.can_view)
+  const visibleModules = [
+    ...(isError || !access ? [] : ALL_MODULES.filter((m) => access[m.moduleCode]?.can_view)),
+    ...(isAdmin ? ADMIN_MODULES : []),
+  ]
 
   if (isLoading) {
     return <div className="py-16 text-center text-gray-400 text-sm">Caricamento...</div>

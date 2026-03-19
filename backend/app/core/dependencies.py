@@ -212,10 +212,12 @@ async def _user_can_reach_scope(
             return entity_code in assigned_entities
         return True
 
-    if user_type == UserType.STORE:
+    if user_type in (UserType.STORE, UserType.STOREMANAGER):
         if store_code:
             return store_code in assigned_stores
-        return False
+        # Nessuno scope specifico richiesto: accesso consentito,
+        # il filtraggio dati avviene a livello di service
+        return True
 
     return False
 
