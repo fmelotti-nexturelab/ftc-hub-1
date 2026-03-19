@@ -1,16 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { LifeBuoy, AlertCircle, Info, Upload, X } from "lucide-react"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { LifeBuoy, AlertCircle, Upload, X } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
-import { ticketConfigApi } from "@/api/ticketConfig"
 
-const PRIORITIES = [
-  { value: "low",      label: "Bassa" },
-  { value: "medium",   label: "Media" },
-  { value: "high",     label: "Alta" },
-  { value: "critical", label: "Critica" },
-]
 
 function ImageDropZone({ image, onImage, onRemove }) {
   const [dragging, setDragging] = useState(false)
@@ -91,16 +84,16 @@ export default function TicketCreate() {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category_id: "",
-    subcategory_id: "",
     priority: "",
     requester_name: "",
     requester_email: "",
     requester_phone: "",
     teamviewer_code: "",
   })
+  const [image, setImage] = useState(null)
+  const [analysis, setAnalysis] = useState(null)   // risultato AI: { suggested_teams, enhanced_description, ... }
+  const [aiError, setAiError] = useState("")        // messaggio rifiuto AI
 
-  // Pre-compila nome e email dal backend
   const { data: defaults } = useQuery({
     queryKey: ["ticket-requester-defaults"],
     queryFn: () => ticketsApi.requesterDefaults().then(r => r.data),
@@ -114,9 +107,7 @@ export default function TicketCreate() {
       requester_email: f.requester_email || defaults.email || "",
     }))
   }, [defaults])
-  const [image, setImage] = useState(null)
 
-  // Paste globale — cattura immagini da clipboard ovunque sulla pagina
   useEffect(() => {
     const handler = (e) => {
       const items = e.clipboardData?.items
@@ -132,62 +123,50 @@ export default function TicketCreate() {
     return () => document.removeEventListener("paste", handler)
   }, [])
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["ticket-categories"],
-    queryFn: () => ticketConfigApi.getCategories().then(r => r.data),
+  // Step 1 — analisi AI
+  const analyzeMutation = useMutation({
+    mutationFn: () => ticketsApi.analyze(form.title, form.description).then(r => r.data),
+    onSuccess: (data) => {
+      if (!data.relevant) {
+        setAiError(data.rejection_reason || "Richiesta non pertinente. Riformula il problema.")
+      } else {
+        setAiError("")
+        setAnalysis(data)
+      }
+    },
+    onError: () => {
+      // AI non disponibile — apri modal con team vuoti (selezione manuale)
+      setAnalysis({ suggested_teams: [], enhanced_description: form.description })
+    },
   })
 
-  const { data: subcategories = [] } = useQuery({
-    queryKey: ["ticket-subcategories", form.category_id],
-    queryFn: () => ticketConfigApi.getSubcategories(form.category_id).then(r => r.data),
-    enabled: !!form.category_id,
-  })
-
-  const { data: routingPreview } = useQuery({
-    queryKey: ["ticket-routing-preview", form.category_id, form.subcategory_id],
-    queryFn: () =>
-      ticketConfigApi
-        .getRoutingPreview(form.category_id, form.subcategory_id || null)
-        .then(r => r.data),
-    enabled: !!form.category_id,
-  })
-
-  const mutation = useMutation({
-    mutationFn: async () => {
+  // Step 2 — creazione ticket dopo selezione team
+  const createMutation = useMutation({
+    mutationFn: async (teamId) => {
       const payload = {
         title: form.title,
-        description: form.description,
-        category_id: parseInt(form.category_id),
-        subcategory_id: form.subcategory_id ? parseInt(form.subcategory_id) : null,
-        priority: form.priority,
+        description: analysis?.enhanced_description || form.description,
+        category_id: analysis?.category_id || 1,
+        subcategory_id: analysis?.subcategory_id || null,
+        priority: analysis?.priority || form.priority || "medium",
         requester_name: form.requester_name,
         requester_email: form.requester_email || null,
         requester_phone: form.requester_phone,
         teamviewer_code: form.teamviewer_code,
+        team_id: teamId || null,
       }
       const res = await ticketsApi.create(payload)
-      if (image) {
-        await ticketsApi.uploadAttachment(res.data.id, image)
-      }
-      return res
+      if (image) await ticketsApi.uploadAttachment(res.data.id, image)
+      return res.data
     },
-    onSuccess: (res) => navigate(`/tickets/${res.data.id}`),
+    onSuccess: (ticket) => navigate(`/tickets/${ticket.id}`),
   })
 
-  const set = (k) => (e) => {
-    const value = e.target.value
-    setForm(f => {
-      const next = { ...f, [k]: value }
-      if (k === "category_id") next.subcategory_id = ""
-      return next
-    })
-  }
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
   const valid =
     form.title &&
     form.description &&
-    form.category_id &&
-    form.priority &&
     form.requester_name &&
     form.requester_phone &&
     form.teamviewer_code
@@ -204,7 +183,14 @@ export default function TicketCreate() {
         </div>
       </div>
 
-      {mutation.isError && (
+      {aiError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm flex items-center gap-2">
+          <AlertCircle size={15} className="shrink-0" />
+          {aiError}
+        </div>
+      )}
+
+      {createMutation.isError && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm flex items-center gap-2">
           <AlertCircle size={15} />
           Errore durante la creazione del ticket.
@@ -215,53 +201,34 @@ export default function TicketCreate() {
 
         {/* ── Dati richiedente ── */}
         <div>
-          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Dati richiedente
-          </div>
+          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Dati richiedente</div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Nome richiedente *</label>
-              <input
-                type="text"
-                value={form.requester_name}
-                onChange={set("requester_name")}
+              <input type="text" value={form.requester_name} onChange={set("requester_name")}
                 placeholder="Nome e Cognome"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
-              />
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Recapito telefonico *</label>
-              <input
-                type="tel"
-                value={form.requester_phone}
-                onChange={set("requester_phone")}
+              <input type="tel" value={form.requester_phone} onChange={set("requester_phone")}
                 placeholder="+39 ..."
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
-              />
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition" />
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Email richiedente
-                <span className="ml-1 font-normal text-gray-400 text-xs">(opzionale)</span>
+                Email richiedente <span className="font-normal text-gray-400 text-xs">(opzionale)</span>
               </label>
-              <input
-                type="email"
-                value={form.requester_email}
-                onChange={set("requester_email")}
+              <input type="email" value={form.requester_email} onChange={set("requester_email")}
                 placeholder="es. mario.rossi@email.com"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
-              />
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition" />
             </div>
           </div>
           <div className="mt-4">
             <label className="block text-sm font-semibold text-gray-700 mb-1">Codice TeamViewer *</label>
-            <input
-              type="text"
-              value={form.teamviewer_code}
-              onChange={set("teamviewer_code")}
+            <input type="text" value={form.teamviewer_code} onChange={set("teamviewer_code")}
               placeholder="Es. 123 456 789"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition font-mono tracking-wider"
-            />
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition font-mono tracking-wider" />
           </div>
         </div>
 
@@ -269,88 +236,20 @@ export default function TicketCreate() {
 
         {/* ── Dettagli richiesta ── */}
         <div>
-          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Dettagli richiesta
-          </div>
+          <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Dettagli richiesta</div>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Titolo *</label>
-              <input
-                type="text"
-                value={form.title}
-                onChange={set("title")}
+              <input type="text" value={form.title} onChange={set("title")}
                 placeholder="Descrivi brevemente il problema"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
-              />
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition" />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Categoria *</label>
-                <select
-                  value={form.category_id}
-                  onChange={set("category_id")}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition bg-white"
-                >
-                  <option value="">Seleziona...</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Priorità *</label>
-                <select
-                  value={form.priority}
-                  onChange={set("priority")}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition bg-white"
-                >
-                  <option value="">Seleziona...</option>
-                  {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {form.category_id && subcategories.length > 0 && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  Sottocategoria
-                  <span className="ml-1 font-normal text-gray-400 text-xs">(opzionale)</span>
-                </label>
-                <select
-                  value={form.subcategory_id}
-                  onChange={set("subcategory_id")}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition bg-white"
-                >
-                  <option value="">Seleziona sottocategoria...</option>
-                  {subcategories.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {form.category_id && routingPreview?.team_name && (
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
-                <Info size={14} className="shrink-0" />
-                <span>
-                  Questo ticket verrà assegnato a: <strong>{routingPreview.team_name}</strong>
-                  {routingPreview.priority_override && (
-                    <> — priorità impostata automaticamente a <strong>{routingPreview.priority_override}</strong></>
-                  )}
-                </span>
-              </div>
-            )}
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Descrizione *</label>
-              <textarea
-                value={form.description}
-                onChange={set("description")}
+              <textarea value={form.description} onChange={set("description")}
                 placeholder="Descrivi il problema in dettaglio..."
                 rows={4}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition resize-none"
-              />
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition resize-none" />
             </div>
           </div>
         </div>
@@ -360,33 +259,65 @@ export default function TicketCreate() {
         {/* ── Screenshot / Foto ── */}
         <div>
           <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Screenshot / Foto
-            <span className="ml-2 font-normal normal-case text-gray-300">(opzionale)</span>
+            Screenshot / Foto <span className="font-normal normal-case text-gray-300">(opzionale)</span>
           </div>
-          <ImageDropZone
-            image={image}
-            onImage={setImage}
-            onRemove={() => setImage(null)}
-          />
+          <ImageDropZone image={image} onImage={setImage} onRemove={() => setImage(null)} />
         </div>
 
         <div className="flex justify-end gap-3 pt-1">
-          <button
-            type="button"
-            onClick={() => navigate("/tickets")}
-            className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition"
-          >
+          <button type="button" onClick={() => navigate("/tickets")}
+            className="px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-100 transition">
             Annulla
           </button>
           <button
-            onClick={() => mutation.mutate()}
-            disabled={!valid || mutation.isPending}
+            onClick={() => { setAiError(""); analyzeMutation.mutate() }}
+            disabled={!valid || analyzeMutation.isPending}
             className="bg-[#1e3a5f] hover:bg-[#2563eb] disabled:opacity-40 text-white font-semibold py-2.5 px-6 rounded-xl shadow transition"
           >
-            {mutation.isPending ? "Apertura..." : "Apri ticket"}
+            {analyzeMutation.isPending ? "Analisi in corso..." : "Apri ticket"}
           </button>
         </div>
       </div>
+
+      {/* Modal selezione team */}
+      {analysis && !createMutation.isSuccess && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-bold text-gray-800">A chi vuoi inviare il ticket?</h2>
+              <p className="text-xs text-gray-400 mt-1">Seleziona il team di destinazione</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {analysis.suggested_teams?.length > 0
+                ? analysis.suggested_teams.map(team => (
+                    <button
+                      key={team.id}
+                      onClick={() => createMutation.mutate(team.id)}
+                      disabled={createMutation.isPending}
+                      className="px-4 py-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white text-sm font-semibold rounded-xl transition disabled:opacity-50"
+                    >
+                      {team.name}
+                    </button>
+                  ))
+                : <p className="text-sm text-gray-400">Nessun team suggerito. Seleziona manualmente.</p>
+              }
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={() => setAnalysis(null)}
+                className="text-xs text-gray-400 hover:text-gray-600 transition"
+              >
+                ← Modifica
+              </button>
+              {createMutation.isPending && (
+                <span className="text-xs text-gray-400">Creazione in corso...</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

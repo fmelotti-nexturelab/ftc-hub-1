@@ -1,6 +1,7 @@
 import { apiClient } from "@/api/client"
 
 export const ticketsApi = {
+  stats: () => apiClient.get("/api/tickets/stats"),
   requesterDefaults: () => apiClient.get("/api/tickets/requester-defaults"),
 
   // Tickets — data deve avere { title, description, category_id, subcategory_id?, priority }
@@ -28,4 +29,12 @@ export const ticketsApi = {
 
   // Users (for assign dropdown)
   listUsers: () => apiClient.get("/api/tickets/users"),
+
+  // Bulk actions
+  bulkAction: (data) => apiClient.put("/api/tickets/bulk", data),
+
+  // Chat / AI
+  chatStatus: () => apiClient.get("/api/tickets/chat/status"),
+  chat: (messages) => apiClient.post("/api/tickets/chat", { messages }),
+  analyze: (title, description) => apiClient.post("/api/tickets/chat/analyze", { title, description }),
 }

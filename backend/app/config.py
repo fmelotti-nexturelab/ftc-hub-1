@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
 
+    ANTHROPIC_API_KEY: str = ""
+
     TICKET_NOTIFY_EMAIL: str = ""
     TICKET_ATTACHMENTS_PATH: str = "/data/attachments"
     SMTP_HOST: str = ""

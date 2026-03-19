@@ -7,13 +7,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, func, case, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.models.auth import User, UserType
-from app.models.tickets import TicketAttachment
+from app.models.tickets import Ticket, TicketAttachment
+from app.models.ticket_config import TicketTeamModel, TicketCategoryModel, TicketSubcategoryModel
 from app.models.stores import Store
 from app.models.rbac_scope import UserAssignment
 from app.schemas.tickets import (
@@ -21,6 +22,7 @@ from app.schemas.tickets import (
     CommentCreate,
     CommentResponse,
     TicketAssignUpdate,
+    TicketBulkAction,
     TicketCreate,
     TicketResponse,
     TicketStatusUpdate,
@@ -41,6 +43,112 @@ async def _check_manage(db: AsyncSession, user: User) -> bool:
     """Restituisce True se l'utente ha can_manage sul modulo tickets."""
     from app.core.dependencies import _user_can_access_module
     return await _user_can_access_module(db, user, "tickets", need_manage=True)
+
+
+# ── Stats ─────────────────────────────────────────────────────────────────────
+
+@router.get(
+    "/stats",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def ticket_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    def _counts(q):
+        s = cast(Ticket.status, String)
+        return q.add_columns(
+            func.count(Ticket.id).label("total"),
+            func.count(case((s == "open",        1))).label("open"),
+            func.count(case((s == "in_progress", 1))).label("in_progress"),
+            func.count(case((s == "waiting",     1))).label("waiting"),
+            func.count(case((s == "resolved",    1))).label("resolved"),
+            func.count(case((s == "closed",      1))).label("closed"),
+        )
+
+    # Totali globali
+    totals_res = await db.execute(
+        _counts(select()).select_from(Ticket).where(Ticket.is_active == True)
+    )
+    row = totals_res.one()
+    totals = {"total": row.total, "open": row.open, "in_progress": row.in_progress,
+              "waiting": row.waiting, "resolved": row.resolved, "closed": row.closed}
+
+    # Per team
+    team_res = await db.execute(
+        _counts(
+            select(TicketTeamModel.name.label("team_name"))
+            .outerjoin(Ticket, (Ticket.team_id == TicketTeamModel.id) & Ticket.is_active)
+        ).group_by(TicketTeamModel.name).order_by(func.count().desc())
+    )
+    by_team = [
+        {"name": r.team_name, "total": r.total, "open": r.open,
+         "in_progress": r.in_progress, "waiting": r.waiting,
+         "resolved": r.resolved, "closed": r.closed}
+        for r in team_res.all() if r.total > 0
+    ]
+
+    # Per categoria
+    cat_res = await db.execute(
+        _counts(
+            select(TicketCategoryModel.name.label("cat_name"))
+            .outerjoin(Ticket, (Ticket.category_id == TicketCategoryModel.id) & Ticket.is_active)
+        ).group_by(TicketCategoryModel.name).order_by(func.count().desc())
+    )
+    by_category = [
+        {"name": r.cat_name, "total": r.total, "open": r.open,
+         "in_progress": r.in_progress, "waiting": r.waiting,
+         "resolved": r.resolved, "closed": r.closed}
+        for r in cat_res.all() if r.total > 0
+    ]
+
+    # Per sottocategoria
+    subcat_res = await db.execute(
+        _counts(
+            select(
+                TicketSubcategoryModel.name.label("subcat_name"),
+                TicketCategoryModel.name.label("cat_name"),
+            )
+            .outerjoin(Ticket, (Ticket.subcategory_id == TicketSubcategoryModel.id) & Ticket.is_active)
+            .outerjoin(TicketCategoryModel, TicketSubcategoryModel.category_id == TicketCategoryModel.id)
+        ).group_by(TicketSubcategoryModel.name, TicketCategoryModel.name)
+         .order_by(func.count().desc())
+    )
+    by_subcategory = [
+        {"name": r.subcat_name, "category": r.cat_name, "total": r.total,
+         "open": r.open, "in_progress": r.in_progress, "waiting": r.waiting,
+         "resolved": r.resolved, "closed": r.closed}
+        for r in subcat_res.all() if r.total > 0
+    ]
+
+    # Chiusi per assegnatario (solo SUPERUSER)
+    by_assignee = []
+    user_type = getattr(current_user, "user_type", None)
+    from app.models.auth import UserType
+    if user_type == UserType.SUPERUSER:
+        assignee_res = await db.execute(
+            select(
+                User.full_name.label("name"),
+                User.username.label("username"),
+                func.count().label("closed"),
+            )
+            .join(Ticket, Ticket.assigned_to == User.id)
+            .where(Ticket.is_active == True, cast(Ticket.status, String) == "closed")
+            .group_by(User.full_name, User.username)
+            .order_by(func.count().desc())
+        )
+        by_assignee = [
+            {"name": r.name or r.username, "closed": r.closed}
+            for r in assignee_res.all()
+        ]
+
+    return {
+        "totals": totals,
+        "by_team": by_team,
+        "by_category": by_category,
+        "by_subcategory": by_subcategory,
+        "by_assignee": by_assignee,
+    }
 
 
 # ── Requester defaults ────────────────────────────────────────────────────────
@@ -128,6 +236,17 @@ async def list_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.is_active == True).order_by(User.full_name))
     users = [UserBrief.model_validate(u) for u in result.scalars().all()]
     return UserListResponse(users=users)
+
+
+@router.put(
+    "/bulk",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def bulk_action(
+    data: TicketBulkAction,
+    db: AsyncSession = Depends(get_db),
+):
+    return await ticket_service.bulk_action(db, data)
 
 
 @router.get(

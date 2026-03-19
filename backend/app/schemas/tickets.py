@@ -19,6 +19,7 @@ class TicketCreate(BaseModel):
     requester_email: Optional[str] = None
     requester_phone: str
     teamviewer_code: str
+    team_id: Optional[int] = None
 
 
 class TicketStatusUpdate(BaseModel):
@@ -27,6 +28,13 @@ class TicketStatusUpdate(BaseModel):
 
 class TicketAssignUpdate(BaseModel):
     assigned_to: Optional[UUID] = None
+
+
+class TicketBulkAction(BaseModel):
+    ticket_ids: List[UUID]
+    action: str                       # "close" | "status" | "assign"
+    status: Optional[str] = None      # usato con action="status"
+    assigned_to: Optional[UUID] = None  # usato con action="assign"
 
 
 class UserBrief(BaseModel):

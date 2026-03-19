@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth import User, UserType
@@ -14,8 +14,8 @@ from app.models.ticket_config import (
     TicketSubcategoryModel,
     TicketTeamModel,
 )
-from app.schemas.tickets import TicketCreate, TicketResponse, TicketStatusUpdate, TicketAssignUpdate
-from app.services.tickets import notification_service, routing_service
+from app.schemas.tickets import TicketCreate, TicketResponse, TicketStatusUpdate, TicketAssignUpdate, TicketBulkAction
+from app.services.tickets import notification_service, routing_service, chat_service
 
 
 def _enrich(
@@ -113,10 +113,12 @@ async def create_ticket(
     if user_type in (UserType.STORE, UserType.STOREMANAGER):
         store_number = await _get_user_store_number(db, current_user.id)
 
+    description = await chat_service.enhance_description(data.title, data.description)
+
     ticket = Ticket(
         ticket_number=next_num,
         title=data.title,
-        description=data.description,
+        description=description,
         category_id=data.category_id,
         subcategory_id=data.subcategory_id,
         priority=data.priority,
@@ -126,6 +128,7 @@ async def create_ticket(
         requester_email=data.requester_email,
         requester_phone=data.requester_phone,
         teamviewer_code=data.teamviewer_code,
+        team_id=data.team_id,
         created_by=current_user.id,
     )
     db.add(ticket)
@@ -326,6 +329,39 @@ async def update_status(
         subcategory_name=sub_map.get(ticket.subcategory_id) if ticket.subcategory_id else None,
         team_name=team_map.get(ticket.team_id) if ticket.team_id else None,
     )
+
+
+async def bulk_action(
+    db: AsyncSession,
+    data: TicketBulkAction,
+) -> dict:
+    if not data.ticket_ids:
+        return {"updated": 0}
+
+    result = await db.execute(
+        select(Ticket).where(
+            Ticket.id.in_(data.ticket_ids),
+            Ticket.is_active == True,
+        )
+    )
+    tickets = result.scalars().all()
+
+    now = datetime.now(timezone.utc)
+    for ticket in tickets:
+        if data.action == "close":
+            ticket.status = TicketStatus.CLOSED
+            ticket.closed_at = now
+        elif data.action == "status" and data.status:
+            ticket.status = data.status
+            if data.status == TicketStatus.CLOSED:
+                ticket.closed_at = now
+        elif data.action == "assign":
+            ticket.assigned_to = data.assigned_to
+            if data.assigned_to and ticket.status == TicketStatus.OPEN:
+                ticket.status = TicketStatus.IN_PROGRESS
+
+    await db.commit()
+    return {"updated": len(tickets)}
 
 
 async def assign_ticket(
