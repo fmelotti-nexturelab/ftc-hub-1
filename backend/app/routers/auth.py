@@ -6,7 +6,7 @@ import hashlib
 
 from app.database import get_db
 from app.models.auth import User, RefreshToken, UserRole
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserInfo, UserCreate
+from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, UserInfo, UserCreate, ProfileResponse, ProfileUpdate, PasswordChange
 from app.core.security import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token
@@ -104,6 +104,50 @@ async def logout(current_user: User = Depends(get_current_user), db: AsyncSessio
 @router.get("/me", response_model=UserInfo)
 async def get_me(current_user: User = Depends(get_current_user)):
     return UserInfo.model_validate(current_user)
+
+@router.get("/profile", response_model=ProfileResponse)
+async def get_profile(current_user: User = Depends(get_current_user)):
+    return ProfileResponse.model_validate(current_user)
+
+
+@router.put("/profile", response_model=ProfileResponse)
+async def update_profile(
+    data: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if data.username and data.username != current_user.username:
+        existing = await db.execute(select(User).where(User.username == data.username))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Username già in uso")
+        current_user.username = data.username
+
+    if data.email and data.email != current_user.email:
+        existing = await db.execute(select(User).where(User.email == data.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email già in uso")
+        current_user.email = data.email
+
+    if data.phone is not None:
+        current_user.phone = data.phone
+
+    await db.commit()
+    await db.refresh(current_user)
+    return ProfileResponse.model_validate(current_user)
+
+
+@router.put("/password")
+async def change_password(
+    data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Password attuale non corretta")
+    current_user.hashed_password = get_password_hash(data.new_password)
+    await db.commit()
+    return {"message": "Password aggiornata"}
+
 
 @router.post("/users", response_model=UserInfo)
 async def create_user(

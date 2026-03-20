@@ -5,6 +5,9 @@ export const authApi = {
     apiClient.post("/api/auth/login", { username, password }),
   logout: () => apiClient.post("/api/auth/logout"),
   me: () => apiClient.get("/api/auth/me"),
+  getProfile: () => apiClient.get("/api/auth/profile"),
+  updateProfile: (data) => apiClient.put("/api/auth/profile", data),
+  changePassword: (data) => apiClient.put("/api/auth/password", data),
 
   // Admin — user management
   listUsers: (params) => apiClient.get("/api/admin/users", { params }),

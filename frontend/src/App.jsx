@@ -19,6 +19,7 @@ import TicketList from "@/pages/tickets/TicketList"
 import TicketCreate from "@/pages/tickets/TicketCreate"
 import TicketDetail from "@/pages/tickets/TicketDetail"
 import TicketDashboard from "@/pages/tickets/TicketDashboard"
+import ProfilePage from "@/pages/ProfilePage"
 
 
 function RoleRedirect() {
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN"]}><TicketDashboard /></RoleRoute>} />
         <Route path="tickets/new" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketCreate /></RoleRoute>} />
         <Route path="tickets/:id" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketDetail /></RoleRoute>} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

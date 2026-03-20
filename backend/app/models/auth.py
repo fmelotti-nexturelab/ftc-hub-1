@@ -26,6 +26,10 @@ class UserType(str, enum.Enum):
     STORE = "STORE"
     STOREMANAGER = "STOREMANAGER"
     RETAIL = "RETAIL"
+    MANAGER = "MANAGER"
+    TOPMGR = "TOPMGR"
+    HEALTHSAFETY = "HEALTHSAFETY"
+    FACILITIES = "FACILITIES"
 
     @classmethod
     def ho_types(cls) -> set:
@@ -54,6 +58,7 @@ class User(Base):
         default=UserType.STORE,
         server_default="STORE",
     )
+    phone = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

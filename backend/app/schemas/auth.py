@@ -41,4 +41,28 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
 
+
+class ProfileResponse(BaseModel):
+    id: uuid.UUID
+    username: str
+    email: str
+    full_name: Optional[str]
+    phone: Optional[str]
+    role: UserRole
+    user_type: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ProfileUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
 TokenResponse.model_rebuild()
