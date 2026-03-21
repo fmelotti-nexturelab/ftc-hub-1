@@ -17,6 +17,12 @@ class Settings(BaseSettings):
 
     ANTHROPIC_API_KEY: str = ""
 
+    # Ollama (LLM on-premise) — se configurato, usato come provider primario
+    OLLAMA_BASE_URL: str = ""        # es. "http://ollama:11434"
+    OLLAMA_MODEL: str = "mistral"    # modello da usare
+    # Provider: "ollama" | "anthropic" | "auto" (ollama con fallback anthropic)
+    AI_PROVIDER: str = "auto"
+
     TICKET_NOTIFY_EMAIL: str = ""
     TICKET_ATTACHMENTS_PATH: str = "/data/attachments"
     SMTP_HOST: str = ""

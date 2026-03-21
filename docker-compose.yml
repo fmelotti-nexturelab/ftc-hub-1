@@ -43,6 +43,9 @@ services:
       SMTP_PASSWORD: ""
       SMTP_FROM: ""
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-mistral}
+      AI_PROVIDER: ${AI_PROVIDER:-auto}
     volumes:
       - ./backend:/app
     ports:
@@ -79,5 +82,23 @@ services:
     volumes:
       - C:\certbot\letsencrypt:/etc/letsencrypt:ro
 
+  ollama:
+    image: ollama/ollama
+    container_name: ftc_hub_ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # GPU NVIDIA: decommentare le righe seguenti se disponibile
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 volumes:
   postgres_data:
+  ollama_data:
