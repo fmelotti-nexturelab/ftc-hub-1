@@ -346,7 +346,10 @@ function TeamsTab() {
             <input placeholder="Nome *" value={teamForm.name} onChange={e => setTeamForm(f => ({ ...f, name: e.target.value }))} className={inputClass} />
             <input placeholder="Email team" type="email" value={teamForm.email} onChange={e => setTeamForm(f => ({ ...f, email: e.target.value }))} className={inputClass} />
           </div>
-          <input placeholder="Descrizione" value={teamForm.description} onChange={e => setTeamForm(f => ({ ...f, description: e.target.value }))} className={inputClass} />
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Competenze <span className="font-normal text-gray-400">(usate dall'AI per il routing — es. "email, stampanti, software")</span></label>
+            <textarea placeholder="Elenca le competenze del team..." value={teamForm.description} onChange={e => setTeamForm(f => ({ ...f, description: e.target.value }))} rows={2} className={inputClass + " resize-none"} />
+          </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => setEditingTeam(null)} className="text-sm text-gray-500 px-4 py-2 rounded-xl hover:bg-gray-100 transition">Annulla</button>
             <button
@@ -368,7 +371,10 @@ function TeamsTab() {
                 <input value={teamForm.name} onChange={e => setTeamForm(f => ({ ...f, name: e.target.value }))} className={inputClass} />
                 <input placeholder="Email" type="email" value={teamForm.email} onChange={e => setTeamForm(f => ({ ...f, email: e.target.value }))} className={inputClass} />
               </div>
-              <input placeholder="Descrizione" value={teamForm.description} onChange={e => setTeamForm(f => ({ ...f, description: e.target.value }))} className={inputClass} />
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Competenze <span className="font-normal text-gray-400">(usate dall'AI per il routing)</span></label>
+                <textarea placeholder="Elenca le competenze del team..." value={teamForm.description} onChange={e => setTeamForm(f => ({ ...f, description: e.target.value }))} rows={2} className={inputClass + " resize-none"} />
+              </div>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setEditingTeam(null)} className="text-sm text-gray-500 px-4 py-2 rounded-xl hover:bg-gray-100 transition">Annulla</button>
                 <button
@@ -387,6 +393,10 @@ function TeamsTab() {
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-gray-800 text-sm">{team.name}</div>
+                  {team.description
+                    ? <div className="text-xs text-gray-400 truncate max-w-xs">{team.description}</div>
+                    : <div className="text-xs text-amber-500 font-medium">⚠ Competenze non configurate</div>
+                  }
                   {team.email && <div className="text-xs text-gray-400">{team.email}</div>}
                 </div>
                 {!team.is_active && (

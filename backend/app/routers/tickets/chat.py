@@ -42,6 +42,7 @@ class AnalyzeResponse(BaseModel):
     relevant: bool
     rejection_reason: Optional[str] = None
     suggested_teams: Optional[List[SuggestedTeam]] = None
+    all_teams: Optional[List[SuggestedTeam]] = None
     enhanced_description: Optional[str] = None
     category_id: Optional[int] = None
     subcategory_id: Optional[int] = None
@@ -89,11 +90,13 @@ async def analyze(
     team_map = {t.name.upper(): t for t in teams_db}
     teams = [{"id": t.id, "name": t.name} for t in teams_db]
 
+    all_teams = [SuggestedTeam(id=t.id, name=t.name) for t in teams_db]
+
     try:
         result = await chat_service.analyze_ticket(body.title, body.description, categories, teams)
     except Exception:
-        # Se AI non disponibile, lascia passare il ticket senza analisi
-        return AnalyzeResponse(relevant=True, suggested_teams=[], enhanced_description=body.description)
+        # Se AI non disponibile, lascia passare il ticket senza analisi (selezione manuale)
+        return AnalyzeResponse(relevant=True, suggested_teams=[], all_teams=all_teams, enhanced_description=body.description)
 
     if not result.get("relevant"):
         return AnalyzeResponse(relevant=False, rejection_reason=result.get("rejection_reason"))
@@ -101,13 +104,15 @@ async def analyze(
     # Mappa i nomi team suggeriti agli oggetti DB
     suggested = []
     for name in result.get("suggested_teams", []):
-        team = team_map.get(name.upper())
-        if team:
-            suggested.append(SuggestedTeam(id=team.id, name=team.name))
+        if isinstance(name, str):
+            team = team_map.get(name.upper())
+            if team:
+                suggested.append(SuggestedTeam(id=team.id, name=team.name))
 
     return AnalyzeResponse(
         relevant=True,
         suggested_teams=suggested,
+        all_teams=all_teams,
         enhanced_description=result.get("enhanced_description", body.description),
         category_id=result.get("category_id"),
         subcategory_id=result.get("subcategory_id"),

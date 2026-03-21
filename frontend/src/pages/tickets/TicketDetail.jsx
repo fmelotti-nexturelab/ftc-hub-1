@@ -146,10 +146,22 @@ export default function TicketDetail() {
             </div>
           </div>
 
-          {/* Descrizione */}
+          {/* Descrizione originale */}
+          {ticket.original_description && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Descrizione
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {ticket.original_description}
+              </p>
+            </div>
+          )}
+
+          {/* Descrizione assistita dall'AI */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-              Descrizione
+              Descrizione assistita
             </p>
             <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
               {ticket.description}

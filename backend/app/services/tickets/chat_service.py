@@ -113,18 +113,30 @@ async def analyze_ticket(
     cats_block = "\n".join(cat_lines)
     teams_block = " | ".join(t["name"] for t in teams)
 
+    teams_lines = []
+    for t in teams:
+        if t.get("description"):
+            teams_lines.append(f'- {t["name"]}: {t["description"]}')
+        else:
+            teams_lines.append(f'- {t["name"]} (nessuna competenza configurata: usa il nome per dedurre cosa gestisce)')
+    teams_desc_block = "\n".join(teams_lines)
+
     system = f"""Sei un analizzatore di ticket per Flying Tiger Copenhagen.
 Analizza il ticket e rispondi SOLO con un JSON, niente altro.
 
-Team disponibili: {teams_block}
+Team disponibili e loro competenze:
+{teams_desc_block}
+
+Nomi esatti da usare nel JSON: {teams_block}
 
 Categorie disponibili:
 {cats_block}
 
 Regole:
-- Pertinente = qualsiasi richiesta o segnalazione legata al lavoro: problemi operativi, IT, HR, commerciali, strutturali, richieste di dotazioni/attrezzature/DPI, richieste amministrative, segnalazioni di qualsiasi tipo inerente l'attività lavorativa
-- Non pertinente = messaggi personali, spam, test, testo senza senso, argomenti completamente estranei al contesto lavorativo
-- suggested_teams: lista di 2-3 team dalla lista, ordinati per probabilità (il più probabile prima)
+- Pertinente = qualsiasi richiesta o segnalazione legata al lavoro
+- Non pertinente = messaggi personali, spam, test, testo senza senso
+- suggested_teams: 1-2 team massimo, solo quelli realmente competenti. Se il problema è chiaramente di un solo team, mettine solo 1.
+- Se un team non ha competenze configurate, usa il nome per dedurre di cosa si occupa.
 - priority: critical=blocco totale negozio, high=problema grave, medium=disagio operativo, low=non urgente
 - enhanced_description: riscrivi in modo chiaro e professionale, mantieni tutti i fatti, niente markdown
 
@@ -132,7 +144,7 @@ Se NON pertinente:
 {{"relevant": false, "rejection_reason": "messaggio breve in italiano che spiega perché"}}
 
 Se pertinente:
-{{"relevant": true, "suggested_teams": ["TEAM1", "TEAM2"], "enhanced_description": "...", "category_id": <int>, "subcategory_id": <int|null>, "priority": "low|medium|high|critical"}}"""
+{{"relevant": true, "suggested_teams": ["TEAM1"], "enhanced_description": "...", "category_id": <int>, "subcategory_id": <int|null>, "priority": "low|medium|high|critical"}}"""
 
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",

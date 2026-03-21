@@ -12,6 +12,7 @@ from app.models.tickets import TicketPriority, TicketStatus
 class TicketCreate(BaseModel):
     title: str
     description: str
+    original_description: Optional[str] = None
     category_id: int
     subcategory_id: Optional[int] = None
     priority: TicketPriority
@@ -50,6 +51,7 @@ class TicketResponse(BaseModel):
     ticket_number: int
     title: str
     description: str
+    original_description: Optional[str] = None
     category_id: Optional[int] = None
     subcategory_id: Optional[int] = None
     team_id: Optional[int] = None

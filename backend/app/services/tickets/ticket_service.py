@@ -113,12 +113,14 @@ async def create_ticket(
     if user_type in (UserType.STORE, UserType.STOREMANAGER):
         store_number = await _get_user_store_number(db, current_user.id)
 
+    original_description = data.original_description or data.description
     description = await chat_service.enhance_description(data.title, data.description)
 
     ticket = Ticket(
         ticket_number=next_num,
         title=data.title,
         description=description,
+        original_description=original_description,
         category_id=data.category_id,
         subcategory_id=data.subcategory_id,
         priority=data.priority,

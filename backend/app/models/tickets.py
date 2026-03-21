@@ -31,6 +31,7 @@ class Ticket(Base):
     ticket_number = Column(Integer, unique=True, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
+    original_description = Column(Text, nullable=True)
     category_id = Column(Integer, ForeignKey("tickets.ticket_categories.id"), nullable=True)
     subcategory_id = Column(Integer, ForeignKey("tickets.ticket_subcategories.id"), nullable=True)
     team_id = Column(Integer, ForeignKey("tickets.ticket_teams.id"), nullable=True)

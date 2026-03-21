@@ -1,7 +1,7 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
-import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, ChevronRight, Monitor, Ticket, Wrench, UserCircle } from "lucide-react"
+import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, ChevronRight, Monitor, Ticket, Wrench, UserCircle, BookOpen } from "lucide-react"
 import { useState } from "react"
 
 const displayUserType = (user) => {
@@ -161,6 +161,18 @@ export default function Sidebar() {
           </NavLink>
         </div>
       </nav>
+
+      <div className="px-3 pb-2">
+        <a
+          href="/docs/index.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition text-sm"
+        >
+          <BookOpen size={17} />
+          <span>Guide utente</span>
+        </a>
+      </div>
 
       <div className="px-3 py-4 border-t border-white/10">
         <NavLink

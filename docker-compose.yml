@@ -42,7 +42,7 @@ services:
       SMTP_USER: ""
       SMTP_PASSWORD: ""
       SMTP_FROM: ""
-      ANTHROPIC_API_KEY: ""
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     volumes:
       - ./backend:/app
     ports:
