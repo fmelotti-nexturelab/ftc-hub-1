@@ -58,19 +58,36 @@ async def add_comment(
             # Manager ha commentato → notifica l'autore del ticket
             creator_result = await db.execute(select(User).where(User.id == ticket.created_by))
             creator = creator_result.scalar_one_or_none()
-            if creator and creator.email and creator.id != current_user.id:
-                await notification_service.notify_new_comment(
-                    creator.email, ticket.ticket_number, ticket.title, author_name
+            if creator and creator.id != current_user.id:
+                if creator.email:
+                    await notification_service.notify_new_comment(
+                        creator.email, ticket.ticket_number, ticket.title, author_name
+                    )
+                await notification_service.push(
+                    db, creator.id,
+                    type="ticket_comment",
+                    title=f"Nuovo commento sul ticket #{ticket.ticket_number:04d}",
+                    body=f"{author_name}: {data.content[:80]}{'...' if len(data.content) > 80 else ''}",
+                    ticket_id=ticket.id,
                 )
         else:
             # Autore ha commentato → notifica l'assegnato (se presente)
             if ticket.assigned_to:
                 assignee_result = await db.execute(select(User).where(User.id == ticket.assigned_to))
                 assignee = assignee_result.scalar_one_or_none()
-                if assignee and assignee.email:
-                    await notification_service.notify_new_comment(
-                        assignee.email, ticket.ticket_number, ticket.title, author_name
+                if assignee:
+                    if assignee.email:
+                        await notification_service.notify_new_comment(
+                            assignee.email, ticket.ticket_number, ticket.title, author_name
+                        )
+                    await notification_service.push(
+                        db, assignee.id,
+                        type="ticket_comment",
+                        title=f"Nuovo commento sul ticket #{ticket.ticket_number:04d}",
+                        body=f"{author_name}: {data.content[:80]}{'...' if len(data.content) > 80 else ''}",
+                        ticket_id=ticket.id,
                     )
+        await db.commit()
 
     return _enrich_comment(comment, current_user)
 

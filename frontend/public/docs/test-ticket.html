@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC HUB — Test Sistema Ticket</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+
+    header { background: #1e3a5f; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .back-btn { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    main { max-width: 860px; margin: 32px auto; padding: 0 20px 60px; }
+
+    .intro { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; font-size: 13px; color: #475569; line-height: 1.8; }
+    .intro strong { color: #1e3a5f; }
+
+    .progress-bar-wrap { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 24px; margin-bottom: 28px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+    .progress-bar { width: 100%; height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #1e3a5f; border-radius: 99px; transition: width 0.3s; }
+
+    .section { margin-bottom: 28px; }
+    .section-header { background: #1e3a5f; color: white; padding: 10px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+    .section-header h2 { font-size: 13px; font-weight: 700; }
+    .section-counter { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .section-body { background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+
+    .test-item { border-bottom: 1px solid #f1f5f9; }
+    .test-item:last-child { border-bottom: none; }
+
+    .test-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 20px; cursor: pointer; }
+    .test-row:hover { background: #f8fafc; }
+    .test-row input[type=checkbox] { margin-top: 2px; width: 16px; height: 16px; accent-color: #1e3a5f; cursor: pointer; flex-shrink: 0; }
+
+    .test-content { flex: 1; }
+    .test-action { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 3px; }
+    .test-action.done { text-decoration: line-through; color: #94a3b8; }
+    .test-expected { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+
+    .error-inline { display: flex; align-items: center; gap-8px; margin-top: 6px; }
+    .error-code-badge { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: #991b1b; }
+    .error-code-badge .code { font-family: monospace; font-weight: 700; font-size: 13px; color: #dc2626; }
+    .error-hint { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+    .btn-row { display: flex; gap: 10px; margin-bottom: 28px; justify-content: flex-end; }
+    .btn { padding: 8px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
+    .btn-primary { background: #1e3a5f; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: white; color: #64748b; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #f8fafc; }
+
+    @media print {
+      header .back-btn { display: none; }
+      .btn-row { display: none; }
+      body { background: white; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🧪 Test — Sistema Ticket</h1>
+    <p>Guida per il tester — segui ogni passo e spunta le voci completate con successo</p>
+  </div>
+  <a href="index.html" class="back-btn">← Indietro</a>
+</header>
+
+<main>
+
+  <div class="intro">
+    <strong>Come usare questa guida:</strong> esegui ogni test nell'ordine indicato.
+    Se il test <strong>supera</strong> la verifica, spunta la casella e prosegui.<br><br>
+    Se il test <strong>fallisce</strong>, annota il <strong>codice errore</strong> mostrato (es. <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px;">TCKT-0001</code>)
+    e comunicalo al <strong>Supporto</strong>. Il Supporto utilizzerà il codice per identificare e risolvere il problema.
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-label">
+      <span>Avanzamento test</span>
+      <span id="progress-text">0 / 0 (0%)</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Stampa</button>
+  </div>
+
+  <div id="test-sections"></div>
+
+</main>
+
+<script>
+const TESTS = [
+  {
+    section: "1. Accesso e permessi",
+    items: [
+      {
+        action: "Accedi con un utente STORE o STOREMANAGER",
+        expected: "Vedi solo i ticket creati dal tuo negozio. Il menu mostra solo la sezione Ticket.",
+        code: "TCKT-0001"
+      },
+      {
+        action: "Accedi con un utente IT o HO",
+        expected: "Vedi tutti i ticket con i filtri avanzati (team, assegnatario). La campanella notifiche è presente nell'header.",
+        code: "TCKT-0002"
+      },
+    ]
+  },
+  {
+    section: "2. Creazione ticket",
+    items: [
+      {
+        action: "Clicca su 'Nuovo Ticket' e verifica il form",
+        expected: "Il form si apre con i dati richiedente già compilati (nome, email o telefono del tuo negozio).",
+        code: "TCKT-0004"
+      },
+      {
+        action: "Prova a inviare il form lasciando 'Titolo' vuoto",
+        expected: "Il form blocca l'invio e segnala il campo obbligatorio mancante.",
+        code: "TCKT-0005"
+      },
+      {
+        action: "Compila tutti i campi correttamente e invia il ticket",
+        expected: "Il ticket viene creato con numero progressivo (es. #0042). Appare conferma e lo stato è 'Aperto'.",
+        code: "TCKT-0006"
+      },
+      {
+        action: "Verifica che gli utenti IT ricevano la notifica in-app dopo la creazione",
+        expected: "Sulla campanella degli utenti IT appare il badge numerico aggiornato entro 30 secondi.",
+        code: "TCKT-0007"
+      },
+    ]
+  },
+  {
+    section: "3. Lista ticket",
+    items: [
+      {
+        action: "Prova il filtro per stato nella lista ticket",
+        expected: "La lista si aggiorna mostrando solo i ticket con lo stato selezionato.",
+        code: "TCKT-0008"
+      },
+      {
+        action: "Seleziona più ticket con le checkbox e usa 'Chiudi selezionati'",
+        expected: "I ticket selezionati vengono chiusi e scompaiono dalla lista attiva.",
+        code: "TCKT-0009"
+      },
+    ]
+  },
+  {
+    section: "4. Dettaglio ticket",
+    items: [
+      {
+        action: "Apri un ticket e cambia lo stato a 'In lavorazione'",
+        expected: "Lo stato si aggiorna. L'autore del ticket riceve notifica in-app entro 30 secondi.",
+        code: "TCKT-0010"
+      },
+      {
+        action: "Clicca su 'Prendi in carico' su un ticket aperto",
+        expected: "Il ticket viene assegnato all'utente corrente e lo stato diventa 'In lavorazione'.",
+        code: "TCKT-0011"
+      },
+      {
+        action: "Chiudi il ticket e verifica il tempo di risoluzione nello storico",
+        expected: "Il campo tempo di risoluzione viene calcolato e mostrato correttamente nello storico.",
+        code: "TCKT-0012"
+      },
+      {
+        action: "Aggiungi un commento pubblico come utente STORE",
+        expected: "Il commento appare nella conversazione. L'assegnatario riceve notifica in-app.",
+        code: "TCKT-0013"
+      },
+      {
+        action: "Aggiungi una nota interna come utente IT — verifica che NON sia visibile allo STORE",
+        expected: "La nota è visibile solo agli utenti IT, non agli utenti STORE.",
+        code: "TCKT-0014"
+      },
+      {
+        action: "Carica un allegato (immagine JPG o PDF, max 5MB) e scaricalo",
+        expected: "Il file viene caricato, appare nella lista allegati ed è scaricabile.",
+        code: "TCKT-0015"
+      },
+    ]
+  },
+  {
+    section: "5. Storico ticket",
+    items: [
+      {
+        action: "Naviga su Ticket → Storico",
+        expected: "La pagina si carica mostrando i ticket chiusi con la colonna 'Tempo risoluzione'.",
+        code: "TCKT-0016"
+      },
+      {
+        action: "Applica un filtro per priorità o categoria",
+        expected: "La lista si aggiorna mostrando solo i ticket che corrispondono al filtro.",
+        code: "TCKT-0017"
+      },
+    ]
+  },
+  {
+    section: "6. Sistema notifiche",
+    items: [
+      {
+        action: "Verifica il badge numerico sulla campanella nell'header",
+        expected: "La campanella mostra un badge rosso con il numero di notifiche non lette, aggiornato ogni 30 secondi.",
+        code: "TCKT-0018"
+      },
+      {
+        action: "Clicca sulla campanella e verifica il pannello notifiche",
+        expected: "Si apre un pannello con le tab 'Tutte' e 'Tickets'. Le notifiche non lette hanno un indicatore blu.",
+        code: "TCKT-0019"
+      },
+      {
+        action: "Clicca su una notifica relativa a un ticket",
+        expected: "Il pannello si chiude, la pagina naviga al ticket e la notifica viene marcata come letta.",
+        code: "TCKT-0020"
+      },
+      {
+        action: "Clicca su 'Segna tutte lette' e verifica che il badge scompaia",
+        expected: "Tutte le notifiche diventano lette, il badge sulla campanella si azzera.",
+        code: "TCKT-0021"
+      },
+    ]
+  },
+  {
+    section: "7. PWA — Installazione",
+    items: [
+      {
+        action: "Apri F12 → Application → Manifest in Edge o Chrome",
+        expected: "Il manifest mostra: nome 'FTC HUB', colore #1e3a5f, icone 192x192 e 512x512 presenti.",
+        code: "TCKT-0022"
+      },
+      {
+        action: "Installa la webapp come app da Edge (··· → App → Installa questo sito come app)",
+        expected: "L'app si apre senza barra browser. L'icona FTC HUB appare nella taskbar di Windows.",
+        code: "TCKT-0023"
+      },
+      {
+        action: "Crea un ticket e verifica il badge numerico sull'icona nella taskbar",
+        expected: "L'icona FTC HUB nella taskbar mostra il badge con il numero di notifiche non lette.",
+        code: "TCKT-0024"
+      },
+    ]
+  },
+];
+
+let state = {};
+
+function buildUI() {
+  const container = document.getElementById("test-sections");
+  TESTS.forEach((section, si) => {
+    const div = document.createElement("div");
+    div.className = "section";
+    div.innerHTML = `
+      <div class="section-header">
+        <h2>${section.section}</h2>
+        <span class="section-counter" id="counter-${si}">0/${section.items.length}</span>
+      </div>
+      <div class="section-body" id="body-${si}"></div>
+    `;
+    const body = div.querySelector(`#body-${si}`);
+    section.items.forEach((item, ii) => {
+      const key = `${si}-${ii}`;
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "test-item";
+      itemDiv.innerHTML = `
+        <div class="test-row" onclick="toggleCheck('${key}')">
+          <input type="checkbox" id="cb-${key}" onclick="event.stopPropagation(); toggleCheck('${key}')">
+          <div class="test-content">
+            <div class="test-action" id="action-${key}">${item.action}</div>
+            <div class="test-expected">✓ Atteso: ${item.expected}</div>
+            <div class="error-inline">
+              <div class="error-code-badge">
+                ⚠ Se non funziona, comunica il codice al Supporto:&nbsp;<span class="code">${item.code}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      body.appendChild(itemDiv);
+    });
+    container.appendChild(div);
+  });
+  updateProgress();
+}
+
+function toggleCheck(key) {
+  const cb = document.getElementById(`cb-${key}`);
+  cb.checked = !cb.checked;
+  state[key] = cb.checked;
+  document.getElementById(`action-${key}`).classList.toggle("done", cb.checked);
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = TESTS.reduce((a, s) => a + s.items.length, 0);
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById("progress-text").textContent = `${done} / ${total} (${pct}%)`;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  TESTS.forEach((section, si) => {
+    const count = section.items.filter((_, ii) => state[`${si}-${ii}`]).length;
+    document.getElementById(`counter-${si}`).textContent = `${count}/${section.items.length}`;
+  });
+}
+
+function resetAll() {
+  state = {};
+  document.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false);
+  document.querySelectorAll(".test-action").forEach(el => el.classList.remove("done"));
+  updateProgress();
+}
+
+buildUI();
+</script>
+</body>
+</html>

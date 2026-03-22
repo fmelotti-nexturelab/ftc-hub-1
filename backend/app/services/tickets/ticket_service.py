@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth import User, UserType
@@ -16,6 +16,17 @@ from app.models.ticket_config import (
 )
 from app.schemas.tickets import TicketCreate, TicketResponse, TicketStatusUpdate, TicketAssignUpdate, TicketBulkAction
 from app.services.tickets import notification_service, routing_service, chat_service
+
+
+async def _get_manager_user_ids(db: AsyncSession) -> list:
+    """Restituisce gli ID di tutti gli utenti attivi con ruolo di gestione ticket (IT, SUPERUSER)."""
+    result = await db.execute(
+        select(User.id).where(
+            User.is_active == True,
+            User.user_type.in_([UserType.SUPERUSER, UserType.IT]),
+        )
+    )
+    return result.scalars().all()
 
 
 def _enrich(
@@ -158,13 +169,27 @@ async def create_ticket(
     await db.commit()
     await db.refresh(ticket)
 
-    # Notifica best-effort
+    # Notifiche best-effort
     creator_name = current_user.full_name or current_user.username
     await notification_service.notify_new_ticket(ticket.ticket_number, ticket.title, creator_name)
     if team_email:
         await notification_service.notify_team(
             team_email, ticket.ticket_number, ticket.title, creator_name
         )
+
+    # Notifiche in-app: notifica tutti i manager + l'assegnato (se presente)
+    manager_ids = await _get_manager_user_ids(db)
+    recipients = list({uid for uid in manager_ids if uid != current_user.id})
+    if ticket.assigned_to and ticket.assigned_to not in recipients and ticket.assigned_to != current_user.id:
+        recipients.append(ticket.assigned_to)
+    await notification_service.push_to_many(
+        db, recipients,
+        type="ticket_new",
+        title=f"Nuovo ticket #{ticket.ticket_number:04d}",
+        body=f"{ticket.title} — aperto da {creator_name}",
+        ticket_id=ticket.id,
+    )
+    await db.commit()
 
     # Carica nomi per la risposta
     cat_map, sub_map, team_map, _ = await _load_name_maps(
@@ -302,18 +327,36 @@ async def update_status(
 
     ticket.status = data.status
     if data.status == TicketStatus.CLOSED:
-        ticket.closed_at = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        ticket.closed_at = now
+        if ticket.taken_at:
+            delta = now - ticket.taken_at
+            ticket.resolution_minutes = int(delta.total_seconds() // 60)
 
     await db.commit()
     await db.refresh(ticket)
 
-    # Notifica all'autore
+    # Notifiche all'autore
     creator_result = await db.execute(select(User).where(User.id == ticket.created_by))
     creator = creator_result.scalar_one_or_none()
-    if creator and creator.email:
-        await notification_service.notify_status_change(
-            creator.email, ticket.ticket_number, ticket.title, data.status.value
+    if creator:
+        if creator.email:
+            await notification_service.notify_status_change(
+                creator.email, ticket.ticket_number, ticket.title, data.status.value
+            )
+        status_labels = {
+            "open": "Aperto", "in_progress": "In lavorazione",
+            "waiting": "In attesa", "resolved": "Risolto", "closed": "Chiuso",
+        }
+        label = status_labels.get(data.status.value, data.status.value)
+        await notification_service.push(
+            db, creator.id,
+            type="ticket_status",
+            title=f"Ticket #{ticket.ticket_number:04d} aggiornato",
+            body=f"Stato aggiornato a: {label}",
+            ticket_id=ticket.id,
         )
+        await db.commit()
 
     cat_map, sub_map, team_map, _ = await _load_name_maps(
         db,
@@ -366,6 +409,46 @@ async def bulk_action(
     return {"updated": len(tickets)}
 
 
+async def take_ticket(
+    db: AsyncSession,
+    ticket_id: UUID,
+    current_user: User,
+) -> TicketResponse:
+    """Prendi in carico: assegna il ticket all'utente corrente e segna taken_at."""
+    result = await db.execute(
+        select(Ticket).where(Ticket.id == ticket_id, Ticket.is_active == True)
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    if ticket.status == TicketStatus.CLOSED:
+        raise HTTPException(status_code=400, detail="Ticket già chiuso")
+
+    ticket.assigned_to = current_user.id
+    ticket.taken_at = datetime.now(timezone.utc)
+    if ticket.status == TicketStatus.OPEN:
+        ticket.status = TicketStatus.IN_PROGRESS
+
+    await db.commit()
+    await db.refresh(ticket)
+
+    cat_map, sub_map, team_map, _ = await _load_name_maps(
+        db,
+        [ticket.category_id] if ticket.category_id else [],
+        [ticket.subcategory_id] if ticket.subcategory_id else [],
+        [ticket.team_id] if ticket.team_id else [],
+    )
+    users = await _get_users(db, ticket.created_by, ticket.assigned_to)
+    return _enrich(
+        ticket,
+        users.get(ticket.created_by),
+        users.get(ticket.assigned_to),
+        category_name=cat_map.get(ticket.category_id) if ticket.category_id else None,
+        subcategory_name=sub_map.get(ticket.subcategory_id) if ticket.subcategory_id else None,
+        team_name=team_map.get(ticket.team_id) if ticket.team_id else None,
+    )
+
+
 async def assign_ticket(
     db: AsyncSession,
     ticket_id: UUID,
@@ -401,3 +484,68 @@ async def assign_ticket(
         subcategory_name=sub_map.get(ticket.subcategory_id) if ticket.subcategory_id else None,
         team_name=team_map.get(ticket.team_id) if ticket.team_id else None,
     )
+
+
+async def get_history(
+    db: AsyncSession,
+    current_user: User,
+    team_id: Optional[int] = None,
+    priority: Optional[str] = None,
+    category_id: Optional[int] = None,
+    assignee_id: Optional[UUID] = None,
+) -> list[TicketResponse]:
+    """
+    Storico ticket chiusi.
+    - SUPERUSER / IT: tutti i ticket chiusi, filtri opzionali completi
+    - Altri manager: solo i ticket assegnati a se stessi
+    """
+    from app.models.auth import UserType
+
+    stmt = (
+        select(Ticket)
+        .where(Ticket.is_active == True, cast(Ticket.status, String) == "closed")
+        .order_by(Ticket.closed_at.desc())
+    )
+
+    user_type = getattr(current_user, "user_type", None)
+    is_superuser_or_it = user_type in (UserType.SUPERUSER, UserType.IT)
+
+    if not is_superuser_or_it:
+        stmt = stmt.where(Ticket.assigned_to == current_user.id)
+    else:
+        if team_id:
+            stmt = stmt.where(Ticket.team_id == team_id)
+        if assignee_id:
+            stmt = stmt.where(Ticket.assigned_to == assignee_id)
+
+    if priority:
+        stmt = stmt.where(Ticket.priority == priority)
+    if category_id:
+        stmt = stmt.where(Ticket.category_id == category_id)
+
+    result = await db.execute(stmt)
+    tickets = result.scalars().all()
+
+    all_ids = set()
+    for t in tickets:
+        all_ids.add(t.created_by)
+        if t.assigned_to:
+            all_ids.add(t.assigned_to)
+    users = await _get_users(db, *all_ids) if all_ids else {}
+
+    cat_ids = list({t.category_id for t in tickets if t.category_id})
+    sub_ids = list({t.subcategory_id for t in tickets if t.subcategory_id})
+    t_ids = list({t.team_id for t in tickets if t.team_id})
+    cat_map, sub_map, team_map, _ = await _load_name_maps(db, cat_ids, sub_ids, t_ids)
+
+    return [
+        _enrich(
+            t,
+            users.get(t.created_by),
+            users.get(t.assigned_to),
+            category_name=cat_map.get(t.category_id) if t.category_id else None,
+            subcategory_name=sub_map.get(t.subcategory_id) if t.subcategory_id else None,
+            team_name=team_map.get(t.team_id) if t.team_id else None,
+        )
+        for t in tickets
+    ]

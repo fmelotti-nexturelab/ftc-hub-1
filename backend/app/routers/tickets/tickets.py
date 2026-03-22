@@ -249,6 +249,31 @@ async def bulk_action(
     return await ticket_service.bulk_action(db, data)
 
 
+# ── Storico ticket chiusi ─────────────────────────────────────────────────────
+
+@router.get(
+    "/history",
+    response_model=List[TicketResponse],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def get_history(
+    team_id: Optional[int] = Query(None),
+    priority: Optional[str] = Query(None),
+    category_id: Optional[int] = Query(None),
+    assignee_id: Optional[UUID] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Storico ticket chiusi — visibilità dipende dal tipo utente."""
+    return await ticket_service.get_history(
+        db, current_user,
+        team_id=team_id, priority=priority,
+        category_id=category_id, assignee_id=assignee_id,
+    )
+
+
+# ── Ticket per ID ─────────────────────────────────────────────────────────────
+
 @router.get(
     "/{ticket_id}",
     response_model=TicketResponse,
@@ -288,6 +313,22 @@ async def assign_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     return await ticket_service.assign_ticket(db, ticket_id, data)
+
+
+# ── Prendi in carico ──────────────────────────────────────────────────────────
+
+@router.post(
+    "/{ticket_id}/take",
+    response_model=TicketResponse,
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def take_ticket(
+    ticket_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Assegna il ticket all'utente corrente e lo porta in lavorazione."""
+    return await ticket_service.take_ticket(db, ticket_id, current_user)
 
 
 # ── Comments ──────────────────────────────────────────────────────────────────

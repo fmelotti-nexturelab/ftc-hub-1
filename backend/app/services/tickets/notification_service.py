@@ -4,11 +4,17 @@ import asyncio
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from functools import partial
+from typing import Optional
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+# ── Email ─────────────────────────────────────────────────────────────────────
 
 def _send_sync(to: str, subject: str, body: str) -> None:
     """Invia email via SMTP (sincrono, da eseguire in thread pool)."""
@@ -90,3 +96,42 @@ async def notify_team(
             f"<p><strong>#{ticket_number:04d}</strong> — {title}</p>"
         ),
     )
+
+
+# ── In-app notifications ───────────────────────────────────────────────────────
+
+async def push(
+    db: AsyncSession,
+    user_id: UUID,
+    type: str,
+    title: str,
+    body: Optional[str] = None,
+    ticket_id: Optional[UUID] = None,
+) -> None:
+    """Scrive una notifica in-app per un utente. Best-effort, non solleva eccezioni."""
+    try:
+        from app.models.notification import Notification
+        notif = Notification(
+            user_id=user_id,
+            type=type,
+            title=title,
+            body=body,
+            ticket_id=ticket_id,
+        )
+        db.add(notif)
+        # Non fa commit — il chiamante gestisce la transazione
+    except Exception as exc:
+        logger.warning(f"Notifica in-app fallita per user {user_id}: {exc}")
+
+
+async def push_to_many(
+    db: AsyncSession,
+    user_ids: list[UUID],
+    type: str,
+    title: str,
+    body: Optional[str] = None,
+    ticket_id: Optional[UUID] = None,
+) -> None:
+    """Scrive la stessa notifica in-app per una lista di utenti."""
+    for uid in user_ids:
+        await push(db, uid, type, title, body=body, ticket_id=ticket_id)

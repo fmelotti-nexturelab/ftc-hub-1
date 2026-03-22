@@ -8,6 +8,8 @@ from app.database import engine
 
 # Import modelli per registrazione metadata / mapper
 from app.models import auth, ho, rbac_scope, modules, stores
+from app.models import notification  # noqa: F401
+from app.models import support  # noqa: F401
 
 from app.routers import auth as auth_router
 from app.routers import test_rbac
@@ -21,6 +23,8 @@ from app.routers.tickets import tickets as tickets_router
 from app.routers.tickets import config as tickets_config_router
 from app.routers.tickets import chat as tickets_chat_router
 from app.routers.admin import tickets_config as admin_tickets_config_router
+from app.routers import notifications as notifications_router
+from app.routers.admin import support as admin_support_router
 
 
 @asynccontextmanager
@@ -72,6 +76,8 @@ app.include_router(tickets_config_router.router)
 app.include_router(tickets_chat_router.router)
 app.include_router(tickets_router.router)
 app.include_router(admin_tickets_config_router.router)
+app.include_router(notifications_router.router)
+app.include_router(admin_support_router.router)
 
 
 @app.get("/api/health")
