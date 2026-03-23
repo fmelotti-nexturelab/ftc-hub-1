@@ -5,7 +5,7 @@ const REFRESH_KEY = "ftc_refresh_token"
 const USER_KEY = "ftc_user"
 
 const getStorage = (user) =>
-  user?.user_type === "STOREMANAGER" ? sessionStorage : localStorage
+  user?.department === "STOREMANAGER" ? sessionStorage : localStorage
 
 // Al caricamento legge da entrambi (non si sa ancora chi è loggato)
 const storedUser = JSON.parse(

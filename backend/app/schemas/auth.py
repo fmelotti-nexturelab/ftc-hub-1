@@ -24,7 +24,7 @@ class UserInfo(BaseModel):
     email: str
     full_name: Optional[str]
     role: UserRole
-    user_type: Optional[str] = None
+    department: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -49,7 +49,7 @@ class ProfileResponse(BaseModel):
     full_name: Optional[str]
     phone: Optional[str]
     role: UserRole
-    user_type: Optional[str] = None
+    department: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

@@ -21,15 +21,15 @@ class Module(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
-class UserTypeModuleAccess(Base):
-    __tablename__ = "user_type_module_access"
+class DepartmentModuleAccess(Base):
+    __tablename__ = "department_module_access"
     __table_args__ = (
-        UniqueConstraint("user_type", "module_code", name="uq_usertype_module"),
+        UniqueConstraint("department", "module_code", name="uq_department_module"),
         {"schema": "ho"},
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_type = Column(String(20), nullable=False)
+    department = Column(String(20), nullable=False)
     module_code = Column(String(50), nullable=False)
     can_view = Column(Boolean, nullable=False, default=False)
     can_manage = Column(Boolean, nullable=False, default=False)
@@ -46,6 +46,6 @@ class UserModulePermission(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False)
     module_code = Column(String(50), nullable=False)
-    can_view = Column(Boolean, nullable=True)     # None = usa default user_type
-    can_manage = Column(Boolean, nullable=True)   # None = usa default user_type
+    can_view = Column(Boolean, nullable=True)     # None = usa default department
+    can_manage = Column(Boolean, nullable=True)   # None = usa default department
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -57,28 +57,28 @@ export default function ModuleConfig() {
   })
 
   const updateAccess = useMutation({
-    mutationFn: ({ user_type, module_code, can_view, can_manage }) =>
-      modulesApi.updateAccess(user_type, module_code, { can_view, can_manage }),
+    mutationFn: ({ department, module_code, can_view, can_manage }) =>
+      modulesApi.updateAccess(department, module_code, { can_view, can_manage }),
     onSuccess: () => qc.invalidateQueries(["admin-modules-access"]),
   })
 
-  // Crea una mappa { "user_type:module_code": { can_view, can_manage } }
+  // Crea una mappa { "department:module_code": { can_view, can_manage } }
   const accessMap = {}
   for (const a of accessList) {
-    accessMap[`${a.user_type}:${a.module_code}`] = a
+    accessMap[`${a.department}:${a.module_code}`] = a
   }
 
-  const getAccess = (user_type, module_code) =>
-    accessMap[`${user_type}:${module_code}`] || { can_view: false, can_manage: false }
+  const getAccess = (department, module_code) =>
+    accessMap[`${department}:${module_code}`] || { can_view: false, can_manage: false }
 
-  const handleToggle = (user_type, module_code, field, value) => {
-    const current = getAccess(user_type, module_code)
+  const handleToggle = (department, module_code, field, value) => {
+    const current = getAccess(department, module_code)
     const next = { ...current, [field]: value }
     // Se disabilito view, disabilito anche manage
     if (field === "can_view" && !value) next.can_manage = false
     // Se abilito manage, abilito anche view
     if (field === "can_manage" && value) next.can_view = true
-    updateAccess.mutate({ user_type, module_code, ...next })
+    updateAccess.mutate({ department, module_code, ...next })
   }
 
   if (loadingModules || loadingAccess) {
@@ -126,17 +126,17 @@ export default function ModuleConfig() {
                     </span>
                   )}
                 </td>
-                {CONFIGURABLE_TYPES.map((user_type) => {
-                  const access = getAccess(user_type, module.code)
+                {CONFIGURABLE_TYPES.map((department) => {
+                  const access = getAccess(department, module.code)
                   // Il modulo "licenze" è solo SUPERUSER, nessuno altro può vederlo
                   const isLicenze = module.code === "licenze"
                   return (
-                    <React.Fragment key={user_type}>
+                    <React.Fragment key={department}>
                       <td className="px-2 py-2.5 text-center">
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_view}
-                            onChange={(val) => handleToggle(user_type, module.code, "can_view", val)}
+                            onChange={(val) => handleToggle(department, module.code, "can_view", val)}
                             disabled={isLicenze || !module.has_view}
                           />
                         </div>
@@ -145,7 +145,7 @@ export default function ModuleConfig() {
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_manage}
-                            onChange={(val) => handleToggle(user_type, module.code, "can_manage", val)}
+                            onChange={(val) => handleToggle(department, module.code, "can_manage", val)}
                             disabled={isLicenze || !module.has_manage || !access.can_view}
                           />
                         </div>

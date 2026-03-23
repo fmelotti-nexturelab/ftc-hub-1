@@ -21,7 +21,7 @@ from app.models.auth import (
     User,
     UserRole,
     UserRoleAssignment,
-    UserType,
+    UserDepartment,
 )
 from app.models.rbac_scope import UserAssignment
 
@@ -36,7 +36,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str] = None
     role: str
-    user_type: str
+    department: str
     is_active: bool
     created_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
@@ -53,7 +53,7 @@ class CreateUserRequest(BaseModel):
     email: str
     password: str
     full_name: Optional[str] = None
-    user_type: UserType = UserType.STORE
+    department: UserDepartment = UserDepartment.STORE
 
 
 class UpdateUserRequest(BaseModel):
@@ -63,8 +63,8 @@ class UpdateUserRequest(BaseModel):
     password: Optional[str] = None
 
 
-class ChangeUserTypeRequest(BaseModel):
-    user_type: UserType
+class ChangeDepartmentRequest(BaseModel):
+    department: UserDepartment
 
 
 class AddAssignmentRequest(BaseModel):
@@ -92,14 +92,14 @@ class AddBlacklistRequest(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _require_superuser(current_user: User = Depends(get_current_user)) -> User:
-    if getattr(current_user, "user_type", None) != UserType.SUPERUSER:
+    if getattr(current_user, "department", None) != UserDepartment.SUPERUSER:
         raise HTTPException(403, "Solo SUPERUSER può eseguire questa operazione")
     return current_user
 
 
 def _require_admin_or_above(current_user: User = Depends(get_current_user)) -> User:
-    user_type = getattr(current_user, "user_type", None)
-    if user_type not in (UserType.SUPERUSER, UserType.ADMIN):
+    department = getattr(current_user, "department", None)
+    if department not in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
         raise HTTPException(403, "Accesso riservato ad ADMIN o SUPERUSER")
     return current_user
 
@@ -108,14 +108,14 @@ def _require_admin_or_above(current_user: User = Depends(get_current_user)) -> U
 
 @router.get("", response_model=list[UserResponse])
 async def list_users(
-    user_type: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(_require_admin_or_above),
 ):
     stmt = select(User)
-    if user_type:
-        stmt = stmt.where(User.user_type == user_type)
+    if department:
+        stmt = stmt.where(User.department == department)
     if is_active is not None:
         stmt = stmt.where(User.is_active == is_active)
     stmt = stmt.order_by(User.username)
@@ -130,8 +130,8 @@ async def create_user(
     current_user: User = Depends(_require_admin_or_above),
 ):
     # Solo SUPERUSER può creare SUPERUSER o ADMIN
-    if data.user_type in (UserType.SUPERUSER, UserType.ADMIN):
-        if getattr(current_user, "user_type", None) != UserType.SUPERUSER:
+    if data.department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
+        if getattr(current_user, "department", None) != UserDepartment.SUPERUSER:
             raise HTTPException(403, "Solo SUPERUSER può creare utenti SUPERUSER o ADMIN")
 
     # Verifica username univoco
@@ -139,23 +139,23 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise HTTPException(409, f"Username '{data.username}' già in uso")
 
-    # Mappa user_type → role legacy
+    # Mappa department → role legacy
     role_map = {
-        UserType.SUPERUSER: UserRole.ADMIN,
-        UserType.ADMIN: UserRole.ADMIN,
-        UserType.HR: UserRole.HO,
-        UserType.FINANCE: UserRole.HO,
-        UserType.MARKETING: UserRole.HO,
-        UserType.IT: UserRole.ADMIN,
-        UserType.COMMERCIAL: UserRole.HO,
-        UserType.DM: UserRole.DM,
-        UserType.STORE: UserRole.STORE,
-        UserType.STOREMANAGER: UserRole.STORE,
-        UserType.RETAIL: UserRole.HO,
-        UserType.MANAGER: UserRole.HO,
-        UserType.TOPMGR: UserRole.HO,
-        UserType.HEALTHSAFETY: UserRole.HO,
-        UserType.FACILITIES: UserRole.HO,
+        UserDepartment.SUPERUSER: UserRole.ADMIN,
+        UserDepartment.ADMIN: UserRole.ADMIN,
+        UserDepartment.HR: UserRole.HO,
+        UserDepartment.FINANCE: UserRole.HO,
+        UserDepartment.MARKETING: UserRole.HO,
+        UserDepartment.IT: UserRole.ADMIN,
+        UserDepartment.COMMERCIAL: UserRole.HO,
+        UserDepartment.DM: UserRole.DM,
+        UserDepartment.STORE: UserRole.STORE,
+        UserDepartment.STOREMANAGER: UserRole.STORE,
+        UserDepartment.RETAIL: UserRole.HO,
+        UserDepartment.MANAGER: UserRole.HO,
+        UserDepartment.TOPMGR: UserRole.HO,
+        UserDepartment.HEALTHSAFETY: UserRole.HO,
+        UserDepartment.FACILITIES: UserRole.HO,
     }
 
     user = User(
@@ -164,8 +164,8 @@ async def create_user(
         email=data.email,
         hashed_password=get_password_hash(data.password),
         full_name=data.full_name,
-        role=role_map[data.user_type],
-        user_type=data.user_type,
+        role=role_map[data.department],
+        department=data.department,
         is_active=True,
     )
     db.add(user)
@@ -264,29 +264,29 @@ async def delete_user(
         return {"message": "Utente disattivato (ha dati collegati, impossibile eliminare)", "deleted": False}
 
 
-# ── Cambio user_type (solo SUPERUSER) ─────────────────────────────────────────
+# ── Cambio department (solo SUPERUSER) ────────────────────────────────────────
 
-@router.patch("/{user_id}/user-type")
-async def change_user_type(
+@router.patch("/{user_id}/department")
+async def change_department(
     user_id: uuid.UUID,
-    data: ChangeUserTypeRequest,
+    data: ChangeDepartmentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(_require_admin_or_above),
 ):
     # Solo SUPERUSER può promuovere altri a SUPERUSER
-    if data.user_type == UserType.SUPERUSER:
-        if getattr(current_user, "user_type", None) != UserType.SUPERUSER:
+    if data.department == UserDepartment.SUPERUSER:
+        if getattr(current_user, "department", None) != UserDepartment.SUPERUSER:
             raise HTTPException(403, "Solo SUPERUSER può assegnare il tipo SUPERUSER")
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(404, "Utente non trovato")
 
-    old_type = user.user_type
-    user.user_type = data.user_type
+    old_dept = user.department
+    user.department = data.department
 
     # Se promosso a HO/ADMIN/SUPERUSER, rimuovi assignments (non servono)
-    if data.user_type in (UserType.ADMIN, UserType.SUPERUSER):
+    if data.department in (UserDepartment.ADMIN, UserDepartment.SUPERUSER):
         assignments_result = await db.execute(
             select(UserAssignment).where(
                 UserAssignment.user_id == user_id,
@@ -297,7 +297,7 @@ async def change_user_type(
             a.is_active = False
 
     await db.commit()
-    return {"message": f"user_type cambiato da {old_type} a {data.user_type}"}
+    return {"message": f"department cambiato da {old_dept} a {data.department}"}
 
 
 # ── Effective permissions (debug/audit) ───────────────────────────────────────
@@ -316,7 +316,7 @@ async def effective_permissions(
     if not user:
         raise HTTPException(404, "Utente non trovato")
 
-    user_type = getattr(user, "user_type", None)
+    department = getattr(user, "department", None)
     assignments = await _load_active_assignments(db, user_id)
     assigned_entities = [a.entity_code for a in assignments if a.entity_code]
     assigned_stores = [a.store_code for a in assignments if a.store_code]
@@ -340,7 +340,7 @@ async def effective_permissions(
     return {
         "user_id": str(user_id),
         "username": user.username,
-        "user_type": str(user_type),
+        "department": str(department),
         "scope_ceiling": {
             "entities": assigned_entities,
             "stores": assigned_stores,

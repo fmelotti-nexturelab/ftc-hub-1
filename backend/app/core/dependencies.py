@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.auth import AdminModuleBlacklist, User, UserType
-from app.models.modules import UserModulePermission, UserTypeModuleAccess
+from app.models.auth import AdminModuleBlacklist, User, UserDepartment
+from app.models.modules import UserModulePermission, DepartmentModuleAccess
 from app.models.rbac_scope import UserAssignment
 
 
@@ -147,23 +147,23 @@ async def _user_can_access_module(
     """
     Controlla se l'utente ha accesso a un modulo.
     - SUPERUSER/ADMIN: sempre sì (ADMIN bloccato da blacklist)
-    - HO types (HR/FINANCE/etc), DM, STORE: verifica user_type_module_access + override utente
+    - HO types (HR/FINANCE/etc), DM, STORE: verifica department_module_access + override utente
     """
-    user_type = getattr(user, "user_type", None)
+    department = getattr(user, "department", None)
 
     # SUPERUSER — bypass totale
-    if user_type == UserType.SUPERUSER:
+    if department == UserDepartment.SUPERUSER:
         return True
 
     # ADMIN — bypass tranne blacklist
-    if user_type == UserType.ADMIN:
+    if department == UserDepartment.ADMIN:
         return not await _is_module_blacklisted(db, module_code)
 
-    # Tutti gli altri: check user_type_module_access
+    # Tutti gli altri: check department_module_access
     access_result = await db.execute(
-        select(UserTypeModuleAccess).where(
-            UserTypeModuleAccess.user_type == user_type.value,
-            UserTypeModuleAccess.module_code == module_code,
+        select(DepartmentModuleAccess).where(
+            DepartmentModuleAccess.department == department.value,
+            DepartmentModuleAccess.module_code == module_code,
         )
     )
     base_access = access_result.scalar_one_or_none()
@@ -195,24 +195,24 @@ async def _user_can_reach_scope(
     entity_code: str | None,
     store_code: str | None,
 ) -> bool:
-    user_type = getattr(user, "user_type", None)
+    department = getattr(user, "department", None)
 
     # SUPERUSER, ADMIN e tutti i tipi HO: accesso globale
-    if user_type in UserType.admin_types() | UserType.ho_types():
+    if department in UserDepartment.admin_types() | UserDepartment.ho_types():
         return True
 
     assignments = await _load_active_assignments(db, user.id)
     assigned_entities = {a.entity_code for a in assignments if a.entity_code}
     assigned_stores = {a.store_code for a in assignments if a.store_code}
 
-    if user_type == UserType.DM:
+    if department == UserDepartment.DM:
         if store_code:
             return store_code in assigned_stores or entity_code in assigned_entities
         if entity_code:
             return entity_code in assigned_entities
         return True
 
-    if user_type in (UserType.STORE, UserType.STOREMANAGER):
+    if department in (UserDepartment.STORE, UserDepartment.STOREMANAGER):
         if store_code:
             return store_code in assigned_stores
         # Nessuno scope specifico richiesto: accesso consentito,
@@ -251,8 +251,8 @@ def require_permission(
             raise ForbiddenError(f"Accesso al modulo '{module_code}' non consentito")
 
         # Check scope geografico (solo per DM e STORE)
-        user_type = getattr(current_user, "user_type", None)
-        if user_type not in UserType.admin_types() | UserType.ho_types():
+        department = getattr(current_user, "department", None)
+        if department not in UserDepartment.admin_types() | UserDepartment.ho_types():
             if not await _user_can_reach_scope(db, current_user, required_entity_code, required_store_code):
                 raise ForbiddenError(f"Scope non accessibile per il modulo '{module_code}'")
 

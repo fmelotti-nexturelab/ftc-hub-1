@@ -36,7 +36,7 @@ const inputClass =
 // ── Modals ────────────────────────────────────────────────────────────────────
 
 function NewUserModal({ onClose, onSaved }) {
-  const [form, setForm] = useState({ username: "", email: "", full_name: "", password: "", user_type: "COMMERCIAL" })
+  const [form, setForm] = useState({ username: "", email: "", full_name: "", password: "", department: "COMMERCIAL" })
   const [error, setError] = useState("")
   const mutation = useMutation({
     mutationFn: () => authApi.createUser(form),
@@ -59,7 +59,7 @@ function NewUserModal({ onClose, onSaved }) {
           <input placeholder="Email *" type="email" value={form.email} onChange={set("email")} className={inputClass} />
           <input placeholder="Nome completo" value={form.full_name} onChange={set("full_name")} className={inputClass} />
           <input placeholder="Password *" type="password" value={form.password} onChange={set("password")} className={inputClass} />
-          <select value={form.user_type} onChange={set("user_type")} className={inputClass + " bg-white"}>
+          <select value={form.department} onChange={set("department")} className={inputClass + " bg-white"}>
             {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
@@ -76,10 +76,10 @@ function NewUserModal({ onClose, onSaved }) {
 }
 
 function ChangeTypeModal({ user, onClose, onSaved }) {
-  const [userType, setUserType] = useState(user.user_type)
+  const [userType, setUserType] = useState(user.department)
   const [error, setError] = useState("")
   const mutation = useMutation({
-    mutationFn: () => authApi.changeUserType(user.id, userType),
+    mutationFn: () => authApi.changeDepartment(user.id, userType),
     onSuccess: () => { onSaved(); onClose() },
     onError: (e) => setError(e.response?.data?.detail || "Errore"),
   })
@@ -97,7 +97,7 @@ function ChangeTypeModal({ user, onClose, onSaved }) {
         </select>
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition">Annulla</button>
-          <button onClick={() => mutation.mutate()} disabled={mutation.isPending || userType === user.user_type}
+          <button onClick={() => mutation.mutate()} disabled={mutation.isPending || userType === user.department}
             className="px-5 py-2 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold rounded-xl shadow transition disabled:opacity-40">
             {mutation.isPending ? "Salvataggio..." : "Conferma"}
           </button>
@@ -186,7 +186,7 @@ function UsersTable({
       u.username.toLowerCase().includes(q) ||
       (u.full_name || "").toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) ||
-      u.user_type.toLowerCase().includes(q)
+      u.department.toLowerCase().includes(q)
     )
   })
 
@@ -231,8 +231,8 @@ function UsersTable({
                       <td className="px-4 py-3 text-gray-800 font-medium">{user.full_name || "—"}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{user.email}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${USER_TYPE_BADGE[user.user_type] || "bg-gray-100 text-gray-500"}`}>
-                          {user.user_type}
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded ${USER_TYPE_BADGE[user.department] || "bg-gray-100 text-gray-500"}`}>
+                          {user.department}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -305,7 +305,7 @@ export default function AdminUsers() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
-    queryFn: () => authApi.listUsers().then((r) => r.data.filter((u) => u.user_type !== "SUPERUSER")),
+    queryFn: () => authApi.listUsers().then((r) => r.data.filter((u) => u.department !== "SUPERUSER")),
   })
 
   const toggleActive = useMutation({

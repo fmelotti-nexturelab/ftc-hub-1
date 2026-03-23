@@ -5,7 +5,7 @@ import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, 
 import { useState } from "react"
 
 const displayUserType = (user) => {
-  const t = user?.user_type || user?.role
+  const t = user?.department || user?.role
   const labels = { SUPERUSER: "IT", ADMIN: "IT", HO: "Head Office", HR: "HR", FINANCE: "Finance", MARKETING: "Marketing", IT: "IT", COMMERCIAL: "Commercial", DM: "District Manager", STORE: "Store", STOREMANAGER: "Store Manager", RETAIL: "Retail", MANAGER: "Manager", TOPMGR: "Head" }
   return labels[t] || t
 }
@@ -129,7 +129,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        {user?.user_type === "SUPERUSER" && (
+        {user?.department === "SUPERUSER" && (
           <div className="mt-4">
             <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
               SUPPORTO

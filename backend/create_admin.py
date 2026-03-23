@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 from app.database import AsyncSessionLocal
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 from app.core.security import get_password_hash
 
 async def create_user():
@@ -11,7 +11,7 @@ async def create_user():
             username="admin",
             email="admin@ftc.com",
             hashed_password=get_password_hash("Admin1234!"),
-            user_type=UserType.SUPERUSER,
+            department=UserDepartment.SUPERUSER,
             is_active=True,
         )
         db.add(u)

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.dependencies import get_current_user, _user_can_access_module
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 from app.models.stores import Store
 
 
@@ -16,8 +16,8 @@ async def _require_utilities_view(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Verifica accesso al modulo utilities_stores senza check di scope geografico."""
-    user_type = getattr(current_user, "user_type", None)
-    if user_type in (UserType.SUPERUSER, UserType.ADMIN):
+    department = getattr(current_user, "department", None)
+    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
         return current_user
     if not await _user_can_access_module(db, current_user, "utilities_stores", need_manage=False):
         raise HTTPException(403, "Accesso alle utilities non consentito")
@@ -29,8 +29,8 @@ async def _require_utilities_manage(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Verifica accesso in gestione al modulo utilities_stores."""
-    user_type = getattr(current_user, "user_type", None)
-    if user_type in (UserType.SUPERUSER, UserType.ADMIN):
+    department = getattr(current_user, "department", None)
+    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
         return current_user
     if not await _user_can_access_module(db, current_user, "utilities_stores", need_manage=True):
         raise HTTPException(403, "Gestione utilities non consentita")

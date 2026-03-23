@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.dependencies import get_current_user, _user_can_access_module
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 
 router = APIRouter(prefix="/api/utilities", tags=["Utilities"])
 
@@ -16,8 +16,8 @@ async def my_access(
     current_user: User = Depends(get_current_user),
 ):
     """Restituisce i permessi effettivi dell'utente corrente per i moduli utility."""
-    user_type = getattr(current_user, "user_type", None)
-    is_admin = user_type in (UserType.SUPERUSER, UserType.ADMIN)
+    department = getattr(current_user, "department", None)
+    is_admin = department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN)
 
     result = {}
     for module_code in UTILITY_MODULES:

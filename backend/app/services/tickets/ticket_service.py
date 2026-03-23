@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select, func, or_, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 from app.models.rbac_scope import UserAssignment
 from app.models.tickets import Ticket, TicketStatus
 from app.models.ticket_config import (
@@ -23,7 +23,7 @@ async def _get_manager_user_ids(db: AsyncSession) -> list:
     result = await db.execute(
         select(User.id).where(
             User.is_active == True,
-            User.user_type.in_([UserType.SUPERUSER, UserType.IT]),
+            User.department.in_([UserDepartment.SUPERUSER, UserDepartment.IT]),
         )
     )
     return result.scalars().all()
@@ -120,8 +120,8 @@ async def create_ticket(
 
     # Auto-popola store_number per STORE e STOREMANAGER
     store_number: Optional[str] = None
-    user_type = getattr(current_user, "user_type", None)
-    if user_type in (UserType.STORE, UserType.STOREMANAGER):
+    department = getattr(current_user, "department", None)
+    if department in (UserDepartment.STORE, UserDepartment.STOREMANAGER):
         store_number = await _get_user_store_number(db, current_user.id)
 
     original_description = data.original_description or data.description
@@ -223,8 +223,8 @@ async def get_tickets(
 ) -> list[TicketResponse]:
     stmt = select(Ticket).where(Ticket.is_active == True)
 
-    user_type = getattr(current_user, "user_type", None)
-    if user_type == UserType.STOREMANAGER:
+    department = getattr(current_user, "department", None)
+    if department == UserDepartment.STOREMANAGER:
         # Vede solo i ticket del suo negozio
         store_number = await _get_user_store_number(db, current_user.id)
         if store_number:
@@ -499,7 +499,7 @@ async def get_history(
     - SUPERUSER / IT: tutti i ticket chiusi, filtri opzionali completi
     - Altri manager: solo i ticket assegnati a se stessi
     """
-    from app.models.auth import UserType
+    from app.models.auth import UserDepartment
 
     stmt = (
         select(Ticket)
@@ -507,8 +507,8 @@ async def get_history(
         .order_by(Ticket.closed_at.desc())
     )
 
-    user_type = getattr(current_user, "user_type", None)
-    is_superuser_or_it = user_type in (UserType.SUPERUSER, UserType.IT)
+    department = getattr(current_user, "department", None)
+    is_superuser_or_it = department in (UserDepartment.SUPERUSER, UserDepartment.IT)
 
     if not is_superuser_or_it:
         stmt = stmt.where(Ticket.assigned_to == current_user.id)

@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 from app.models.support import SupportErrorCode
 from app.core.dependencies import get_current_user, require_permission
 
@@ -19,7 +19,7 @@ async def lookup_error_code(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.user_type != UserType.SUPERUSER:
+    if current_user.department != UserDepartment.SUPERUSER:
         raise HTTPException(status_code=403, detail="Accesso riservato al Supporto")
 
     result = await db.execute(
@@ -48,7 +48,7 @@ async def list_codes(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.user_type != UserType.SUPERUSER:
+    if current_user.department != UserDepartment.SUPERUSER:
         raise HTTPException(status_code=403, detail="Accesso riservato al Supporto")
 
     result = await db.execute(

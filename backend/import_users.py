@@ -2,7 +2,7 @@
 Script di import utenti da CSV.
 Uso: docker compose exec backend python import_users.py
 
-CSV atteso: username;full_name;email;phone;password;role;user_type
+CSV atteso: username;full_name;email;phone;password;role;department
 Separatore: ;
 """
 
@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from sqlalchemy import select, text
 from app.database import AsyncSessionLocal
-from app.models.auth import User, UserRole, UserType
+from app.models.auth import User, UserRole, UserDepartment
 from app.core.security import get_password_hash
 
 CSV_PATH = "/app/import_users.csv"
@@ -55,7 +55,7 @@ async def import_users():
                 phone = row["phone"].strip() or None
                 password = row["password"].strip()
                 role_raw = row["role"].strip()
-                user_type_raw = row["user_type"].strip()
+                department_raw = row["department"].strip()
 
                 if not username or not password:
                     errors.append(f"Riga {i}: username o password mancante — saltato")
@@ -63,7 +63,7 @@ async def import_users():
                     continue
 
                 role_raw = ROLE_FIXES.get(role_raw, role_raw)
-                user_type_raw = USER_TYPE_FIXES.get(user_type_raw, user_type_raw)
+                department_raw = USER_TYPE_FIXES.get(department_raw, department_raw)
 
                 try:
                     role = UserRole(role_raw)
@@ -73,9 +73,9 @@ async def import_users():
                     continue
 
                 try:
-                    user_type = UserType(user_type_raw)
+                    department = UserDepartment(department_raw)
                 except ValueError:
-                    errors.append(f"Riga {i}: user_type '{user_type_raw}' non valido per '{username}' — saltato")
+                    errors.append(f"Riga {i}: department '{department_raw}' non valido per '{username}' — saltato")
                     skipped += 1
                     continue
 
@@ -100,13 +100,13 @@ async def import_users():
                     full_name=full_name or username,
                     hashed_password=get_password_hash(password),
                     role=role,
-                    user_type=user_type,
+                    department=department,
                     phone=phone,
                     is_active=True,
                 )
                 db.add(user)
 
-                if user_type == UserType.STORE and re.match(r"^IT\d{5}$", username):
+                if department == UserDepartment.STORE and re.match(r"^IT\d{5}$", username):
                     store_assignments.append((user_id, derive_entity(username), username))
 
                 created += 1

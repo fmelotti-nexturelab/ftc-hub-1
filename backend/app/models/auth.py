@@ -14,7 +14,7 @@ class UserRole(str, enum.Enum):
     STORE = "STORE"
 
 
-class UserType(str, enum.Enum):
+class UserDepartment(str, enum.Enum):
     SUPERUSER = "SUPERUSER"
     ADMIN = "ADMIN"
     HR = "HR"
@@ -52,10 +52,10 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(100))
     role = Column(Enum(UserRole, schema="auth"), nullable=False, default=UserRole.HO)
-    user_type = Column(
-        Enum(UserType, name="user_type_enum", schema="auth", create_type=False),
+    department = Column(
+        Enum(UserDepartment, name="department_enum", schema="auth", create_type=False),
         nullable=False,
-        default=UserType.STORE,
+        default=UserDepartment.STORE,
         server_default="STORE",
     )
     phone = Column(String(50), nullable=True)

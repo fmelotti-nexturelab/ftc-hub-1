@@ -9,7 +9,7 @@ export default function SupportLookup() {
   const user = useAuthStore((s) => s.user)
   const navigate = useNavigate()
 
-  if (user?.user_type !== "SUPERUSER") {
+  if (user?.department !== "SUPERUSER") {
     navigate("/unauthorized", { replace: true })
     return null
   }

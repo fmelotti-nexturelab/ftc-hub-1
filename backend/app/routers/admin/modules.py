@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.dependencies import get_current_user
-from app.models.auth import User, UserType
-from app.models.modules import Module, UserModulePermission, UserTypeModuleAccess
+from app.models.auth import User, UserDepartment
+from app.models.modules import Module, UserModulePermission, DepartmentModuleAccess
 
 router = APIRouter(prefix="/api/admin/modules", tags=["Admin - Modules"])
 
@@ -28,15 +28,15 @@ class ModuleResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UserTypeAccessResponse(BaseModel):
-    user_type: str
+class DepartmentAccessResponse(BaseModel):
+    department: str
     module_code: str
     can_view: bool
     can_manage: bool
     model_config = {"from_attributes": True}
 
 
-class UpdateUserTypeAccessRequest(BaseModel):
+class UpdateDepartmentAccessRequest(BaseModel):
     can_view: bool
     can_manage: bool
 
@@ -56,8 +56,8 @@ class UpdateUserModulePermissionRequest(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _require_admin(current_user: User = Depends(get_current_user)) -> User:
-    user_type = getattr(current_user, "user_type", None)
-    if user_type not in (UserType.SUPERUSER, UserType.ADMIN):
+    department = getattr(current_user, "department", None)
+    if department not in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
         raise HTTPException(403, "Accesso riservato ad ADMIN o SUPERUSER")
     return current_user
 
@@ -75,34 +75,34 @@ async def list_modules(
     return [ModuleResponse.model_validate(m) for m in result.scalars().all()]
 
 
-# ── Accessi per user_type ─────────────────────────────────────────────────────
+# ── Accessi per department ────────────────────────────────────────────────────
 
-@router.get("/access", response_model=list[UserTypeAccessResponse])
+@router.get("/access", response_model=list[DepartmentAccessResponse])
 async def get_all_access(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(_require_admin),
 ):
-    result = await db.execute(select(UserTypeModuleAccess))
-    return [UserTypeAccessResponse.model_validate(a) for a in result.scalars().all()]
+    result = await db.execute(select(DepartmentModuleAccess))
+    return [DepartmentAccessResponse.model_validate(a) for a in result.scalars().all()]
 
 
-@router.put("/access/{user_type}/{module_code}", response_model=UserTypeAccessResponse)
-async def update_user_type_access(
-    user_type: str,
+@router.put("/access/{department}/{module_code}", response_model=DepartmentAccessResponse)
+async def update_department_access(
+    department: str,
     module_code: str,
-    data: UpdateUserTypeAccessRequest,
+    data: UpdateDepartmentAccessRequest,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(_require_admin),
 ):
-    # Valida user_type
-    valid_types = [t.value for t in UserType if t not in (UserType.SUPERUSER, UserType.ADMIN)]
-    if user_type not in valid_types:
-        raise HTTPException(400, f"user_type non valido: {user_type}")
+    # Valida department
+    valid_types = [t.value for t in UserDepartment if t not in (UserDepartment.SUPERUSER, UserDepartment.ADMIN)]
+    if department not in valid_types:
+        raise HTTPException(400, f"department non valido: {department}")
 
     result = await db.execute(
-        select(UserTypeModuleAccess).where(
-            UserTypeModuleAccess.user_type == user_type,
-            UserTypeModuleAccess.module_code == module_code,
+        select(DepartmentModuleAccess).where(
+            DepartmentModuleAccess.department == department,
+            DepartmentModuleAccess.module_code == module_code,
         )
     )
     access = result.scalar_one_or_none()
@@ -111,8 +111,8 @@ async def update_user_type_access(
         access.can_view = data.can_view
         access.can_manage = data.can_manage
     else:
-        access = UserTypeModuleAccess(
-            user_type=user_type,
+        access = DepartmentModuleAccess(
+            department=department,
             module_code=module_code,
             can_view=data.can_view,
             can_manage=data.can_manage,
@@ -121,7 +121,7 @@ async def update_user_type_access(
 
     await db.commit()
     await db.refresh(access)
-    return UserTypeAccessResponse.model_validate(access)
+    return DepartmentAccessResponse.model_validate(access)
 
 
 # ── Override per singolo utente ───────────────────────────────────────────────
@@ -189,4 +189,4 @@ async def delete_user_module_permission(
         raise HTTPException(404, "Override non trovato")
     await db.delete(perm)
     await db.commit()
-    return {"message": "Override rimosso, torna ai default del user_type"}
+    return {"message": "Override rimosso, torna ai default del department"}

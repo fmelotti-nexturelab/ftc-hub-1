@@ -55,25 +55,25 @@ export default function UtilitiesConfig() {
   })
 
   const updateAccess = useMutation({
-    mutationFn: ({ user_type, module_code, can_view, can_manage }) =>
-      modulesApi.updateAccess(user_type, module_code, { can_view, can_manage }),
+    mutationFn: ({ department, module_code, can_view, can_manage }) =>
+      modulesApi.updateAccess(department, module_code, { can_view, can_manage }),
     onSuccess: () => qc.invalidateQueries(["admin-modules-access"]),
   })
 
   const accessMap = {}
   for (const a of accessList) {
-    accessMap[`${a.user_type}:${a.module_code}`] = a
+    accessMap[`${a.department}:${a.module_code}`] = a
   }
 
-  const getAccess = (user_type, module_code) =>
-    accessMap[`${user_type}:${module_code}`] || { can_view: false, can_manage: false }
+  const getAccess = (department, module_code) =>
+    accessMap[`${department}:${module_code}`] || { can_view: false, can_manage: false }
 
-  const handleToggle = (user_type, module_code, field, value) => {
-    const current = getAccess(user_type, module_code)
+  const handleToggle = (department, module_code, field, value) => {
+    const current = getAccess(department, module_code)
     const next = { ...current, [field]: value }
     if (field === "can_view" && !value) next.can_manage = false
     if (field === "can_manage" && value) next.can_view = true
-    updateAccess.mutate({ user_type, module_code, ...next })
+    updateAccess.mutate({ department, module_code, ...next })
   }
 
   if (isLoading) {
@@ -116,15 +116,15 @@ export default function UtilitiesConfig() {
                 <td className="px-4 py-2.5 text-gray-700 font-medium whitespace-nowrap">
                   {table.name}
                 </td>
-                {CONFIGURABLE_TYPES.map((user_type) => {
-                  const access = getAccess(user_type, table.code)
+                {CONFIGURABLE_TYPES.map((department) => {
+                  const access = getAccess(department, table.code)
                   return (
-                    <React.Fragment key={user_type}>
+                    <React.Fragment key={department}>
                       <td className="px-2 py-2.5 text-center">
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_view}
-                            onChange={(val) => handleToggle(user_type, table.code, "can_view", val)}
+                            onChange={(val) => handleToggle(department, table.code, "can_view", val)}
                             disabled={false}
                           />
                         </div>
@@ -133,7 +133,7 @@ export default function UtilitiesConfig() {
                         <div className="flex justify-center">
                           <Toggle
                             checked={access.can_manage}
-                            onChange={(val) => handleToggle(user_type, table.code, "can_manage", val)}
+                            onChange={(val) => handleToggle(department, table.code, "can_manage", val)}
                             disabled={!access.can_view}
                           />
                         </div>

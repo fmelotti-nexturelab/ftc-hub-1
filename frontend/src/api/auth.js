@@ -15,8 +15,8 @@ export const authApi = {
   createUser: (data) => apiClient.post("/api/admin/users", data),
   updateUser: (id, data) => apiClient.patch(`/api/admin/users/${id}`, data),
   deleteUser: (id) => apiClient.delete(`/api/admin/users/${id}`),
-  changeUserType: (id, user_type) =>
-    apiClient.patch(`/api/admin/users/${id}/user-type`, { user_type }),
+  changeDepartment: (id, department) =>
+    apiClient.patch(`/api/admin/users/${id}/department`, { department }),
   resetPassword: (id, password) =>
     apiClient.patch(`/api/admin/users/${id}`, { password }),
   getEffectivePermissions: (id) =>

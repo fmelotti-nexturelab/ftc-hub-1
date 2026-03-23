@@ -30,7 +30,7 @@ def async_client():
 
 # ── helpers ──────────────────────────────────────────────────────────
 
-def _assert_successful_login(resp, expected_role: str, expected_user_type: str, expected_username: str):
+def _assert_successful_login(resp, expected_role: str, expected_department: str, expected_username: str):
     """Common assertions for a 200 login response."""
     assert resp.status_code == 200
 
@@ -46,25 +46,25 @@ def _assert_successful_login(resp, expected_role: str, expected_user_type: str, 
     assert user is not None
     assert user["username"] == expected_username
     assert user["role"] == expected_role
-    assert user["user_type"] == expected_user_type
+    assert user["department"] == expected_department
     assert "id" in user
 
 
 # ── 1-3: successful logins ───────────────────────────────────────────
 
 @pytest.mark.parametrize(
-    "username, password, expected_role, expected_user_type",
+    "username, password, expected_role, expected_department",
     [
         pytest.param("admin", "Admin@2024!", "ADMIN", "SUPERUSER", id="superuser"),
         pytest.param("IT01001", "111", "STORE", "STORE", id="store"),
         pytest.param("gaesan", "333", "DM", "DM", id="dm"),
     ],
 )
-async def test_login_success(async_client, username, password, expected_role, expected_user_type):
+async def test_login_success(async_client, username, password, expected_role, expected_department):
     async with async_client as client:
         resp = await client.post(LOGIN_URL, json={"username": username, "password": password})
 
-    _assert_successful_login(resp, expected_role, expected_user_type, username)
+    _assert_successful_login(resp, expected_role, expected_department, username)
 
 
 # ── 4: wrong password ───────────────────────────────────────────────

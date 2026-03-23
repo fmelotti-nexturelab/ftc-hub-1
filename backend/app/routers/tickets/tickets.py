@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
-from app.models.auth import User, UserType
+from app.models.auth import User, UserDepartment
 from app.models.tickets import Ticket, TicketAttachment
 from app.models.ticket_config import TicketTeamModel, TicketCategoryModel, TicketSubcategoryModel
 from app.models.stores import Store
@@ -123,9 +123,9 @@ async def ticket_stats(
 
     # Chiusi per assegnatario (solo SUPERUSER)
     by_assignee = []
-    user_type = getattr(current_user, "user_type", None)
-    from app.models.auth import UserType
-    if user_type == UserType.SUPERUSER:
+    department = getattr(current_user, "department", None)
+    from app.models.auth import UserDepartment
+    if department == UserDepartment.SUPERUSER:
         assignee_res = await db.execute(
             select(
                 User.full_name.label("name"),
@@ -164,7 +164,7 @@ async def requester_defaults(
     name = current_user.full_name or current_user.username
     email: Optional[str] = None
 
-    if getattr(current_user, "user_type", None) == UserType.STOREMANAGER:
+    if getattr(current_user, "department", None) == UserDepartment.STOREMANAGER:
         # Cerca il negozio tramite user_assignments
         assignment_res = await db.execute(
             select(UserAssignment).where(
