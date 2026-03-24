@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC HUB — Ticket di Supporto</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+    header { background: #1e3a5f; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    main { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
+    .close-btn { position: fixed; top: 16px; right: 24px; background: #ef4444; color: white; border: none; border-radius: 10px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(239,68,68,0.4); transition: background 0.2s; z-index: 999; }
+    .close-btn:hover { background: #dc2626; }
+    .section { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; }
+    .section-title { font-size: 17px; font-weight: 700; color: #1e3a5f; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .section-title .icon { font-size: 20px; }
+    p { font-size: 14px; color: #374151; margin-bottom: 12px; }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li { font-size: 14px; color: #374151; margin-bottom: 6px; }
+    .note { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #1e40af; }
+    .warning { background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #92400e; }
+    .success { background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #166534; }
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li { counter-increment: step; display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start; }
+    .steps li::before { content: counter(step); background: #1e3a5f; color: white; font-weight: 700; font-size: 12px; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .steps li .step-text { font-size: 14px; color: #374151; }
+    .img-placeholder { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 30px; text-align: center; color: #94a3b8; font-size: 13px; margin: 16px 0; }
+    .btn-label { display: inline-block; background: #1e3a5f; color: white; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 0 2px; }
+    .btn-label.red { background: #dc2626; }
+    .btn-label.green { background: #16a34a; }
+    .btn-label.gray { background: #64748b; }
+    .field-label { display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid #e2e8f0; margin: 0 2px; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin: 0 2px; }
+    .badge.open { background: #dbeafe; color: #1d4ed8; }
+    .badge.progress { background: #fef9c3; color: #92400e; }
+    .badge.waiting { background: #fee2e2; color: #991b1b; }
+    .badge.resolved { background: #dcfce7; color: #166534; }
+    .badge.closed { background: #f1f5f9; color: #64748b; }
+    .badge.low { background: #f1f5f9; color: #475569; }
+    .badge.medium { background: #dbeafe; color: #1d4ed8; }
+    .badge.high { background: #fef9c3; color: #92400e; }
+    .badge.critical { background: #fee2e2; color: #991b1b; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+    th { background: #1e3a5f; color: white; padding: 10px 14px; text-align: left; font-weight: 700; }
+    td { padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .role-block { border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+    .role-block .role-title { font-size: 13px; font-weight: 700; color: #1e3a5f; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .footer { text-align: center; padding: 30px 20px; font-size: 12px; color: #94a3b8; }
+    .toc { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
+    .toc ul { list-style: none; padding: 0; }
+    .toc ul li { margin-bottom: 4px; }
+    .toc ul li a { font-size: 13px; color: #1e3a5f; text-decoration: none; }
+    .toc ul li a:hover { text-decoration: underline; }
+    .toc-title { font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <button class="close-btn" onclick="window.close()">✕ Chiudi</button>
+  <header>
+    <div>
+      <h1>🎫 Ticket di Supporto</h1>
+      <p><a href="index.html" style="color:rgba(255,255,255,0.6);text-decoration:none;">← Torna alle guide</a></p>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- INDICE -->
+    <div class="toc">
+      <div class="toc-title">Indice</div>
+      <ul>
+        <li><a href="#intro">1. Introduzione</a></li>
+        <li><a href="#accesso">2. Accedere al modulo Ticket</a></li>
+        <li><a href="#lista-store">3. Lista ticket — Vista Store</a></li>
+        <li><a href="#lista-ho">4. Lista ticket — Vista Head Office / Supporto</a></li>
+        <li><a href="#nuovo">5. Aprire un nuovo ticket</a></li>
+        <li><a href="#dettaglio">6. Dettaglio ticket</a></li>
+        <li><a href="#stati">7. Stati e priorità</a></li>
+        <li><a href="#storico">8. Storico ticket</a></li>
+        <li><a href="#azioni-admin">9. Azioni del personale di supporto</a></li>
+        <li><a href="#riepilogo">10. Riepilogo rapido</a></li>
+      </ul>
+    </div>
+
+    <!-- 1. INTRO -->
+    <div class="section" id="intro">
+      <div class="section-title"><span class="icon">📘</span> 1. Introduzione</div>
+      <p>Il modulo <strong>Ticket di Supporto</strong> permette di richiedere assistenza al team IT e agli altri reparti di supporto di Flying Tiger Copenhagen. È possibile aprire segnalazioni, seguire lo stato di avanzamento e consultare lo storico delle richieste passate.</p>
+      <div class="note">🎫 Ogni richiesta genera un <strong>numero ticket univoco</strong> (es. <code>#0042</code>) che identifica la pratica in ogni fase della lavorazione.</div>
+
+      <p><strong>Chi può usare il modulo ticket:</strong></p>
+      <div class="role-block">
+        <div class="role-title">🏪 Store Manager / Store</div>
+        <p style="margin:0;font-size:13px;color:#475569;">Può aprire ticket e consultare quelli del proprio negozio. Visualizza solo i ticket non chiusi per default; tramite il pulsante <strong>Storico</strong> può consultare tutta la storia.</p>
+      </div>
+      <div class="role-block">
+        <div class="role-title">🏢 Head Office / District Manager</div>
+        <p style="margin:0;font-size:13px;color:#475569;">Accesso completo alla lista ticket con filtri avanzati. Può aprire ticket e visualizzare quelli assegnati al proprio team.</p>
+      </div>
+      <div class="role-block">
+        <div class="role-title">🛠️ Personale di supporto (IT / Admin)</div>
+        <p style="margin:0;font-size:13px;color:#475569;">Gestione completa: visualizza tutti i ticket, assegna, prende in carico, cambia stato, aggiunge commenti, chiude. Accesso alla dashboard statistiche.</p>
+      </div>
+    </div>
+
+    <!-- 2. ACCESSO -->
+    <div class="section" id="accesso">
+      <div class="section-title"><span class="icon">📍</span> 2. Accedere al modulo Ticket</div>
+      <ol class="steps">
+        <li><div class="step-text">Dopo il login, individuare nella barra laterale sinistra la sezione <strong>SUPPORTO</strong></div></li>
+        <li><div class="step-text">Cliccare sulla voce <strong>Ticket</strong> con l'icona 🎫</div></li>
+        <li><div class="step-text">Si apre la lista dei ticket attivi</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: sidebar con la voce "Ticket" evidenziata nella sezione SUPPORTO</div>
+      <div class="note">ℹ️ Se la voce <strong>Ticket</strong> non compare nella sidebar, il modulo non è attivo per il proprio profilo. Contattare l'amministratore di sistema.</div>
+    </div>
+
+    <!-- 3. LISTA STORE -->
+    <div class="section" id="lista-store">
+      <div class="section-title"><span class="icon">🏪</span> 3. Lista ticket — Vista Store</div>
+      <p>Gli utenti di tipo <strong>Store Manager</strong> e <strong>Store</strong> vedono una vista semplificata, focalizzata sui ticket del proprio negozio.</p>
+
+      <p><strong>Vista predefinita — Ticket aperti</strong></p>
+      <p>All'apertura della pagina vengono mostrati solo i ticket in stato <strong>non chiuso</strong> (aperti, in lavorazione, in attesa, risolti). La tabella mostra:</p>
+      <ul>
+        <li><strong>#</strong> — Numero ticket</li>
+        <li><strong>Titolo</strong> — Oggetto della richiesta</li>
+        <li><strong>Categoria</strong> — Area tematica</li>
+        <li><strong>Priorità</strong> — Livello urgenza</li>
+        <li><strong>Stato</strong> — Fase corrente</li>
+        <li><strong>Data</strong> — Data apertura</li>
+        <li><strong>Durata</strong> — Tempo trascorso dall'apertura</li>
+      </ul>
+      <div class="img-placeholder">📸 Screenshot: lista ticket vista Store con colonne # / Titolo / Categoria / Priorità / Stato / Data / Durata</div>
+
+      <p><strong>Aprire il dettaglio di un ticket</strong></p>
+      <p>Cliccare su una riga della tabella (o sul pulsante <span class="btn-label">↗</span> a destra) per aprire il dettaglio completo del ticket.</p>
+
+      <p><strong>Pulsante Storico</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Cliccare il pulsante <span class="btn-label">🕒 Storico</span> in alto a destra</div></li>
+        <li><div class="step-text">La vista passa allo storico completo: tutti i ticket inclusi quelli chiusi</div></li>
+        <li><div class="step-text">È possibile filtrare per <span class="field-label">Categoria</span> e per <span class="field-label">Anno</span></div></li>
+        <li><div class="step-text">Per tornare alla vista predefinita, cliccare nuovamente <span class="btn-label">🕒 Storico</span></div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: vista Storico con filtri categoria e anno attivi</div>
+    </div>
+
+    <!-- 4. LISTA HO -->
+    <div class="section" id="lista-ho">
+      <div class="section-title"><span class="icon">🏢</span> 4. Lista ticket — Vista Head Office / Supporto</div>
+      <p>Gli utenti HO, IT e Admin dispongono di una vista avanzata con filtri e modalità di visualizzazione rapida.</p>
+
+      <p><strong>Modalità di visualizzazione rapida</strong></p>
+      <table>
+        <tr><th>Pulsante</th><th>Cosa mostra</th></tr>
+        <tr><td><span class="btn-label gray">👤 I miei ticket</span></td><td>Ticket assegnati a me personalmente</td></tr>
+        <tr><td><span class="btn-label gray">👥 Ticket del team</span></td><td>Ticket assegnati al mio team o a me</td></tr>
+        <tr><td><span class="btn-label gray">📥 Tutti i ticket</span></td><td>Tutti i ticket aperti (solo Admin/IT)</td></tr>
+      </table>
+      <p>Cliccare di nuovo lo stesso pulsante per tornare alla lista completa.</p>
+
+      <p><strong>Filtri disponibili</strong></p>
+      <ul>
+        <li><span class="field-label">Tutti gli stati</span> — filtra per stato specifico</li>
+        <li><span class="field-label">Tutte le priorità</span> — filtra per urgenza</li>
+        <li><span class="field-label">Tutte le categorie</span> — filtra per area tematica</li>
+        <li><span class="field-label">Tutti i team</span> — filtra per team destinatario (solo Admin)</li>
+      </ul>
+      <p>Dopo aver selezionato uno o più filtri, compare il pulsante <span class="field-label">Reset filtri</span> per ripristinare la vista completa. In alto a destra viene sempre indicato il numero di ticket visualizzati.</p>
+
+      <div class="img-placeholder">📸 Screenshot: barra filtri con selettori stato, priorità, categoria, team e contatore ticket</div>
+
+      <p><strong>Colonne della tabella (vista Admin)</strong></p>
+      <table>
+        <tr><th>Colonna</th><th>Descrizione</th></tr>
+        <tr><td><strong>#</strong></td><td>Numero progressivo del ticket</td></tr>
+        <tr><td><strong>Titolo</strong></td><td>Oggetto della richiesta</td></tr>
+        <tr><td><strong>Negozio / Richiedente</strong></td><td>Codice negozio o nome richiedente</td></tr>
+        <tr><td><strong>Categoria / Sottocategoria</strong></td><td>Area tematica</td></tr>
+        <tr><td><strong>Team</strong></td><td>Team di supporto assegnato</td></tr>
+        <tr><td><strong>Priorità</strong></td><td>Livello urgenza</td></tr>
+        <tr><td><strong>Stato</strong></td><td>Fase corrente</td></tr>
+        <tr><td><strong>Creato da / Assegnato a</strong></td><td>Utenti coinvolti</td></tr>
+        <tr><td><strong>Data / Durata</strong></td><td>Data apertura e tempo trascorso</td></tr>
+      </table>
+    </div>
+
+    <!-- 5. NUOVO TICKET -->
+    <div class="section" id="nuovo">
+      <div class="section-title"><span class="icon">✏️</span> 5. Aprire un nuovo ticket</div>
+      <p>Per richiedere assistenza è necessario aprire un nuovo ticket.</p>
+      <ol class="steps">
+        <li><div class="step-text">Dalla lista ticket, cliccare il pulsante <span class="btn-label">+ Nuovo ticket</span> in alto a destra</div></li>
+        <li><div class="step-text">Si apre il modulo di creazione. Compilare i campi obbligatori (contrassegnati con *)</div></li>
+        <li><div class="step-text">Cliccare <span class="btn-label">Invia ticket</span> per inviare la richiesta</div></li>
+      </ol>
+
+      <div class="img-placeholder">📸 Screenshot: form di creazione ticket con tutti i campi compilati</div>
+
+      <p><strong>Descrizione dei campi:</strong></p>
+      <table>
+        <tr><th>Campo</th><th>Obbligatorio</th><th>Descrizione</th></tr>
+        <tr><td><span class="field-label">Titolo</span></td><td>✅ Sì</td><td>Breve descrizione del problema (es. "Stampante non funziona")</td></tr>
+        <tr><td><span class="field-label">Descrizione</span></td><td>✅ Sì</td><td>Dettaglio completo: cosa è successo, quando, come riprodurre il problema</td></tr>
+        <tr><td><span class="field-label">Categoria</span></td><td>✅ Sì</td><td>Area tematica (es. Hardware, Software, Cassa...)</td></tr>
+        <tr><td><span class="field-label">Sottocategoria</span></td><td>No</td><td>Tipo specifico all'interno della categoria</td></tr>
+        <tr><td><span class="field-label">Priorità</span></td><td>✅ Sì</td><td>Urgenza della richiesta (vedi tabella stati)</td></tr>
+        <tr><td><span class="field-label">Nome richiedente</span></td><td>No</td><td>Pre-compilato con il proprio nome</td></tr>
+        <tr><td><span class="field-label">Telefono</span></td><td>No</td><td>Numero di contatto per eventuali follow-up</td></tr>
+        <tr><td><span class="field-label">Codice TeamViewer</span></td><td>No</td><td>ID TeamViewer del dispositivo, utile per assistenza remota</td></tr>
+      </table>
+
+      <div class="note">🤖 <strong>Suggerimento AI:</strong> Dopo aver inserito titolo e descrizione, FTC HUB può suggerire automaticamente la categoria e la priorità più adatte tramite intelligenza artificiale. Il suggerimento è indicativo: è sempre possibile modificarlo.</div>
+      <div class="success">✅ Dopo l'invio, il ticket riceve un numero univoco e viene notificato al team di supporto competente.</div>
+    </div>
+
+    <!-- 6. DETTAGLIO -->
+    <div class="section" id="dettaglio">
+      <div class="section-title"><span class="icon">🔍</span> 6. Dettaglio ticket</div>
+      <p>Cliccando su un ticket dalla lista si apre la pagina di dettaglio con tutte le informazioni e la cronologia degli aggiornamenti.</p>
+
+      <p><strong>Sezioni della pagina dettaglio:</strong></p>
+      <ul>
+        <li><strong>Intestazione</strong> — numero ticket, titolo, stato corrente, priorità, data apertura</li>
+        <li><strong>Informazioni richiesta</strong> — categoria, negozio, richiedente, telefono, codice TeamViewer</li>
+        <li><strong>Descrizione</strong> — testo completo della richiesta</li>
+        <li><strong>Chat / Commenti</strong> — conversazione tra utente e team di supporto</li>
+        <li><strong>Allegati</strong> — documenti, screenshot caricati sul ticket</li>
+      </ul>
+
+      <div class="img-placeholder">📸 Screenshot: pagina dettaglio ticket con intestazione, descrizione, chat e allegati</div>
+
+      <p><strong>Aggiungere un commento</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Scorrere fino alla sezione <strong>Chat</strong> in fondo alla pagina</div></li>
+        <li><div class="step-text">Scrivere il messaggio nel campo di testo</div></li>
+        <li><div class="step-text">Cliccare <span class="btn-label">Invia</span> o premere <kbd>Ctrl+Enter</kbd></div></li>
+      </ol>
+
+      <p><strong>Allegare un file</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Cliccare il pulsante <span class="btn-label">📎 Allega file</span></div></li>
+        <li><div class="step-text">Selezionare il file dal proprio dispositivo (max 5 MB — formati: JPG, PNG, PDF, GIF)</div></li>
+        <li><div class="step-text">Il file viene caricato e reso disponibile sul ticket</div></li>
+      </ol>
+      <div class="warning">⚠️ <strong>Dimensione massima allegati:</strong> 5 MB per file. Formati accettati: immagini (JPG, PNG, GIF, WebP) e PDF.</div>
+    </div>
+
+    <!-- 7. STATI E PRIORITA -->
+    <div class="section" id="stati">
+      <div class="section-title"><span class="icon">🏷️</span> 7. Stati e priorità</div>
+
+      <p><strong>Stati del ticket:</strong></p>
+      <table>
+        <tr><th>Stato</th><th>Significato</th></tr>
+        <tr><td><span class="badge open">Aperto</span></td><td>La richiesta è stata ricevuta, in attesa di presa in carico</td></tr>
+        <tr><td><span class="badge progress">In lavorazione</span></td><td>Un operatore ha preso in carico il ticket e sta lavorando</td></tr>
+        <tr><td><span class="badge waiting">In attesa</span></td><td>In attesa di informazioni o azioni da parte del richiedente</td></tr>
+        <tr><td><span class="badge resolved">Risolto</span></td><td>Il problema è stato risolto, in attesa di conferma</td></tr>
+        <tr><td><span class="badge closed">Chiuso</span></td><td>La pratica è completamente chiusa</td></tr>
+      </table>
+
+      <p><strong>Livelli di priorità:</strong></p>
+      <table>
+        <tr><th>Priorità</th><th>Quando usarla</th></tr>
+        <tr><td><span class="badge low">Bassa</span></td><td>Problema non urgente, non blocca l'operatività</td></tr>
+        <tr><td><span class="badge medium">Media</span></td><td>Problema che rallenta il lavoro ma ha un'alternativa</td></tr>
+        <tr><td><span class="badge high">Alta</span></td><td>Problema che impatta significativamente l'operatività</td></tr>
+        <tr><td><span class="badge critical">Critica</span></td><td>Blocco totale: negozio/sistema non operativo</td></tr>
+      </table>
+      <div class="warning">⚠️ Utilizzare la priorità <span class="badge critical">Critica</span> solo in caso di blocco reale dell'operatività (es. cassa ferma, sistema POS non funzionante).</div>
+    </div>
+
+    <!-- 8. STORICO -->
+    <div class="section" id="storico">
+      <div class="section-title"><span class="icon">🕒</span> 8. Storico ticket</div>
+
+      <p><strong>Per utenti Store:</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Dalla lista ticket, cliccare <span class="btn-label">🕒 Storico</span> in alto a destra</div></li>
+        <li><div class="step-text">Vengono mostrati tutti i ticket, inclusi quelli chiusi</div></li>
+        <li><div class="step-text">Usare il filtro <span class="field-label">Categoria</span> per vedere solo una tipologia</div></li>
+        <li><div class="step-text">Usare il filtro <span class="field-label">Anno</span> per limitare la ricerca a un anno specifico</div></li>
+      </ol>
+
+      <p><strong>Per utenti Admin/IT:</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Dalla lista ticket, cliccare il pulsante <span class="btn-label gray">🕒 Storico</span> in alto a destra</div></li>
+        <li><div class="step-text">Si apre la pagina storico con tutti i ticket chiusi</div></li>
+        <li><div class="step-text">Sono disponibili filtri per team, priorità, categoria e assegnatario</div></li>
+      </ol>
+      <div class="note">📊 Lo storico è utile per analizzare le tipologie di problemi più frequenti e i tempi medi di risoluzione.</div>
+    </div>
+
+    <!-- 9. AZIONI ADMIN -->
+    <div class="section" id="azioni-admin">
+      <div class="section-title"><span class="icon">🛠️</span> 9. Azioni del personale di supporto</div>
+      <p>Questa sezione è destinata agli operatori del team di supporto (IT, Admin) che gestiscono i ticket ricevuti.</p>
+
+      <p><strong>9.1 — Prendere in carico un ticket</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Aprire il dettaglio del ticket</div></li>
+        <li><div class="step-text">Cliccare il pulsante <span class="btn-label">▶ Prendi in carico</span></div></li>
+        <li><div class="step-text">Il ticket passa in stato <span class="badge progress">In lavorazione</span> e viene assegnato a se stessi</div></li>
+      </ol>
+
+      <p><strong>9.2 — Cambiare lo stato</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Nel dettaglio del ticket, individuare il selettore di stato</div></li>
+        <li><div class="step-text">Selezionare il nuovo stato dal menu a tendina</div></li>
+        <li><div class="step-text">Il cambio è immediato e registrato nella cronologia</div></li>
+      </ol>
+
+      <p><strong>9.3 — Assegnare un ticket a un utente</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Nel dettaglio del ticket, individuare la sezione <strong>Assegnazione</strong></div></li>
+        <li><div class="step-text">Selezionare l'utente dal menu <span class="field-label">Assegna a</span></div></li>
+        <li><div class="step-text">Cliccare <span class="btn-label">Assegna</span> per confermare</div></li>
+      </ol>
+
+      <p><strong>9.4 — Azioni in blocco (bulk)</strong></p>
+      <p>Dalla lista ticket è possibile selezionare più ticket contemporaneamente per eseguire azioni di gruppo:</p>
+      <ol class="steps">
+        <li><div class="step-text">Spuntare le caselle a sinistra di ogni ticket che si vuole selezionare (o spuntare la casella in intestazione per selezionare tutti)</div></li>
+        <li><div class="step-text">Compare in basso la barra azioni: <span class="btn-label red">Chiudi tutti</span> oppure il menu <span class="field-label">Assegna a...</span></div></li>
+        <li><div class="step-text">Scegliere l'azione desiderata e confermare</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: barra azioni bulk con ticket selezionati e pulsanti "Chiudi tutti" e "Assegna a"</div>
+
+      <p><strong>9.5 — Dashboard statistiche</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">Dalla lista ticket, cliccare <span class="btn-label">📊 Dashboard</span> in alto a destra</div></li>
+        <li><div class="step-text">Si apre la dashboard con statistiche sui ticket: totali per stato, per team, per categoria</div></li>
+      </ol>
+    </div>
+
+    <!-- 10. RIEPILOGO -->
+    <div class="section" id="riepilogo">
+      <div class="section-title"><span class="icon">⚡</span> 10. Riepilogo rapido</div>
+      <table>
+        <tr><th>Azione</th><th>Dove</th><th>Pulsante / Passaggio</th></tr>
+        <tr><td>Aprire la lista ticket</td><td>Sidebar → SUPPORTO → Ticket</td><td>—</td></tr>
+        <tr><td>Creare un nuovo ticket</td><td>Lista ticket</td><td><span class="btn-label">+ Nuovo ticket</span></td></tr>
+        <tr><td>Vedere i propri ticket (Store)</td><td>Lista ticket → default</td><td>—</td></tr>
+        <tr><td>Vedere lo storico (Store)</td><td>Lista ticket</td><td><span class="btn-label">🕒 Storico</span></td></tr>
+        <tr><td>Aggiungere un commento</td><td>Dettaglio ticket → Chat</td><td><span class="btn-label">Invia</span></td></tr>
+        <tr><td>Allegare un file</td><td>Dettaglio ticket</td><td><span class="btn-label">📎 Allega file</span></td></tr>
+        <tr><td>Prendere in carico</td><td>Dettaglio ticket</td><td><span class="btn-label">▶ Prendi in carico</span></td></tr>
+        <tr><td>Chiudere più ticket</td><td>Lista ticket → seleziona ticket</td><td><span class="btn-label red">Chiudi tutti</span></td></tr>
+        <tr><td>Dashboard statistiche</td><td>Lista ticket</td><td><span class="btn-label">📊 Dashboard</span></td></tr>
+      </table>
+      <div class="note">📞 <strong>Hai bisogno di aiuto?</strong> Per problemi con il modulo ticket o per segnalare malfunzionamenti della piattaforma, contattare il reparto IT.</div>
+    </div>
+
+  </main>
+  <div class="footer">
+    <p><strong>Fausto Melotti</strong> — FTC HUB Administrator</p>
+    <p style="margin-top:8px;">© 2026 FTC HUB — Tutti i diritti riservati. Questo documento è strettamente confidenziale e destinato esclusivamente ai dipendenti autorizzati. La riproduzione, distribuzione o divulgazione, anche parziale, è vietata senza autorizzazione scritta.</p>
+  </div>
+</body>
+</html>

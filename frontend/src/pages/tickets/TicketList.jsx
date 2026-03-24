@@ -1,14 +1,14 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Filter, ExternalLink, LayoutDashboard, X, CheckSquare } from "lucide-react"
+import { Plus, Filter, ExternalLink, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
 import TicketStatusBadge from "@/components/tickets/TicketStatusBadge"
 import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
 
-const STATUSES = ["open", "in_progress", "waiting", "resolved", "closed"]
+const STATUSES = ["open", "in_progress", "waiting", "resolved"]
 const PRIORITIES = ["low", "medium", "high", "critical"]
 
 function elapsed(from, to = new Date()) {
@@ -46,8 +46,26 @@ function ElapsedBadge({ ticket }) {
 export default function TicketList() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { hasRole } = useAuthStore()
+  const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
+  const isStore = ["STORE", "STOREMANAGER"].includes(user?.department)
+  const canSeeHistory = ["ADMIN", "SUPERUSER", "IT", "MANAGER"].includes(user?.department)
+
+  const canSeeTeam = !isStore
+  const canSeeAll = isAdmin || user?.department === "IT"
+
+  // ── Store: storico mode ────────────────────────────────────────────────────
+  const [storicoMode, setStoricoMode] = useState(false)
+  const [storicoCategory, setStoricoCategory] = useState("")
+  const [storicoYear, setStoricoYear] = useState("")
+
+  const currentYear = new Date().getFullYear()
+  const yearOptions = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3]
+
+  // ── Admin/HO: filters + viewMode ──────────────────────────────────────────
+  // HO non-admin: default "team"; admin: default null (tutti); store: n/a
+  const defaultViewMode = !isStore && !isAdmin ? "team" : null
+  const [viewMode, setViewMode] = useState(defaultViewMode) // null | "mine" | "team" | "all"
 
   const [filters, setFilters] = useState({
     status: "",
@@ -77,28 +95,51 @@ export default function TicketList() {
   const { data: teams = [] } = useQuery({
     queryKey: ["ticket-teams"],
     queryFn: () => ticketConfigApi.getTeams().then(r => r.data),
-    enabled: isAdmin,
+    enabled: canSeeTeam,
   })
 
-  // Carica utenti per assegnazione bulk (solo admin)
   const { data: usersData } = useQuery({
     queryKey: ["ticket-users"],
     queryFn: () => ticketsApi.listUsers().then(r => r.data),
-    enabled: isAdmin,
+    enabled: canSeeTeam,
   })
   const users = usersData?.users ?? []
 
   const params = {}
-  if (filters.status)       params.status = filters.status
-  if (filters.priority)     params.priority = filters.priority
-  if (filters.category_id)  params.category_id = filters.category_id
+  if (filters.status)         params.status = filters.status
+  if (filters.priority)       params.priority = filters.priority
+  if (filters.category_id)    params.category_id = filters.category_id
   if (filters.subcategory_id) params.subcategory_id = filters.subcategory_id
-  if (filters.team_id)      params.team_id = filters.team_id
+  if (filters.team_id)        params.team_id = filters.team_id
+  if (viewMode === "mine" && canSeeAll) params.assigned_to_id = user?.id
+  if (viewMode === "mine" && !canSeeAll) params.created_by_id = user?.id
+  if (viewMode === "team")  params.my_team = true
+  // viewMode === "all" → nessun param extra, il backend restituisce tutti i ticket
 
-  const { data: tickets = [], isLoading } = useQuery({
-    queryKey: ["tickets", params],
+  const storicoParams = { include_closed: true }
+  if (storicoCategory) storicoParams.category_id = storicoCategory
+
+  const { data: rawTickets = [], isLoading } = useQuery({
+    queryKey: ["tickets", params, viewMode],
     queryFn: () => ticketsApi.list(params).then(r => r.data),
+    enabled: !isStore || !storicoMode,
   })
+
+  const { data: storicoRaw = [], isLoading: storicoLoading } = useQuery({
+    queryKey: ["tickets-storico", storicoParams],
+    queryFn: () => ticketsApi.list(storicoParams).then(r => r.data),
+    enabled: isStore && storicoMode,
+  })
+
+  // Per la vista store default: escludi closed client-side
+  // Per la vista storico: applica filtro anno client-side
+  const tickets = isStore
+    ? storicoMode
+      ? storicoRaw.filter(t =>
+          (!storicoYear || new Date(t.created_at).getFullYear() === parseInt(storicoYear))
+        )
+      : rawTickets.filter(t => t.status !== "closed")
+    : rawTickets
 
   const bulkMutation = useMutation({
     mutationFn: (data) => ticketsApi.bulkAction(data),
@@ -118,7 +159,16 @@ export default function TicketList() {
     })
   }
 
-  const hasFilters = Object.values(filters).some(Boolean)
+  const toggleViewMode = (mode) => {
+    setViewMode(prev => prev === mode ? null : mode)
+  }
+
+  const resetAll = () => {
+    setFilters({ status: "", priority: "", category_id: "", subcategory_id: "", team_id: "" })
+    setViewMode(null)
+  }
+
+  const hasFilters = Object.values(filters).some(Boolean) || viewMode !== null
 
   const toggleOne = (id) => setSelected(prev => {
     const next = new Set(prev)
@@ -152,6 +202,131 @@ export default function TicketList() {
 
   const selectClass = "text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-[#2563eb] outline-none"
 
+  // ── Vista STORE ─────────────────────────────────────────────────────────────
+  if (isStore) {
+    const loading = storicoMode ? storicoLoading : isLoading
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">I miei ticket</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {storicoMode ? "Storico completo — tutti gli stati" : "Ticket aperti del tuo negozio"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setStoricoMode(v => !v); setStoricoCategory(""); setStoricoYear("") }}
+              className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl border transition text-sm ${
+                storicoMode
+                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                  : "border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb] text-gray-600"
+              }`}
+            >
+              <History size={16} />
+              Storico
+            </button>
+            <button
+              onClick={() => navigate("/tickets/new")}
+              className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2.5 px-5 rounded-xl shadow transition text-sm"
+            >
+              <Plus size={16} />
+              Nuovo ticket
+            </button>
+          </div>
+        </div>
+
+        {/* Filtri storico */}
+        {storicoMode && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
+            <Filter size={14} className="text-gray-400 shrink-0" />
+            <select
+              value={storicoCategory}
+              onChange={e => setStoricoCategory(e.target.value)}
+              className={selectClass}
+            >
+              <option value="">Tutte le categorie</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select
+              value={storicoYear}
+              onChange={e => setStoricoYear(e.target.value)}
+              className={selectClass}
+            >
+              <option value="">Tutti gli anni</option>
+              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            {(storicoCategory || storicoYear) && (
+              <button
+                onClick={() => { setStoricoCategory(""); setStoricoYear("") }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition underline"
+              >
+                Reset
+              </button>
+            )}
+            <span className="ml-auto text-xs text-gray-400">{tickets.length} ticket</span>
+          </div>
+        )}
+
+        {/* Tabella store */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="py-16 text-center text-gray-400 text-sm">Caricamento...</div>
+          ) : tickets.length === 0 ? (
+            <div className="py-16 text-center text-gray-400 text-sm">
+              {storicoMode ? "Nessun ticket trovato." : "Nessun ticket aperto."}
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
+                  <th className="px-4 py-3 text-left">#</th>
+                  <th className="px-4 py-3 text-left">Titolo</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-left">Priorità</th>
+                  <th className="px-4 py-3 text-left">Stato</th>
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Durata</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tickets.map((t) => (
+                  <tr
+                    key={t.id}
+                    onClick={() => navigate(`/tickets/${t.id}`)}
+                    className="border-b border-gray-100 last:border-0 hover:bg-blue-50/40 cursor-pointer transition odd:bg-white even:bg-gray-50/50"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                      #{String(t.ticket_number).padStart(4, "0")}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">{t.title}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>
+                    <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
+                    <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
+                    <td className="px-4 py-3 text-xs text-gray-400">
+                      {new Date(t.created_at).toLocaleDateString("it-IT")}
+                    </td>
+                    <td className="px-4 py-3"><ElapsedBadge ticket={t} /></td>
+                    <td className="px-3 py-3 text-right">
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/tickets/${t.id}`) }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 transition"
+                      >
+                        <ExternalLink size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Vista Admin / HO ─────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -159,7 +334,7 @@ export default function TicketList() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">Ticket di assistenza</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {isAdmin ? "Tutti i ticket" : "I miei ticket"}
+            {isAdmin ? "Tutti i ticket" : canSeeTeam ? "Ticket del team" : "I miei ticket"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -172,6 +347,15 @@ export default function TicketList() {
               Dashboard
             </button>
           )}
+          {canSeeHistory && (
+            <button
+              onClick={() => navigate("/tickets/history")}
+              className="flex items-center gap-2 border border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb] text-gray-600 font-semibold py-2.5 px-4 rounded-xl transition text-sm"
+            >
+              <History size={16} />
+              Storico
+            </button>
+          )}
           <button
             onClick={() => navigate("/tickets/new")}
             className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2.5 px-5 rounded-xl shadow transition text-sm"
@@ -180,6 +364,49 @@ export default function TicketList() {
             Nuovo ticket
           </button>
         </div>
+      </div>
+
+      {/* Quick view buttons */}
+      <div className="flex items-center gap-2">
+        {canSeeHistory && (
+          <button
+            onClick={() => toggleViewMode("mine")}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+              viewMode === "mine"
+                ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                : "bg-white text-gray-600 border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb]"
+            }`}
+          >
+            <User size={15} />
+            I miei ticket
+          </button>
+        )}
+        {canSeeTeam && (
+          <button
+            onClick={() => toggleViewMode("team")}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+              viewMode === "team"
+                ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                : "bg-white text-gray-600 border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb]"
+            }`}
+          >
+            <Users size={15} />
+            Ticket del team
+          </button>
+        )}
+        {canSeeAll && (
+          <button
+            onClick={() => toggleViewMode("all")}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+              viewMode === "all"
+                ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                : "bg-white text-gray-600 border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb]"
+            }`}
+          >
+            <Inbox size={15} />
+            Tutti i ticket
+          </button>
+        )}
       </div>
 
       {/* Filtri */}
@@ -208,7 +435,7 @@ export default function TicketList() {
           </select>
         )}
 
-        {isAdmin && (
+        {canSeeTeam && (
           <select value={filters.team_id} onChange={set("team_id")} className={selectClass}>
             <option value="">Tutti i team</option>
             {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -217,7 +444,7 @@ export default function TicketList() {
 
         {hasFilters && (
           <button
-            onClick={() => setFilters({ status: "", priority: "", category_id: "", subcategory_id: "", team_id: "" })}
+            onClick={resetAll}
             className="text-xs text-gray-400 hover:text-gray-600 transition underline"
           >
             Reset filtri
@@ -236,7 +463,7 @@ export default function TicketList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
-                {isAdmin && (
+                {canSeeTeam && (
                   <th className="px-3 py-3 w-8">
                     <input
                       type="checkbox"
@@ -252,11 +479,11 @@ export default function TicketList() {
                 <th className="px-4 py-3 text-left">Negozio / Richiedente</th>
                 <th className="px-4 py-3 text-left">Categoria</th>
                 <th className="px-4 py-3 text-left">Sottocategoria</th>
-                {isAdmin && <th className="px-4 py-3 text-left">Team</th>}
+                {canSeeTeam && <th className="px-4 py-3 text-left">Team</th>}
                 <th className="px-4 py-3 text-left">Priorità</th>
                 <th className="px-4 py-3 text-left">Stato</th>
-                {isAdmin && <th className="px-4 py-3 text-left">Creato da</th>}
-                {isAdmin && <th className="px-4 py-3 text-left">Assegnato a</th>}
+                {canSeeTeam && <th className="px-4 py-3 text-left">Creato da</th>}
+                {canSeeTeam && <th className="px-4 py-3 text-left">Assegnato a</th>}
                 <th className="px-4 py-3 text-left">Data</th>
                 <th className="px-4 py-3 text-left">Durata</th>
                 <th className="px-4 py-3"></th>
@@ -271,14 +498,9 @@ export default function TicketList() {
                     selected.has(t.id) ? "bg-blue-50" : "odd:bg-white even:bg-gray-50/50"
                   }`}
                 >
-                  {isAdmin && (
+                  {canSeeTeam && (
                     <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(t.id)}
-                        onChange={() => toggleOne(t.id)}
-                        className="rounded border-gray-300 text-[#2563eb] cursor-pointer"
-                      />
+                      <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleOne(t.id)} className="rounded border-gray-300 text-[#2563eb] cursor-pointer" />
                     </td>
                   )}
                   <td className="px-4 py-3 font-mono text-xs text-gray-500">
@@ -295,7 +517,7 @@ export default function TicketList() {
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
-                  {isAdmin && (
+                  {canSeeTeam && (
                     <td className="px-4 py-3 text-xs">
                       {t.team_name ? (
                         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
@@ -306,8 +528,8 @@ export default function TicketList() {
                   )}
                   <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
                   <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
-                  {isAdmin && <td className="px-4 py-3 text-xs text-gray-600">{t.creator_name ?? "—"}</td>}
-                  {isAdmin && <td className="px-4 py-3 text-xs text-gray-500">{t.assignee_name ?? "—"}</td>}
+                  {canSeeTeam && <td className="px-4 py-3 text-xs text-gray-600">{t.creator_name ?? "—"}</td>}
+                  {canSeeTeam && <td className="px-4 py-3 text-xs text-gray-500">{t.assignee_name ?? "—"}</td>}
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {new Date(t.created_at).toLocaleDateString("it-IT")}
                   </td>
@@ -331,7 +553,7 @@ export default function TicketList() {
       </div>
 
       {/* Barra azioni bulk */}
-      {isAdmin && selected.size > 0 && (
+      {canSeeTeam && selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
           <div className="flex items-center gap-3 bg-[#1e3a5f] text-white rounded-2xl shadow-2xl px-5 py-3">
             <CheckSquare size={16} className="text-white/70 shrink-0" />

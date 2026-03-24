@@ -7,8 +7,8 @@ Create Date: 2026-03-23
 from alembic import op
 import sqlalchemy as sa
 
-revision = 'd01a_rename_user_type_to_department'
-down_revision = 'c13a15_add_support_error_codes'
+revision = 'd01a'
+down_revision = 'c13a15'
 branch_labels = None
 depends_on = None
 

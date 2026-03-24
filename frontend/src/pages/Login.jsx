@@ -11,6 +11,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setModules = useAuthStore((s) => s.setModules)
   const navigate = useNavigate()
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -19,6 +20,11 @@ export default function Login() {
     try {
       const { data } = await authApi.login(username, password)
       setAuth(data.user, data.access_token, data.refresh_token)
+      // Carica i permessi modulo subito dopo il login
+      try {
+        const { data: modules } = await authApi.getMyModules()
+        setModules(modules)
+      } catch {}
       navigate("/", { replace: true })
     } catch (err) {
       setError(err.response?.data?.detail || "Errore di connessione")

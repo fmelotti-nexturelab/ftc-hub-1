@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 
 /**
  * Team che richiedono il codice TeamViewer prima della creazione.
@@ -18,6 +19,10 @@ const TEAMVIEWER_TEAMS = ["IT"]
 export default function TeamSelectModal({ analysis, onSelect, onClose, isPending }) {
   const [pendingTeam, setPendingTeam] = useState(null)
   const [teamviewerCode, setTeamviewerCode] = useState("")
+  const [showAllTeams, setShowAllTeams] = useState(false)
+
+  const suggestedIds = new Set((analysis.suggested_teams || []).map(t => t.id))
+  const otherTeams = (analysis.all_teams || []).filter(t => !suggestedIds.has(t.id))
 
   const handleTeamSelect = (team) => {
     if (TEAMVIEWER_TEAMS.includes(team.name.toUpperCase())) {
@@ -78,17 +83,50 @@ export default function TeamSelectModal({ analysis, onSelect, onClose, isPending
             </div>
 
             {analysis.suggested_teams?.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {analysis.suggested_teams.map(team => (
-                  <button
-                    key={team.id}
-                    onClick={() => handleTeamSelect(team)}
-                    disabled={isPending}
-                    className={btnPrimary}
-                  >
-                    {team.name}
-                  </button>
-                ))}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    Suggerito dall'AI
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.suggested_teams.map(team => (
+                      <button
+                        key={team.id}
+                        onClick={() => handleTeamSelect(team)}
+                        disabled={isPending}
+                        className={btnPrimary}
+                      >
+                        {team.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {otherTeams.length > 0 && (
+                  <div>
+                    <button
+                      onClick={() => setShowAllTeams(v => !v)}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
+                    >
+                      {showAllTeams ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      Scegli un team diverso
+                    </button>
+                    {showAllTeams && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {otherTeams.map(team => (
+                          <button
+                            key={team.id}
+                            onClick={() => handleTeamSelect(team)}
+                            disabled={isPending}
+                            className={btnSecondary}
+                          >
+                            {team.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">

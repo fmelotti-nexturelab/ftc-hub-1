@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as Tabs from "@radix-ui/react-tabs"
-import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Users, AlertCircle, Check, X } from "lucide-react"
+import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Users, AlertCircle, Check, X, Search } from "lucide-react"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { ticketsApi } from "@/api/tickets"
 
@@ -20,6 +20,133 @@ function ConfirmDelete({ label, onConfirm, onCancel }) {
         <X size={13} />
       </button>
     </span>
+  )
+}
+
+// ── MultiUserSelect ───────────────────────────────────────────────────────────
+
+function MultiUserSelect({ users, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState("")
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 })
+  const triggerRef = useRef(null)
+  const dropRef = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target) &&
+        dropRef.current && !dropRef.current.contains(e.target)
+      ) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect()
+      const dropHeight = 280 // max altezza stimata dropdown
+      const spaceBelow = window.innerHeight - r.bottom
+      const openUpward = spaceBelow < dropHeight
+      if (openUpward) {
+        setDropPos({ bottom: window.innerHeight - r.top + 4, top: "auto", left: r.left, width: r.width })
+      } else {
+        setDropPos({ top: r.bottom + 4, bottom: "auto", left: r.left, width: r.width })
+      }
+    }
+    setOpen(v => !v)
+  }
+
+  const filtered = users.filter(u =>
+    (u.full_name || u.username).toLowerCase().includes(search.toLowerCase())
+  )
+
+  const toggle = (id) => {
+    const next = new Set(selected)
+    next.has(id) ? next.delete(id) : next.add(id)
+    onChange(next)
+  }
+
+  const label = selected.size === 0
+    ? "Seleziona utenti..."
+    : `${selected.size} utente${selected.size > 1 ? "i" : ""} selezionato${selected.size > 1 ? "i" : ""}`
+
+  return (
+    <div className="relative flex-1">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={handleOpen}
+        className="w-full flex items-center justify-between text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white hover:border-[#2563eb] outline-none text-left transition"
+      >
+        <span className={selected.size === 0 ? "text-gray-400" : "text-gray-700 font-medium"}>
+          {label}
+        </span>
+        <ChevronDown size={13} className="text-gray-400 shrink-0" />
+      </button>
+
+      {open && (
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: dropPos.top, bottom: dropPos.bottom, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+          className="bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden"
+        >
+          {/* Search */}
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
+            <Search size={13} className="text-gray-400 shrink-0" />
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cerca per nome..."
+              className="flex-1 text-xs outline-none bg-transparent"
+            />
+            {search && (
+              <button onClick={() => setSearch("")} className="text-gray-300 hover:text-gray-500">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="max-h-60 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">Nessun utente trovato</p>
+            ) : (
+              filtered.map(u => {
+                const checked = selected.has(u.id)
+                return (
+                  <div
+                    key={u.id}
+                    onClick={() => toggle(u.id)}
+                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-blue-50 transition ${checked ? "bg-blue-50/70" : ""}`}
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${checked ? "bg-[#1e3a5f] border-[#1e3a5f]" : "border-gray-300"}`}>
+                      {checked && <Check size={10} className="text-white" />}
+                    </div>
+                    <div className="w-6 h-6 rounded-full bg-[#1e3a5f]/10 flex items-center justify-center text-[10px] font-bold text-[#1e3a5f] shrink-0">
+                      {(u.full_name || u.username)[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs text-gray-700">{u.full_name || u.username}</span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100 px-3 py-2 flex justify-between items-center bg-gray-50">
+            <span className="text-xs text-gray-400">{selected.size > 0 ? `${selected.size} selezionati` : `${filtered.length} disponibili`}</span>
+            {selected.size > 0 && (
+              <button onClick={() => onChange(new Set())} className="text-xs text-gray-400 hover:text-gray-600 underline">
+                Deseleziona tutti
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -277,8 +404,9 @@ function TeamsTab() {
   const [editingTeam, setEditingTeam] = useState(null) // null | "new" | {id,...}
   const [teamForm, setTeamForm] = useState({ name: "", email: "", description: "" })
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [addMemberUserId, setAddMemberUserId] = useState("")
+  const [addMemberUserIds, setAddMemberUserIds] = useState(new Set())
   const [addMemberLead, setAddMemberLead] = useState(false)
+  const [addingMembers, setAddingMembers] = useState(false)
 
   const { data: teams = [] } = useQuery({
     queryKey: ["admin-teams"],
@@ -309,10 +437,22 @@ function TeamsTab() {
     mutationFn: (id) => ticketConfigApi.deleteTeam(id),
     onSuccess: () => { qc.invalidateQueries(["admin-teams"]); setConfirmDelete(null) },
   })
-  const addMember = useMutation({
-    mutationFn: ({ teamId, data }) => ticketConfigApi.addTeamMember(teamId, data),
-    onSuccess: () => { qc.invalidateQueries(["admin-team-members", expandedTeamId]); setAddMemberUserId("") },
-  })
+  const handleAddMembers = async (teamId) => {
+    if (addMemberUserIds.size === 0) return
+    setAddingMembers(true)
+    try {
+      await Promise.all(
+        [...addMemberUserIds].map(userId =>
+          ticketConfigApi.addTeamMember(teamId, { user_id: userId, is_team_lead: addMemberLead })
+        )
+      )
+      qc.invalidateQueries(["admin-team-members", expandedTeamId])
+      setAddMemberUserIds(new Set())
+      setAddMemberLead(false)
+    } finally {
+      setAddingMembers(false)
+    }
+  }
   const removeMember = useMutation({
     mutationFn: ({ teamId, userId }) => ticketConfigApi.removeTeamMember(teamId, userId),
     onSuccess: () => { qc.invalidateQueries(["admin-team-members", expandedTeamId]) },
@@ -324,9 +464,12 @@ function TeamsTab() {
 
   const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition text-sm"
 
-  // Utenti non ancora nel team
+  // Utenti non ancora nel team, escludi STORE e STOREMANAGER
   const memberUserIds = new Set(members.map(m => m.user_id))
-  const availableUsers = allUsers.filter(u => !memberUserIds.has(u.id))
+  const availableUsers = allUsers.filter(u =>
+    !memberUserIds.has(u.id) &&
+    !["STORE", "STOREMANAGER"].includes(u.department)
+  )
 
   return (
     <div className="space-y-3">
@@ -435,21 +578,14 @@ function TeamsTab() {
 
               {expandedTeamId === team.id && (
                 <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/50">
-                  {/* Aggiungi membro */}
+                  {/* Aggiungi membri */}
                   <div className="flex gap-2 items-center">
-                    <select
-                      value={addMemberUserId}
-                      onChange={e => setAddMemberUserId(e.target.value)}
-                      className="flex-1 text-xs px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2563eb] outline-none"
-                    >
-                      <option value="">Aggiungi utente...</option>
-                      {availableUsers.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.full_name || u.username}
-                        </option>
-                      ))}
-                    </select>
-                    <label className="flex items-center gap-1 text-xs text-gray-600">
+                    <MultiUserSelect
+                      users={availableUsers}
+                      selected={addMemberUserIds}
+                      onChange={setAddMemberUserIds}
+                    />
+                    <label className="flex items-center gap-1 text-xs text-gray-600 shrink-0">
                       <input
                         type="checkbox"
                         checked={addMemberLead}
@@ -459,18 +595,12 @@ function TeamsTab() {
                       Team lead
                     </label>
                     <button
-                      onClick={() => {
-                        if (!addMemberUserId) return
-                        addMember.mutate({
-                          teamId: team.id,
-                          data: { user_id: addMemberUserId, is_team_lead: addMemberLead },
-                        })
-                        setAddMemberLead(false)
-                      }}
-                      disabled={!addMemberUserId || addMember.isPending}
-                      className="text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-2 rounded-lg transition disabled:opacity-40"
+                      onClick={() => handleAddMembers(team.id)}
+                      disabled={addMemberUserIds.size === 0 || addingMembers}
+                      className="flex items-center gap-1 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-2 rounded-lg transition disabled:opacity-40 shrink-0"
                     >
                       <Plus size={13} />
+                      {addMemberUserIds.size > 1 ? `Aggiungi (${addMemberUserIds.size})` : "Aggiungi"}
                     </button>
                   </div>
 
@@ -531,6 +661,8 @@ function RoutingRulesTab() {
     subcategory_id: "",
     team_id: "",
     assigned_user_id: "",
+    backup_user_id_1: "",
+    backup_user_id_2: "",
     priority_override: "",
   })
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -558,9 +690,20 @@ function RoutingRulesTab() {
   })
   const allUsers = usersData?.users ?? []
 
+  // Membri del team selezionato (per filtrare i dropdown utenti)
+  const { data: formTeamMembers = [] } = useQuery({
+    queryKey: ["admin-team-members", form.team_id],
+    queryFn: () => ticketConfigApi.getTeamMembers(parseInt(form.team_id)).then(r => r.data),
+    enabled: !!form.team_id,
+  })
+  const teamMemberIds = new Set(formTeamMembers.map(m => m.user_id))
+  const userOptions = form.team_id
+    ? allUsers.filter(u => teamMemberIds.has(u.id))
+    : allUsers
+
   const createRule = useMutation({
     mutationFn: (data) => ticketConfigApi.createRoutingRule(data),
-    onSuccess: () => { qc.invalidateQueries(["admin-routing-rules"]); setShowForm(false); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", priority_override: "" }) },
+    onSuccess: () => { qc.invalidateQueries(["admin-routing-rules"]); setShowForm(false); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }) },
   })
   const deleteRule = useMutation({
     mutationFn: (id) => ticketConfigApi.deleteRoutingRule(id),
@@ -572,6 +715,11 @@ function RoutingRulesTab() {
     setForm(f => {
       const next = { ...f, [k]: val }
       if (k === "category_id") next.subcategory_id = ""
+      if (k === "team_id") {
+        next.assigned_user_id = ""
+        next.backup_user_id_1 = ""
+        next.backup_user_id_2 = ""
+      }
       return next
     })
   }
@@ -628,10 +776,27 @@ function RoutingRulesTab() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Utente specifico</label>
-              <select value={form.assigned_user_id} onChange={setF("assigned_user_id")} className={selectClass}>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Utente principale
+                {!form.team_id && <span className="ml-1 font-normal text-gray-400">(seleziona prima un team)</span>}
+              </label>
+              <select value={form.assigned_user_id} onChange={setF("assigned_user_id")} className={selectClass} disabled={!form.team_id}>
                 <option value="">Nessun utente</option>
-                {allUsers.map(u => <option key={u.id} value={u.id}>{u.full_name || u.username}</option>)}
+                {userOptions.map(u => <option key={u.id} value={u.id}>{u.full_name || u.username}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Utente Backup 1</label>
+              <select value={form.backup_user_id_1} onChange={setF("backup_user_id_1")} className={selectClass} disabled={!form.team_id}>
+                <option value="">Nessun backup</option>
+                {userOptions.map(u => <option key={u.id} value={u.id}>{u.full_name || u.username}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Utente Backup 2</label>
+              <select value={form.backup_user_id_2} onChange={setF("backup_user_id_2")} className={selectClass} disabled={!form.team_id}>
+                <option value="">Nessun backup</option>
+                {userOptions.map(u => <option key={u.id} value={u.id}>{u.full_name || u.username}</option>)}
               </select>
             </div>
             <div>
@@ -651,6 +816,8 @@ function RoutingRulesTab() {
                   subcategory_id: form.subcategory_id ? parseInt(form.subcategory_id) : null,
                   team_id: form.team_id ? parseInt(form.team_id) : null,
                   assigned_user_id: form.assigned_user_id || null,
+                  backup_user_id_1: form.backup_user_id_1 || null,
+                  backup_user_id_2: form.backup_user_id_2 || null,
                   priority_override: form.priority_override || null,
                 }
                 createRule.mutate(payload)
@@ -675,7 +842,9 @@ function RoutingRulesTab() {
                 <th className="px-4 py-3 text-left">Categoria</th>
                 <th className="px-4 py-3 text-left">Sottocategoria</th>
                 <th className="px-4 py-3 text-left">Team</th>
-                <th className="px-4 py-3 text-left">Utente</th>
+                <th className="px-4 py-3 text-left">Utente principale</th>
+                <th className="px-4 py-3 text-left">Backup 1</th>
+                <th className="px-4 py-3 text-left">Backup 2</th>
                 <th className="px-4 py-3 text-left">Priorità</th>
                 <th className="px-4 py-3 text-left">Stato</th>
                 <th className="px-4 py-3 text-left"></th>
@@ -691,7 +860,9 @@ function RoutingRulesTab() {
                       <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">{rule.team_name}</span>
                     ) : "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{rule.assigned_user_id ? rule.assigned_user_id.slice(0, 8) + "..." : "—"}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600">{rule.assigned_user_name ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{rule.backup_user_name_1 ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{rule.backup_user_name_2 ?? "—"}</td>
                   <td className="px-4 py-3">
                     {rule.priority_override ? (
                       <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-xs font-medium">{rule.priority_override}</span>

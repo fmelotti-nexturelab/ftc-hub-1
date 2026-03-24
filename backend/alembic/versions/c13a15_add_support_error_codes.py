@@ -182,19 +182,16 @@ def upgrade() -> None:
     )
     op.create_index("ix_support_error_codes_code", "support_error_codes", ["code"], schema="auth")
 
-    table = sa.table(
-        "support_error_codes",
-        sa.column("id", UUID()),
-        sa.column("code", sa.String),
-        sa.column("module", sa.String),
-        sa.column("description", sa.String),
-        sa.column("prompt", sa.Text),
-    )
-    op.bulk_insert(table, [
-        {"id": uuid.uuid4(), "code": code, "module": module,
-         "description": description, "prompt": prompt}
-        for code, module, description, prompt in CODES
-    ])
+    conn = op.get_bind()
+    for code, module, description, prompt in CODES:
+        conn.execute(
+            sa.text(
+                "INSERT INTO auth.support_error_codes (id, code, module, description, prompt) "
+                "VALUES (:id, :code, :module, :description, :prompt)"
+            ),
+            {"id": str(uuid.uuid4()), "code": code, "module": module,
+             "description": description, "prompt": prompt}
+        )
 
 
 def downgrade() -> None:

@@ -57,6 +57,8 @@ class Ticket(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     closed_at = Column(DateTime(timezone=True), nullable=True)
+    taken_at = Column(DateTime(timezone=True), nullable=True)       # quando qualcuno ha preso in carico
+    resolution_minutes = Column(Integer, nullable=True)             # taken_at → closed_at (minuti)
 
 
 class TicketComment(Base):

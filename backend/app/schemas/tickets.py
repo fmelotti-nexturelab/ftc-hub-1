@@ -31,6 +31,10 @@ class TicketAssignUpdate(BaseModel):
     assigned_to: Optional[UUID] = None
 
 
+class TicketForwardUpdate(BaseModel):
+    team_id: int
+
+
 class TicketBulkAction(BaseModel):
     ticket_ids: List[UUID]
     action: str                       # "close" | "status" | "assign"
@@ -42,6 +46,7 @@ class UserBrief(BaseModel):
     id: UUID
     username: str
     full_name: Optional[str] = None
+    department: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -67,6 +72,8 @@ class TicketResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
+    taken_at: Optional[datetime] = None
+    resolution_minutes: Optional[int] = None
     # Denormalizzati per la UI
     creator_name: Optional[str] = None
     assignee_name: Optional[str] = None

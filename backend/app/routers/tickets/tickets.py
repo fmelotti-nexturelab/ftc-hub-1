@@ -22,6 +22,7 @@ from app.schemas.tickets import (
     CommentCreate,
     CommentResponse,
     TicketAssignUpdate,
+    TicketForwardUpdate,
     TicketBulkAction,
     TicketCreate,
     TicketResponse,
@@ -184,7 +185,7 @@ async def requester_defaults(
     else:
         email = current_user.email
 
-    return {"name": name, "email": email}
+    return {"name": name, "email": email, "phone": current_user.phone or ""}
 
 
 # ── Ticket CRUD ───────────────────────────────────────────────────────────────
@@ -215,14 +216,20 @@ async def list_tickets(
     team_id: Optional[int] = Query(None),
     created_by_id: Optional[UUID] = Query(None),
     assigned_to_id: Optional[UUID] = Query(None),
+    my_team: bool = Query(False),
+    include_closed: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     is_manager = await _check_manage(db, current_user)
+    # include_closed solo per STORE/STOREMANAGER (storico view)
+    department = getattr(current_user, "department", None)
+    allow_closed = include_closed and department in (UserDepartment.STORE, UserDepartment.STOREMANAGER)
     return await ticket_service.get_tickets(
         db, current_user, is_manager,
         status=status, priority=priority, category_id=category_id,
         team_id=team_id, created_by_id=created_by_id, assigned_to_id=assigned_to_id,
+        my_team=my_team, include_closed=allow_closed,
     )
 
 
@@ -247,6 +254,41 @@ async def bulk_action(
     db: AsyncSession = Depends(get_db),
 ):
     return await ticket_service.bulk_action(db, data)
+
+
+# ── Admin DB management ───────────────────────────────────────────────────────
+
+from pydantic import BaseModel as _BaseModel
+
+class _TruncateRequest(_BaseModel):
+    password: str
+
+@router.get(
+    "/admin/all",
+    response_model=List[TicketResponse],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def admin_list_all(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Tutti i ticket (inclusi chiusi) — solo per gestione DB."""
+    return await ticket_service.admin_get_all(db)
+
+
+@router.delete(
+    "/admin/truncate",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def admin_truncate(
+    data: _TruncateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Svuota la tabella ticket previa verifica password."""
+    if data.password != "admink":
+        raise HTTPException(status_code=403, detail="Password non corretta")
+    deleted = await ticket_service.admin_truncate_tickets(db)
+    return {"deleted": deleted, "message": f"Eliminati {deleted} ticket"}
 
 
 # ── Storico ticket chiusi ─────────────────────────────────────────────────────
@@ -313,6 +355,22 @@ async def assign_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     return await ticket_service.assign_ticket(db, ticket_id, data)
+
+
+# ── Inoltra ticket ────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{ticket_id}/forward",
+    response_model=TicketResponse,
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def forward_ticket(
+    ticket_id: UUID,
+    data: TicketForwardUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Inoltra il ticket a un team: resetta assegnatario, rimette in OPEN."""
+    return await ticket_service.forward_ticket(db, ticket_id, data.team_id)
 
 
 # ── Prendi in carico ──────────────────────────────────────────────────────────

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC HUB — Inicio de sesión y Perfil de Usuario</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+    header { background: #1e3a5f; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    main { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
+    .close-btn { position: fixed; top: 16px; right: 24px; background: #ef4444; color: white; border: none; border-radius: 10px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(239,68,68,0.4); transition: background 0.2s; z-index: 999; }
+    .close-btn:hover { background: #dc2626; }
+    .section { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; }
+    .section-title { font-size: 17px; font-weight: 700; color: #1e3a5f; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .section-title .icon { font-size: 20px; }
+    p { font-size: 14px; color: #374151; margin-bottom: 12px; }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li { font-size: 14px; color: #374151; margin-bottom: 6px; }
+    .note { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #1e40af; }
+    .warning { background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #92400e; }
+    .success { background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #166534; }
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li { counter-increment: step; display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start; }
+    .steps li::before { content: counter(step); background: #1e3a5f; color: white; font-weight: 700; font-size: 12px; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .steps li .step-text { font-size: 14px; color: #374151; }
+    .img-placeholder { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 30px; text-align: center; color: #94a3b8; font-size: 13px; margin: 16px 0; }
+    .btn-label { display: inline-block; background: #1e3a5f; color: white; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 0 2px; }
+    .field-label { display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid #e2e8f0; margin: 0 2px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+    th { background: #1e3a5f; color: white; padding: 10px 14px; text-align: left; font-weight: 700; }
+    td { padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .footer { text-align: center; padding: 30px 20px; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <button class="close-btn" onclick="window.close()">✕ Cerrar</button>
+  <header>
+    <div>
+      <h1>🔐 Inicio de sesión y Perfil de Usuario</h1>
+      <p><a href="index.html" style="color:rgba(255,255,255,0.6);text-decoration:none;">← Volver a las guías</a></p>
+    </div>
+  </header>
+  <main>
+
+    <!-- INTRO -->
+    <div class="section">
+      <div class="section-title"><span class="icon">📘</span> Introducción</div>
+      <p>Esta guía describe los procedimientos para acceder a <strong>FTC HUB</strong>, completar el primer inicio de sesión y gestionar el perfil de usuario, incluido el cambio de contraseña.</p>
+      <div class="note">🌐 <strong>Dirección de la aplicación:</strong> <a href="https://hub.nexturelab.com" target="_blank">https://hub.nexturelab.com</a></div>
+    </div>
+
+    <!-- SECCIÓN 1: Acceso al sistema -->
+    <div class="section">
+      <div class="section-title"><span class="icon">🔑</span> 1. Acceso al sistema</div>
+      <p>Esta sección describe el procedimiento para acceder a FTC HUB.</p>
+      <ol class="steps">
+        <li><div class="step-text">Abrir el navegador <em>(Chrome, Edge, Safari, Firefox)</em> y navegar a la dirección <strong>https://hub.nexturelab.com</strong></div></li>
+        <li><div class="step-text">En la pantalla de inicio de sesión, introducir su <span class="field-label">Nombre de usuario</span> en el campo correspondiente (ver tabla a continuación para el formato)</div></li>
+        <li><div class="step-text">Introducir la <span class="field-label">Contraseña</span> recibida</div></li>
+        <li><div class="step-text">Hacer clic en el botón <span class="btn-label">Acceder</span></div></li>
+        <li><div class="step-text">Si las credenciales son correctas, será redirigido al <strong>Dashboard</strong> principal</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Captura de pantalla: pantalla de inicio de sesión de FTC HUB con campos de nombre de usuario y contraseña</div>
+
+      <p><strong>Formato de nombre de usuario por rol:</strong></p>
+      <table>
+        <tr><th>Rol</th><th>Formato de usuario</th><th>Ejemplo</th></tr>
+        <tr><td><strong>Store Manager</strong></td><td>Código de tienda</td><td>IT01001</td></tr>
+        <tr><td><strong>District Manager</strong></td><td>Código personal (raíz del correo)</td><td>marros</td></tr>
+        <tr><td><strong>Head Office (HO)</strong></td><td>Nombre y apellido</td><td>Mario Rossi</td></tr>
+      </table>
+
+      <div class="warning">⚠️ <strong>En caso de error:</strong> Si aparece el mensaje "Credenciales no válidas", verifique que ha introducido correctamente el nombre de usuario y la contraseña. Después de varios intentos fallidos, contacte al administrador del sistema.</div>
+      <div class="success">✅ <strong>Sesión persistente:</strong> La sesión permanece activa: no es necesario iniciar sesión en cada visita.</div>
+    </div>
+
+    <!-- SECCIÓN 2: Primer acceso -->
+    <div class="section">
+      <div class="section-title"><span class="icon">🆕</span> 2. Primer acceso</div>
+      <p>Qué hacer en el primer acceso al sistema.</p>
+      <ol class="steps">
+        <li><div class="step-text">En el primer acceso, utilizar la <strong>contraseña temporal</strong> recibida por correo electrónico o comunicada por su responsable</div></li>
+        <li><div class="step-text">Después de iniciar sesión, <strong>cambiar inmediatamente la contraseña</strong> desde la sección Perfil (ver Sección 3)</div></li>
+        <li><div class="step-text">Elegir una contraseña segura y personal</div></li>
+      </ol>
+      <div class="warning">🔒 <strong>Atención:</strong> Se recomienda utilizar una contraseña diferente a la utilizada para acceder a otros servicios de la empresa.</div>
+    </div>
+
+    <!-- SECCIÓN 3: Gestión del Perfil -->
+    <div class="section">
+      <div class="section-title"><span class="icon">👤</span> 3. Gestión del Perfil</div>
+      <p>Cómo acceder y modificar sus datos personales y contraseña.</p>
+
+      <p><strong>3.1 — Acceder al Perfil</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">En la barra lateral izquierda (sidebar), localizar su <strong>nombre de usuario</strong> que aparece en la parte inferior</div></li>
+        <li><div class="step-text">Hacer clic en su nombre para abrir la página de <strong>Perfil</strong></div></li>
+      </ol>
+      <div class="img-placeholder">📸 Captura de pantalla: barra lateral con el nombre de usuario destacado en la parte inferior izquierda</div>
+
+      <p><strong>3.2 — Modificar datos personales</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">En la sección <strong>"Datos personales"</strong> es posible modificar: <span class="field-label">Nombre de usuario</span>, <span class="field-label">Email</span>, <span class="field-label">Teléfono</span></div></li>
+        <li><div class="step-text">Realizar los cambios deseados en los campos editables</div></li>
+        <li><div class="step-text">Hacer clic en el botón <span class="btn-label">Guardar cambios</span> para confirmar</div></li>
+        <li><div class="step-text">Los cambios son <strong>inmediatos</strong> y se activan de inmediato</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Captura de pantalla: sección "Datos personales" con campos Nombre de usuario, Email, Teléfono y botón Guardar cambios</div>
+
+      <p><strong>3.3 — Cambio de contraseña</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">En la sección <strong>"Cambiar contraseña"</strong>, introducir la <span class="field-label">Contraseña actual</span></div></li>
+        <li><div class="step-text">Introducir la <span class="field-label">Nueva contraseña</span> elegida</div></li>
+        <li><div class="step-text">Volver a introducir la nueva contraseña en el campo <span class="field-label">Confirmar contraseña</span></div></li>
+        <li><div class="step-text">Hacer clic en el botón <span class="btn-label">Actualizar contraseña</span></div></li>
+        <li><div class="step-text">La nueva contraseña está <strong>activa inmediatamente</strong>: utilícela desde el próximo inicio de sesión</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Captura de pantalla: sección "Cambiar contraseña" con campos contraseña actual, nueva contraseña, confirmación y botón "Actualizar contraseña"</div>
+      <div class="note">💡 <strong>Consejo:</strong> Para una contraseña segura, utilice al menos 8 caracteres, incluyendo letras mayúsculas, minúsculas, números y un carácter especial (ej. ! @ #).</div>
+    </div>
+
+    <!-- SECCIÓN 4: Resumen rápido -->
+    <div class="section">
+      <div class="section-title"><span class="icon">⚡</span> 4. Resumen rápido</div>
+      <table>
+        <tr><th>Acción</th><th>Dónde</th><th>Botón</th></tr>
+        <tr><td>Inicio de sesión</td><td>Página de inicio</td><td><span class="btn-label">Acceder</span></td></tr>
+        <tr><td>Abrir el perfil</td><td>Sidebar → nombre de usuario en la parte inferior izquierda</td><td>—</td></tr>
+        <tr><td>Modificar datos</td><td>Perfil → Datos personales</td><td><span class="btn-label">Guardar cambios</span></td></tr>
+        <tr><td>Cambiar contraseña</td><td>Perfil → Cambiar contraseña</td><td><span class="btn-label">Actualizar contraseña</span></td></tr>
+      </table>
+      <div class="note">📞 <strong>¿Necesita ayuda?</strong> Para problemas de acceso o preguntas, contacte al administrador del sistema o al departamento de IT.</div>
+    </div>
+
+  </main>
+  <div class="footer">
+    <p><strong>Fausto Melotti</strong> — FTC HUB Administrator</p>
+    <p style="margin-top:8px;">© 2026 FTC HUB — Todos los derechos reservados. Este documento es estrictamente confidencial y está destinado exclusivamente a los empleados autorizados. La reproducción, distribución o divulgación, incluso parcial, está prohibida sin autorización escrita.</p>
+  </div>
+</body>
+</html>

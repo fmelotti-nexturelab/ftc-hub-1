@@ -11,7 +11,8 @@ from app.core.security import (
     verify_password, get_password_hash,
     create_access_token, create_refresh_token
 )
-from app.core.dependencies import get_current_user, require_admin
+from app.core.dependencies import get_current_user, require_admin, _user_can_access_module
+from app.models.modules import Module
 from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -104,6 +105,26 @@ async def logout(current_user: User = Depends(get_current_user), db: AsyncSessio
 @router.get("/me", response_model=UserInfo)
 async def get_me(current_user: User = Depends(get_current_user)):
     return UserInfo.model_validate(current_user)
+
+
+@router.get("/my-modules")
+async def get_my_modules(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permessi effettivi dell'utente corrente per ogni modulo attivo."""
+    result = await db.execute(
+        select(Module).where(Module.is_active == True).order_by(Module.sort_order)
+    )
+    modules = result.scalars().all()
+
+    permissions = {}
+    for module in modules:
+        can_view = await _user_can_access_module(db, current_user, module.code, need_manage=False)
+        can_manage = await _user_can_access_module(db, current_user, module.code, need_manage=True)
+        permissions[module.code] = {"can_view": can_view, "can_manage": can_manage}
+
+    return permissions
 
 @router.get("/profile", response_model=ProfileResponse)
 async def get_profile(current_user: User = Depends(get_current_user)):

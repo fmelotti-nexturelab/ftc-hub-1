@@ -81,6 +81,8 @@ class TicketRoutingRuleModel(Base):
     subcategory_id = Column(Integer, ForeignKey("tickets.ticket_subcategories.id"), nullable=True)
     team_id = Column(Integer, ForeignKey("tickets.ticket_teams.id"), nullable=True)
     assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
+    backup_user_id_1 = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
+    backup_user_id_2 = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
     priority_override = Column(String(20), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

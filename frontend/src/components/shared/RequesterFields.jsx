@@ -2,10 +2,11 @@
  * RequesterFields — sezione "Dati richiedente" riutilizzabile.
  *
  * Props:
- *   values: { requester_name, requester_phone, requester_email }
+ *   values:   { requester_name, requester_phone, requester_email }
  *   onChange: (field, value) => void
+ *   defaults: { name, phone, email }  — usati come placeholder dal DB
  */
-export default function RequesterFields({ values, onChange }) {
+export default function RequesterFields({ values, onChange, defaults = {} }) {
   const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
   const set = (field) => (e) => onChange(field, e.target.value)
 
@@ -19,7 +20,7 @@ export default function RequesterFields({ values, onChange }) {
             type="text"
             value={values.requester_name}
             onChange={set("requester_name")}
-            placeholder="Nome e Cognome"
+            placeholder={defaults.name || "Nome e Cognome"}
             className={inputClass}
           />
         </div>
@@ -29,7 +30,7 @@ export default function RequesterFields({ values, onChange }) {
             type="tel"
             value={values.requester_phone}
             onChange={set("requester_phone")}
-            placeholder="+39 ..."
+            placeholder={defaults.phone || "+39 ..."}
             className={inputClass}
           />
         </div>
@@ -41,7 +42,7 @@ export default function RequesterFields({ values, onChange }) {
             type="email"
             value={values.requester_email}
             onChange={set("requester_email")}
-            placeholder="es. mario.rossi@email.com"
+            placeholder={defaults.email || "es. mario.rossi@email.com"}
             className={inputClass}
           />
         </div>

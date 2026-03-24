@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC HUB — Test Gestione Utenti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+    header { background: #1e3a5f; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .back-btn { background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    main { max-width: 860px; margin: 32px auto; padding: 0 20px 60px; }
+    .intro { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; font-size: 13px; color: #475569; line-height: 1.8; }
+    .intro strong { color: #1e3a5f; }
+    .progress-bar-wrap { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 24px; margin-bottom: 28px; }
+    .progress-label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+    .progress-bar { width: 100%; height: 8px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: #1e3a5f; border-radius: 99px; transition: width 0.3s; }
+    .section { margin-bottom: 28px; }
+    .section-header { background: #1e3a5f; color: white; padding: 10px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; }
+    .section-header h2 { font-size: 13px; font-weight: 700; }
+    .section-counter { font-size: 11px; color: rgba(255,255,255,0.6); }
+    .section-body { background: white; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+    .test-item { border-bottom: 1px solid #f1f5f9; }
+    .test-item:last-child { border-bottom: none; }
+    .test-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 20px; cursor: pointer; }
+    .test-row:hover { background: #f8fafc; }
+    .test-row input[type=checkbox] { margin-top: 2px; width: 16px; height: 16px; accent-color: #1e3a5f; cursor: pointer; flex-shrink: 0; }
+    .test-content { flex: 1; }
+    .test-action { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 3px; }
+    .test-action.done { text-decoration: line-through; color: #94a3b8; }
+    .test-expected { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+    .error-inline { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .error-code-badge { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: #991b1b; }
+    .error-code-badge .code { font-family: monospace; font-weight: 700; font-size: 13px; color: #dc2626; }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 28px; justify-content: flex-end; }
+    .btn { padding: 8px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
+    .btn-primary { background: #1e3a5f; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: white; color: #64748b; border: 1px solid #e2e8f0; }
+    .btn-secondary:hover { background: #f8fafc; }
+    @media print { header .back-btn { display: none; } .btn-row { display: none; } body { background: white; } }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🧪 Test — Gestione Utenti</h1>
+    <p>Guida per il tester — segui ogni passo e spunta le voci completate con successo</p>
+  </div>
+  <a href="index.html" class="back-btn">← Indietro</a>
+</header>
+<main>
+  <div class="intro">
+    <strong>Come usare questa guida:</strong> esegui ogni test nell'ordine indicato.
+    Se il test <strong>supera</strong> la verifica, spunta la casella e prosegui.<br><br>
+    Se il test <strong>fallisce</strong>, annota il <strong>codice errore</strong> mostrato (es.
+    <code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px;">USR-0001</code>)
+    e comunicalo al <strong>Supporto</strong>. Il Supporto utilizzerà il codice per identificare e risolvere il problema.
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-label">
+      <span>Avanzamento test</span>
+      <span id="progress-text">0 / 0 (0%)</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 Stampa</button>
+  </div>
+  <div id="test-sections"></div>
+</main>
+<script>
+const TESTS = [
+  {
+    section: "1. Login",
+    items: [
+      {
+        action: "Apri la pagina di login. Inserisci username e password di un utente ADMIN/IT attivo. Clicca «Accedi».",
+        expected: "Il login va a buon fine. Vieni portato alla dashboard principale e vedi il menu di navigazione completo.",
+        code: "USR-0001"
+      },
+      {
+        action: "Nella pagina di login, inserisci uno username valido ma una password sbagliata. Clicca «Accedi».",
+        expected: "Compare un messaggio di errore generico (es. «Credenziali non valide»). Non viene indicato se è lo username o la password ad essere errato.",
+        code: "USR-0002"
+      },
+      {
+        action: "Nella pagina di login, inserisci uno username che non esiste nel sistema (es. «utente_inventato»). Clicca «Accedi».",
+        expected: "Compare lo stesso messaggio di errore generico del test precedente. Il sistema non rivela che lo username non esiste.",
+        code: "USR-0003"
+      },
+      {
+        action: "Nella pagina di login, inserisci username e password di un utente che è stato disattivato (is_active = false). Clicca «Accedi».",
+        expected: "Il login viene rifiutato. Compare un messaggio che indica che l'account è disattivato o non attivo.",
+        code: "USR-0004"
+      },
+      {
+        action: "Nella pagina di login, inserisci uno username che contiene spazi (es. «Mario Rossi»). Inserisci la password corretta. Clicca «Accedi».",
+        expected: "Se l'utente esiste con quello username, il login funziona correttamente. Altrimenti compare errore di credenziali non valide.",
+        code: "USR-0005"
+      },
+      {
+        action: "Esegui il login con credenziali corrette. Chiudi il browser senza fare logout. Riapri il browser e torna sulla piattaforma.",
+        expected: "La sessione è ancora attiva (token JWT valido). Vieni portato alla dashboard senza dover rifare il login.",
+        code: "USR-0006"
+      },
+      {
+        action: "Dopo aver effettuato il login, clicca sul pulsante «Esci» o «Logout» nel menu utente.",
+        expected: "Vieni disconnesso e reindirizzato alla pagina di login. Se provi a tornare alla dashboard tramite URL diretto, vieni riportato al login.",
+        code: "USR-0007"
+      },
+      {
+        action: "Effettua il login, poi effettua il logout. Prova ad accedere a una pagina protetta usando il vecchio indirizzo nel browser (pulsante Indietro o URL diretto).",
+        expected: "Il sistema ti riporta alla pagina di login. Il token precedente non è più valido dopo il logout.",
+        code: "USR-0008"
+      },
+      {
+        action: "Effettua il login con un utente con ruolo HO. Osserva il menu di navigazione.",
+        expected: "L'utente HO accede alla dashboard ma NON vede la voce «Gestione Utenti» nel menu. Sono visibili solo le sezioni di sua competenza.",
+        code: "USR-0009"
+      },
+      {
+        action: "Effettua il login con un utente con ruolo STORE (es. username IT207). Osserva il menu di navigazione.",
+        expected: "L'utente STORE accede alla dashboard ma NON vede la voce «Gestione Utenti» nel menu. Vede solo le sezioni relative al proprio negozio.",
+        code: "USR-0010"
+      }
+    ]
+  },
+  {
+    section: "2. Creazione utente",
+    items: [
+      {
+        action: "Accedi come ADMIN/IT. Vai su «Gestione Utenti» → «Nuovo Utente». Compila tutti i campi (username, nome completo, email, password, ruolo, department) con valori validi. Salva.",
+        expected: "L'utente viene creato con successo. Compare un messaggio di conferma e il nuovo utente appare nella lista.",
+        code: "USR-0011"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il form di creazione utente. Lascia il campo «username» vuoto. Compila tutto il resto. Salva.",
+        expected: "Il sistema mostra un errore: il campo username è obbligatorio. L'utente non viene creato.",
+        code: "USR-0012"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il form di creazione utente. Lascia il campo «password» vuoto. Compila tutto il resto. Salva.",
+        expected: "Il sistema mostra un errore: il campo password è obbligatorio. L'utente non viene creato.",
+        code: "USR-0013"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Nel form di creazione, inserisci uno username già esistente nel sistema. Compila tutti gli altri campi. Salva.",
+        expected: "Il sistema mostra un errore: lo username è già in uso. L'utente non viene creato.",
+        code: "USR-0014"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Nel form di creazione, inserisci un'email già associata a un altro utente. Compila tutto il resto. Salva.",
+        expected: "Il sistema mostra un errore: l'email è già in uso. L'utente non viene creato.",
+        code: "USR-0015"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Nel form di creazione, inserisci un'email in formato non valido (es. «mario@», «mario.rossi», «@example.com»). Salva.",
+        expected: "Il sistema mostra un errore di validazione: l'email non ha un formato valido. Serve il formato nome@dominio.estensione.",
+        code: "USR-0016"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Nel form di creazione, prova a selezionare o digitare un ruolo non previsto (es. «GUEST»). Salva.",
+        expected: "Il sistema mostra un errore: il ruolo non è valido. Sono accettati solo ADMIN, HO, DM, STORE.",
+        code: "USR-0017"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Seleziona ruolo = STORE e department = HR. Salva.",
+        expected: "Il sistema mostra un errore: per il ruolo STORE sono ammessi solo i department STORE e STOREMANAGER.",
+        code: "USR-0018"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Seleziona ruolo = DM e department = FINANCE. Salva.",
+        expected: "Il sistema mostra un errore: per il ruolo DM è ammesso solo il department DM.",
+        code: "USR-0019"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Seleziona ruolo = HO e department = STOREMANAGER. Salva.",
+        expected: "Il sistema mostra un errore: per il ruolo HO i department ammessi sono IT, MANAGER, HR, FINANCE, MARKETING, COMMERCIAL, RETAIL, FACILITIES, TOPMGR.",
+        code: "USR-0020"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Crea un utente con ruolo STORE usando come username un codice negozio valido (es. «IT207»). Compila tutti gli altri campi. Salva.",
+        expected: "L'utente viene creato con successo. Lo username corrisponde al codice negozio nel formato corretto.",
+        code: "USR-0021"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Crea un utente con ruolo STORE usando come username un valore non conforme (es. «negozio_roma» invece di «IT207»). Salva.",
+        expected: "Il sistema mostra un errore: per il ruolo STORE lo username deve essere un codice negozio valido (formato ITXXX).",
+        code: "USR-0022"
+      },
+      {
+        action: "Accedi con un utente HO (non ADMIN e non IT). Prova ad aprire la pagina di creazione utente digitando l'URL diretto nel browser.",
+        expected: "Il sistema mostra errore 403 — Accesso negato. Solo gli utenti ADMIN/IT possono creare nuovi utenti.",
+        code: "USR-0023"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Nel form di creazione, lascia il campo «nome completo» vuoto. Compila tutti gli altri campi. Salva.",
+        expected: "Il sistema mostra un errore: il campo nome completo è obbligatorio. L'utente non viene creato.",
+        code: "USR-0024"
+      }
+    ]
+  },
+  {
+    section: "3. Modifica utente",
+    items: [
+      {
+        action: "Accedi come ADMIN/IT. Dalla lista utenti, clicca su un utente per aprirne il dettaglio. Modifica il campo «nome completo» con un nuovo valore. Salva.",
+        expected: "Il nome viene aggiornato con successo. Il nuovo valore è visibile sia nel dettaglio che nella lista utenti.",
+        code: "USR-0025"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente. Modifica il campo «email» con un indirizzo valido non già in uso. Salva.",
+        expected: "L'email viene aggiornata con successo.",
+        code: "USR-0026"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente. Modifica il campo «telefono» con un nuovo numero. Salva.",
+        expected: "Il numero di telefono viene aggiornato con successo.",
+        code: "USR-0027"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente con ruolo HO e department MARKETING. Cambia il ruolo a STORE. Salva.",
+        expected: "Il ruolo viene aggiornato a STORE. Il sistema aggiorna automaticamente il department a un valore compatibile (STORE o STOREMANAGER) oppure chiede di selezionarne uno.",
+        code: "USR-0028"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente. Cambia solo il department con un valore compatibile con il ruolo attuale. Salva.",
+        expected: "Il department viene aggiornato con successo. Il ruolo resta invariato.",
+        code: "USR-0029"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente. Clicca su «Reimposta password» e inserisci una nuova password. Salva.",
+        expected: "La password viene aggiornata. Al prossimo accesso, l'utente dovrà usare la nuova password.",
+        code: "USR-0030"
+      },
+      {
+        action: "Accedi con un utente HO. Prova ad aprire la pagina di modifica di un altro utente digitando l'URL diretto nel browser (es. /admin/users/edit/5).",
+        expected: "Il sistema mostra errore 403 — Accesso negato. Solo gli utenti ADMIN/IT possono modificare altri utenti.",
+        code: "USR-0031"
+      },
+      {
+        action: "Accedi come ADMIN/IT con department IT. Prova a modificare un utente ADMIN con department TOPMGR.",
+        expected: "Il sistema mostra un errore: non puoi modificare un utente con department di livello superiore al tuo.",
+        code: "USR-0032"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente e modifica l'email con un indirizzo già usato da un altro utente. Salva.",
+        expected: "Il sistema mostra un errore: l'email è già associata a un altro utente. La modifica non viene salvata.",
+        code: "USR-0033"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Apri il dettaglio di un utente con ruolo DM. Prova a cambiare il department a FINANCE. Salva.",
+        expected: "Il sistema mostra un errore: per il ruolo DM è ammesso solo il department DM.",
+        code: "USR-0034"
+      }
+    ]
+  },
+  {
+    section: "4. Disattivazione e riattivazione",
+    items: [
+      {
+        action: "Accedi come ADMIN/IT. Dalla lista utenti, seleziona un utente attivo. Clicca su «Disattiva» e conferma l'operazione.",
+        expected: "L'utente viene disattivato (is_active = false). Lo stato si aggiorna nella lista e compare un messaggio di conferma.",
+        code: "USR-0035"
+      },
+      {
+        action: "Dopo aver disattivato un utente nel test precedente, effettua il logout. Prova a fare il login con le credenziali dell'utente appena disattivato.",
+        expected: "Il login viene rifiutato. Compare un messaggio che indica che l'account è disattivato.",
+        code: "USR-0036"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Dalla lista utenti, individua un utente disattivato. Clicca su «Riattiva» e conferma.",
+        expected: "L'utente viene riattivato (is_active = true). Lo stato si aggiorna nella lista.",
+        code: "USR-0037"
+      },
+      {
+        action: "Dopo aver riattivato un utente nel test precedente, effettua il logout. Prova a fare il login con le credenziali dell'utente appena riattivato.",
+        expected: "Il login va a buon fine. L'utente accede alla dashboard normalmente.",
+        code: "USR-0038"
+      },
+      {
+        action: "Accedi con un utente HO. Prova a disattivare un altro utente digitando l'URL diretto dell'endpoint di disattivazione nel browser.",
+        expected: "Il sistema mostra errore 403 — Accesso negato. Solo gli utenti ADMIN/IT possono disattivare altri utenti.",
+        code: "USR-0039"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Prova a disattivare il tuo stesso account.",
+        expected: "Il sistema impedisce l'operazione e mostra un messaggio: non è possibile disattivare il proprio account.",
+        code: "USR-0040"
+      },
+      {
+        action: "Accedi come ADMIN/IT. Disattiva un utente. Torna alla lista utenti (senza filtri attivi) e verifica che l'utente disattivato non sia più visibile.",
+        expected: "L'utente disattivato non compare nella lista predefinita degli utenti attivi.",
+        code: "USR-0041"
+      }
+    ]
+  },
+  {
+    section: "5. Profilo personale",
+    items: [
+      {
+        action: "Accedi con un qualsiasi utente. Clicca sull'icona del profilo o vai alla sezione «Il mio profilo».",
+        expected: "Vengono mostrati i tuoi dati: username, nome completo, email, telefono, ruolo, department. Tutti corrispondono al tuo account.",
+        code: "USR-0042"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», modifica il campo «nome completo» con un nuovo valore. Salva.",
+        expected: "Il nome viene aggiornato con successo. Il nuovo valore è visibile subito nel profilo e nel menu utente.",
+        code: "USR-0043"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», modifica il campo «email» con un indirizzo valido. Salva.",
+        expected: "L'email viene aggiornata con successo.",
+        code: "USR-0044"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», modifica il campo «telefono». Salva.",
+        expected: "Il numero di telefono viene aggiornato con successo.",
+        code: "USR-0045"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», vai su «Cambia Password». Inserisci una vecchia password SBAGLIATA e una nuova password. Conferma.",
+        expected: "Il sistema mostra un errore: la vecchia password non è corretta. La password non viene cambiata.",
+        code: "USR-0046"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», vai su «Cambia Password». Inserisci la vecchia password CORRETTA e una nuova password valida. Conferma.",
+        expected: "La password viene cambiata con successo. Il sistema ti disconnette e devi rifare il login con la nuova password.",
+        code: "USR-0047"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», prova a modificare il campo «ruolo» (se visibile come campo editabile o tramite richiesta diretta).",
+        expected: "Il sistema impedisce la modifica. L'utente non può cambiare il proprio ruolo: il campo è in sola lettura o la richiesta viene rifiutata.",
+        code: "USR-0048"
+      },
+      {
+        action: "Dalla pagina «Il mio profilo», prova a modificare il campo «department» (se visibile come campo editabile o tramite richiesta diretta).",
+        expected: "Il sistema impedisce la modifica. L'utente non può cambiare il proprio department: il campo è in sola lettura o la richiesta viene rifiutata.",
+        code: "USR-0049"
+      }
+    ]
+  },
+  {
+    section: "6. Lista e ricerca utenti",
+    items: [
+      {
+        action: "Accedi come ADMIN/IT. Vai su «Gestione Utenti» → «Lista Utenti» senza applicare nessun filtro.",
+        expected: "Viene mostrata la lista di tutti gli utenti attivi (is_active = true). Gli utenti disattivati NON compaiono nella vista predefinita.",
+        code: "USR-0050"
+      },
+      {
+        action: "Nella lista utenti, usa il filtro per ruolo e seleziona STORE.",
+        expected: "La lista mostra solo gli utenti con ruolo STORE. Nessun utente con altri ruoli è visibile.",
+        code: "USR-0051"
+      },
+      {
+        action: "Nella lista utenti, usa il filtro per department e seleziona HR.",
+        expected: "La lista mostra solo gli utenti con department HR.",
+        code: "USR-0052"
+      },
+      {
+        action: "Nella lista utenti, digita nel campo di ricerca uno username specifico (es. «m.rossi»).",
+        expected: "La lista filtra e mostra solo gli utenti il cui username contiene il testo cercato.",
+        code: "USR-0053"
+      },
+      {
+        action: "Nella lista utenti, digita nel campo di ricerca un nome (es. «Mario»).",
+        expected: "La lista filtra e mostra gli utenti il cui nome completo contiene il testo cercato.",
+        code: "USR-0054"
+      },
+      {
+        action: "Nella lista utenti, verifica se è presente un'opzione per mostrare anche gli utenti disattivati (es. un toggle «Mostra disattivati»). Se presente, attivalo.",
+        expected: "Gli utenti disattivati compaiono nella lista, con un'indicazione visiva (es. riga grigia o badge «Disattivato»).",
+        code: "USR-0055"
+      },
+      {
+        action: "Accedi con un utente DM. Prova ad accedere alla pagina «Lista Utenti» digitando l'URL diretto nel browser.",
+        expected: "Il sistema mostra errore 403 — Accesso negato. Solo gli utenti ADMIN/IT possono vedere la lista completa degli utenti.",
+        code: "USR-0056"
+      },
+      {
+        action: "Nella lista utenti, applica il filtro ruolo = DM e contemporaneamente cerca un nome nel campo di ricerca.",
+        expected: "La lista mostra solo gli utenti che soddisfano entrambi i criteri: ruolo DM e nome corrispondente alla ricerca.",
+        code: "USR-0057"
+      }
+    ]
+  },
+  {
+    section: "7. Permessi e accessi",
+    items: [
+      {
+        action: "Accedi come ADMIN/IT. Verifica che nel menu di navigazione sia presente la voce «Gestione Utenti».",
+        expected: "La voce «Gestione Utenti» è visibile e cliccabile. Accedendo, si vedono tutte le funzionalità di gestione.",
+        code: "USR-0058"
+      },
+      {
+        action: "Accedi con un utente HO. Verifica se nel menu di navigazione è presente la voce «Gestione Utenti».",
+        expected: "La voce «Gestione Utenti» NON è visibile nel menu.",
+        code: "USR-0059"
+      },
+      {
+        action: "Accedi con un utente DM. Verifica se nel menu di navigazione è presente la voce «Gestione Utenti».",
+        expected: "La voce «Gestione Utenti» NON è visibile nel menu.",
+        code: "USR-0060"
+      },
+      {
+        action: "Accedi con un utente STORE. Verifica se nel menu di navigazione è presente la voce «Gestione Utenti».",
+        expected: "La voce «Gestione Utenti» NON è visibile nel menu.",
+        code: "USR-0061"
+      },
+      {
+        action: "Accedi come ADMIN con department MANAGER. Apri il dettaglio di un altro utente ADMIN e prova a cambiarne il department.",
+        expected: "L'operazione è consentita: un ADMIN può modificare il department di un altro ADMIN, a patto che non sia di livello superiore al proprio.",
+        code: "USR-0062"
+      },
+      {
+        action: "Senza aver fatto il login, prova ad accedere direttamente all'indirizzo /api/admin/users nel browser.",
+        expected: "Il sistema restituisce errore 401 — Non autenticato. Viene richiesto di effettuare il login.",
+        code: "USR-0063"
+      },
+      {
+        action: "Effettua il login e poi attendi che il token JWT scada (oppure chiedi al team tecnico di simulare la scadenza). Prova ad accedere a /api/admin/users.",
+        expected: "Il sistema restituisce errore 401 — Token scaduto. Vieni reindirizzato alla pagina di login.",
+        code: "USR-0064"
+      },
+      {
+        action: "Accedi con un utente STORE. Prova ad accedere direttamente all'endpoint /api/admin/users digitando l'URL nel browser.",
+        expected: "Il sistema restituisce errore 403 — Accesso negato. L'endpoint è riservato agli utenti ADMIN/IT.",
+        code: "USR-0065"
+      },
+      {
+        action: "Accedi come ADMIN/IT con department IT. Prova ad assegnare a un utente HO il department TOPMGR (livello superiore a IT).",
+        expected: "Il sistema mostra un errore: non puoi assegnare un department di livello superiore al tuo.",
+        code: "USR-0066"
+      }
+    ]
+  }
+];
+
+let state = {};
+
+function buildUI() {
+  const container = document.getElementById("test-sections");
+  TESTS.forEach((section, si) => {
+    const div = document.createElement("div");
+    div.className = "section";
+    div.innerHTML = `
+      <div class="section-header">
+        <h2>${section.section}</h2>
+        <span class="section-counter" id="counter-${si}">0/${section.items.length}</span>
+      </div>
+      <div class="section-body" id="body-${si}"></div>
+    `;
+    const body = div.querySelector(`#body-${si}`);
+    section.items.forEach((item, ii) => {
+      const key = `${si}-${ii}`;
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "test-item";
+      itemDiv.innerHTML = `
+        <div class="test-row" onclick="toggleCheck('${key}')">
+          <input type="checkbox" id="cb-${key}" onclick="event.stopPropagation(); toggleCheck('${key}')">
+          <div class="test-content">
+            <div class="test-action" id="action-${key}">${item.action}</div>
+            <div class="test-expected">✓ Atteso: ${item.expected}</div>
+            <div class="error-inline">
+              <div class="error-code-badge">
+                ⚠ Se non funziona, comunica il codice al Supporto:&nbsp;<span class="code">${item.code}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      body.appendChild(itemDiv);
+    });
+    container.appendChild(div);
+  });
+  updateProgress();
+}
+
+function toggleCheck(key) {
+  const cb = document.getElementById(`cb-${key}`);
+  cb.checked = !cb.checked;
+  state[key] = cb.checked;
+  document.getElementById(`action-${key}`).classList.toggle("done", cb.checked);
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = TESTS.reduce((a, s) => a + s.items.length, 0);
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById("progress-text").textContent = `${done} / ${total} (${pct}%)`;
+  document.getElementById("progress-fill").style.width = pct + "%";
+  TESTS.forEach((section, si) => {
+    const count = section.items.filter((_, ii) => state[`${si}-${ii}`]).length;
+    document.getElementById(`counter-${si}`).textContent = `${count}/${section.items.length}`;
+  });
+}
+
+function resetAll() {
+  state = {};
+  document.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = false);
+  document.querySelectorAll(".test-action").forEach(el => el.classList.remove("done"));
+  updateProgress();
+}
+
+buildUI();
+</script>
+</body>
+</html>

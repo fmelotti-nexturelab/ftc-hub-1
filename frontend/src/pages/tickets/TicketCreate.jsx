@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { LifeBuoy, AlertCircle, XCircle } from "lucide-react"
+import { LifeBuoy, AlertCircle, CheckCircle2 } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import RequesterFields from "@/components/shared/RequesterFields"
 import ImageDropZone from "@/components/shared/ImageDropZone"
@@ -19,21 +19,13 @@ export default function TicketCreate() {
   const [images, setImages] = useState([])
   const [analysis, setAnalysis] = useState(null)
   const [aiError, setAiError] = useState("")
+  const [successTicket, setSuccessTicket] = useState(null)
 
-  // Pre-popola i dati richiedente dall'utente loggato
+  // Carica i dati richiedente dal DB (usati come placeholder e fallback al submit)
   const { data: defaults } = useQuery({
     queryKey: ["ticket-requester-defaults"],
     queryFn: () => ticketsApi.requesterDefaults().then(r => r.data),
-    staleTime: Infinity,
   })
-  useEffect(() => {
-    if (!defaults) return
-    setForm(f => ({
-      ...f,
-      requester_name: f.requester_name || defaults.name || "",
-      requester_email: f.requester_email || defaults.email || "",
-    }))
-  }, [defaults])
 
   // Paste screenshot (Ctrl+V) — aggiunge all'array
   useEffect(() => {
@@ -82,9 +74,9 @@ export default function TicketCreate() {
         category_id: analysis?.category_id || 1,
         subcategory_id: analysis?.subcategory_id || null,
         priority: analysis?.priority || "medium",
-        requester_name: form.requester_name,
-        requester_email: form.requester_email || null,
-        requester_phone: form.requester_phone,
+        requester_name:  form.requester_name  || defaults?.name  || "",
+        requester_email: form.requester_email || defaults?.email || null,
+        requester_phone: form.requester_phone || defaults?.phone || "",
         teamviewer_code: tvCode || "",
         team_id: teamId || null,
       }
@@ -94,12 +86,23 @@ export default function TicketCreate() {
       }
       return res.data
     },
-    onSuccess: (ticket) => navigate(`/tickets/${ticket.id}`),
+    onSuccess: (ticket) => {
+      setAnalysis(null)
+      setSuccessTicket(ticket)
+    },
   })
+
+  useEffect(() => {
+    if (!successTicket) return
+    const t = setTimeout(() => navigate("/tickets"), 2000)
+    return () => clearTimeout(t)
+  }, [successTicket, navigate])
 
   const set = (field, value) => setForm(f => ({ ...f, [field]: value }))
 
-  const valid = form.title && form.description && form.requester_name && form.requester_phone
+  const effectiveName  = form.requester_name  || defaults?.name
+  const effectivePhone = form.requester_phone || defaults?.phone
+  const valid = form.title && form.description && effectiveName && effectivePhone
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -136,6 +139,23 @@ export default function TicketCreate() {
         </div>
       )}
 
+      {/* Popup successo creazione */}
+      {successTicket && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 size={22} className="text-green-500 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="text-sm font-bold text-gray-800 mb-1">
+                  Ticket n° {successTicket.ticket_number}
+                </h2>
+                <p className="text-sm text-green-600 font-semibold">CREATO CON SUCCESSO</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Popup errore creazione */}
       {createMutation.isError && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -161,7 +181,7 @@ export default function TicketCreate() {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
 
-        <RequesterFields values={form} onChange={set} />
+        <RequesterFields values={form} onChange={set} defaults={defaults} />
 
         <hr className="border-gray-100" />
 

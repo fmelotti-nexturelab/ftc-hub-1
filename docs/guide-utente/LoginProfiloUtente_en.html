@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC HUB — Login & User Profile</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+    header { background: #1e3a5f; color: white; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 20px; font-weight: 800; }
+    header p { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    main { max-width: 760px; margin: 40px auto; padding: 0 20px 60px; }
+    .close-btn { position: fixed; top: 16px; right: 24px; background: #ef4444; color: white; border: none; border-radius: 10px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(239,68,68,0.4); transition: background 0.2s; z-index: 999; }
+    .close-btn:hover { background: #dc2626; }
+    .section { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; }
+    .section-title { font-size: 17px; font-weight: 700; color: #1e3a5f; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .section-title .icon { font-size: 20px; }
+    p { font-size: 14px; color: #374151; margin-bottom: 12px; }
+    ul, ol { padding-left: 20px; margin-bottom: 12px; }
+    li { font-size: 14px; color: #374151; margin-bottom: 6px; }
+    .note { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #1e40af; }
+    .warning { background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #92400e; }
+    .success { background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #166534; }
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li { counter-increment: step; display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start; }
+    .steps li::before { content: counter(step); background: #1e3a5f; color: white; font-weight: 700; font-size: 12px; min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .steps li .step-text { font-size: 14px; color: #374151; }
+    .img-placeholder { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 30px; text-align: center; color: #94a3b8; font-size: 13px; margin: 16px 0; }
+    .btn-label { display: inline-block; background: #1e3a5f; color: white; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin: 0 2px; }
+    .field-label { display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 5px; border: 1px solid #e2e8f0; margin: 0 2px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+    th { background: #1e3a5f; color: white; padding: 10px 14px; text-align: left; font-weight: 700; }
+    td { padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #374151; }
+    tr:last-child td { border-bottom: none; }
+    .footer { text-align: center; padding: 30px 20px; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <button class="close-btn" onclick="window.close()">✕ Close</button>
+  <header>
+    <div>
+      <h1>🔐 Login & User Profile</h1>
+      <p><a href="index.html" style="color:rgba(255,255,255,0.6);text-decoration:none;">← Back to guides</a></p>
+    </div>
+  </header>
+  <main>
+
+    <!-- INTRO -->
+    <div class="section">
+      <div class="section-title"><span class="icon">📘</span> Introduction</div>
+      <p>This guide describes the procedures for accessing <strong>FTC HUB</strong>, completing the first login, and managing your user profile, including password changes.</p>
+      <div class="note">🌐 <strong>Application URL:</strong> <a href="https://hub.nexturelab.com" target="_blank">https://hub.nexturelab.com</a></div>
+    </div>
+
+    <!-- SECTION 1: System Access -->
+    <div class="section">
+      <div class="section-title"><span class="icon">🔑</span> 1. System Access</div>
+      <p>This section describes the procedure to access FTC HUB.</p>
+      <ol class="steps">
+        <li><div class="step-text">Open your browser <em>(Chrome, Edge, Safari, Firefox)</em> and navigate to <strong>https://hub.nexturelab.com</strong></div></li>
+        <li><div class="step-text">On the login screen, enter your <span class="field-label">Username</span> in the appropriate field (see the table below for the format)</div></li>
+        <li><div class="step-text">Enter the <span class="field-label">Password</span> you received</div></li>
+        <li><div class="step-text">Click the <span class="btn-label">Login</span> button</div></li>
+        <li><div class="step-text">If the credentials are correct, you will be redirected to the main <strong>Dashboard</strong></div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: FTC HUB login screen with username and password fields</div>
+
+      <p><strong>Username format by role:</strong></p>
+      <table>
+        <tr><th>Role</th><th>Username Format</th><th>Example</th></tr>
+        <tr><td><strong>Store Manager</strong></td><td>Store code</td><td>IT01001</td></tr>
+        <tr><td><strong>District Manager</strong></td><td>Personal code (email root)</td><td>marros</td></tr>
+        <tr><td><strong>Head Office (HO)</strong></td><td>First and last name</td><td>Mario Rossi</td></tr>
+      </table>
+
+      <div class="warning">⚠️ <strong>In case of error:</strong> If the message "Invalid credentials" appears, verify that you have entered your username and password correctly. After multiple failed attempts, contact the system administrator.</div>
+      <div class="success">✅ <strong>Persistent session:</strong> The session remains active — you do not need to log in on every visit.</div>
+    </div>
+
+    <!-- SECTION 2: First Login -->
+    <div class="section">
+      <div class="section-title"><span class="icon">🆕</span> 2. First Login</div>
+      <p>What to do on your first access to the system.</p>
+      <ol class="steps">
+        <li><div class="step-text">On your first login, use the <strong>temporary password</strong> received by email or provided by your manager</div></li>
+        <li><div class="step-text">After logging in, <strong>immediately change your password</strong> from the Profile section (see Section 3)</div></li>
+        <li><div class="step-text">Choose a secure and personal password</div></li>
+      </ol>
+      <div class="warning">🔒 <strong>Important:</strong> It is recommended to use a password different from the one used to access other company services.</div>
+    </div>
+
+    <!-- SECTION 3: Profile Management -->
+    <div class="section">
+      <div class="section-title"><span class="icon">👤</span> 3. Profile Management</div>
+      <p>How to access and edit your personal data and password.</p>
+
+      <p><strong>3.1 — Access Your Profile</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">In the left sidebar, locate your <strong>username</strong> displayed at the bottom</div></li>
+        <li><div class="step-text">Click on your name to open the <strong>Profile</strong> page</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: sidebar with the username highlighted at the bottom left</div>
+
+      <p><strong>3.2 — Edit Personal Data</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">In the <strong>"Personal data"</strong> section, you can edit: <span class="field-label">Username</span>, <span class="field-label">Email</span>, <span class="field-label">Phone</span></div></li>
+        <li><div class="step-text">Make the desired changes in the editable fields</div></li>
+        <li><div class="step-text">Click the <span class="btn-label">Save changes</span> button to confirm</div></li>
+        <li><div class="step-text">Changes are <strong>immediate</strong> and active right away</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: "Personal data" section with Username, Email, Phone fields and Save changes button</div>
+
+      <p><strong>3.3 — Change Password</strong></p>
+      <ol class="steps">
+        <li><div class="step-text">In the <strong>"Change password"</strong> section, enter your <span class="field-label">Current password</span></div></li>
+        <li><div class="step-text">Enter the <span class="field-label">New password</span> of your choice</div></li>
+        <li><div class="step-text">Re-enter the new password in the <span class="field-label">Confirm password</span> field</div></li>
+        <li><div class="step-text">Click the <span class="btn-label">Update password</span> button</div></li>
+        <li><div class="step-text">The new password is <strong>active immediately</strong>: use it from your next login onward</div></li>
+      </ol>
+      <div class="img-placeholder">📸 Screenshot: "Change password" section with current password, new password, confirm, and "Update password" button</div>
+      <div class="note">💡 <strong>Tip:</strong> For a secure password, use at least 8 characters, including uppercase and lowercase letters, numbers, and a special character (e.g. ! @ #).</div>
+    </div>
+
+    <!-- SECTION 4: Quick Reference -->
+    <div class="section">
+      <div class="section-title"><span class="icon">⚡</span> 4. Quick Reference</div>
+      <table>
+        <tr><th>Action</th><th>Where</th><th>Button</th></tr>
+        <tr><td>Login</td><td>Homepage</td><td><span class="btn-label">Login</span></td></tr>
+        <tr><td>Open profile</td><td>Sidebar → username at the bottom left</td><td>—</td></tr>
+        <tr><td>Edit data</td><td>Profile → Personal data</td><td><span class="btn-label">Save changes</span></td></tr>
+        <tr><td>Change password</td><td>Profile → Change password</td><td><span class="btn-label">Update password</span></td></tr>
+      </table>
+      <div class="note">📞 <strong>Need help?</strong> For access issues or questions, contact the system administrator or IT department.</div>
+    </div>
+
+  </main>
+  <div class="footer">
+    <p><strong>Fausto Melotti</strong> — FTC HUB Administrator</p>
+    <p style="margin-top:8px;">© 2026 FTC HUB — All rights reserved. This document is strictly confidential and intended exclusively for authorized employees. Reproduction, distribution, or disclosure, even partial, is prohibited without written authorization.</p>
+  </div>
+</body>
+</html>

@@ -30,8 +30,21 @@ export const ticketsApi = {
   // Users (for assign dropdown)
   listUsers: () => apiClient.get("/api/tickets/users"),
 
+  // Prendi in carico
+  take: (id) => apiClient.post(`/api/tickets/${id}/take`),
+
+  // Inoltra a team
+  forward: (id, team_id) => apiClient.post(`/api/tickets/${id}/forward`, { team_id }),
+
+  // Storico chiusi
+  history: (params) => apiClient.get("/api/tickets/history", { params }),
+
   // Bulk actions
   bulkAction: (data) => apiClient.put("/api/tickets/bulk", data),
+
+  // Admin DB management
+  adminAll: () => apiClient.get("/api/tickets/admin/all"),
+  adminTruncate: (password) => apiClient.delete("/api/tickets/admin/truncate", { data: { password } }),
 
   // Chat / AI
   chatStatus: () => apiClient.get("/api/tickets/chat/status"),

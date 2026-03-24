@@ -109,13 +109,22 @@ async def analyze(
             if team:
                 suggested.append(SuggestedTeam(id=team.id, name=team.name))
 
+    # Valida category_id e subcategory_id contro gli ID reali nel DB
+    valid_cat_ids = {c["id"] for c in categories}
+    ai_category_id = result.get("category_id")
+    category_id = ai_category_id if ai_category_id in valid_cat_ids else (categories[0]["id"] if categories else None)
+
+    valid_sub_ids = {s["id"] for c in categories for s in c.get("subcategories", [])}
+    ai_subcategory_id = result.get("subcategory_id")
+    subcategory_id = ai_subcategory_id if ai_subcategory_id in valid_sub_ids else None
+
     return AnalyzeResponse(
         relevant=True,
         suggested_teams=suggested,
         all_teams=all_teams,
         enhanced_description=result.get("enhanced_description", body.description),
-        category_id=result.get("category_id"),
-        subcategory_id=result.get("subcategory_id"),
+        category_id=category_id,
+        subcategory_id=subcategory_id,
         priority=result.get("priority", "medium"),
     )
 

@@ -1,10 +1,12 @@
+import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft, AlertCircle, Lock, Tag, Users, UserCheck,
-  User, Calendar, Phone, Monitor, Building2, XCircle, Mail,
+  User, Calendar, Phone, Monitor, Building2, XCircle, Mail, UserPlus, Forward, ExternalLink,
 } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
+import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
 import TicketStatusBadge from "@/components/tickets/TicketStatusBadge"
 import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
@@ -36,8 +38,14 @@ export default function TicketDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const { hasRole } = useAuthStore()
+  const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
+  const isHO = !["STORE", "STOREMANAGER"].includes(user?.department)
+  const isPrivileged = isAdmin || ["IT", "SUPERUSER"].includes(user?.department)
+  const canForward = isHO
+
+  const [showForwardModal, setShowForwardModal] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState(null)
 
   const { data: ticket, isLoading: ticketLoading } = useQuery({
     queryKey: ["ticket", id],
@@ -52,24 +60,55 @@ export default function TicketDetail() {
   const { data: usersData } = useQuery({
     queryKey: ["ticket-users"],
     queryFn: () => ticketsApi.listUsers().then(r => r.data),
-    enabled: isAdmin,
+    enabled: isHO,
   })
   const users = usersData?.users ?? []
 
+  const [actionError, setActionError] = useState(null)
+
   const invalidate = () => {
+    setActionError(null)
     qc.invalidateQueries({ queryKey: ["ticket", id] })
     qc.invalidateQueries({ queryKey: ["ticket-comments", id] })
     qc.invalidateQueries({ queryKey: ["tickets"] })
   }
 
+  const onError = (err) => {
+    const msg = err?.response?.data?.detail || "Operazione non riuscita"
+    setActionError(msg)
+  }
+
   const statusMutation = useMutation({
     mutationFn: (status) => ticketsApi.updateStatus(id, status),
     onSuccess: invalidate,
+    onError,
   })
 
   const assignMutation = useMutation({
     mutationFn: (assigned_to) => ticketsApi.assign(id, assigned_to || null),
     onSuccess: invalidate,
+    onError,
+  })
+
+  const takeMutation = useMutation({
+    mutationFn: () => ticketsApi.take(id),
+    onSuccess: invalidate,
+    onError,
+  })
+
+  const forwardMutation = useMutation({
+    mutationFn: (team_id) => ticketsApi.forward(id, team_id),
+    onSuccess: () => {
+      invalidate()
+      setShowForwardModal(false)
+      setSelectedTeam(null)
+    },
+  })
+
+  const { data: teams = [] } = useQuery({
+    queryKey: ["ticket-teams"],
+    queryFn: () => ticketConfigApi.getTeams().then(r => r.data),
+    enabled: canForward,
   })
 
   const commentMutation = useMutation({
@@ -89,9 +128,63 @@ export default function TicketDetail() {
   }
 
   const isClosed = ticket.status === "closed"
+  const isAlreadyAssignedToMe = ticket.assigned_to === user?.id
+  const canTake = !isClosed && !isAlreadyAssignedToMe
+  const canClose = !isClosed && (isPrivileged || isAlreadyAssignedToMe)
   const selectClass = "w-full text-xs border border-gray-300 rounded-lg px-2.5 py-2 bg-white focus:ring-2 focus:ring-[#2563eb] outline-none transition"
 
   return (
+    <>
+    {/* Modal Inoltra Ticket */}
+    {showForwardModal && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="p-5 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
+                <Forward size={16} className="text-[#1e3a5f]" />
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-800">Inoltra ticket</h2>
+                <p className="text-xs text-gray-400">Seleziona il team di destinazione</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-5">
+            <div className="grid grid-cols-2 gap-2">
+              {teams.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTeam(t.id === selectedTeam ? null : t.id)}
+                  className={`px-4 py-3 rounded-xl text-sm font-semibold border-2 transition ${
+                    selectedTeam === t.id
+                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                      : "bg-white text-gray-700 border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
+                  }`}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="p-5 border-t border-gray-100 flex gap-2">
+            <button
+              onClick={() => { setShowForwardModal(false); setSelectedTeam(null) }}
+              className="flex-1 border border-gray-300 text-gray-600 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={() => forwardMutation.mutate(selectedTeam)}
+              disabled={!selectedTeam || forwardMutation.isPending}
+              className="flex-1 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2.5 rounded-xl shadow transition text-sm disabled:opacity-40"
+            >
+              {forwardMutation.isPending ? "Inoltro..." : "Conferma inoltro"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="space-y-3">
 
       {/* Barra superiore: back + titolo + badge */}
@@ -129,7 +222,25 @@ export default function TicketDetail() {
               <MetaRow icon={User}      label="Richiedente"    value={ticket.requester_name} />
               <MetaRow icon={Mail}      label="Email"          value={ticket.requester_email} />
               <MetaRow icon={Phone}     label="Telefono"       value={ticket.requester_phone} />
-              <MetaRow icon={Monitor}   label="TeamViewer"     value={ticket.teamviewer_code} />
+              {ticket.teamviewer_code && isHO ? (
+                <div className="flex items-start gap-2 text-xs">
+                  <Monitor size={12} className="text-gray-400 mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-gray-400">TeamViewer</span>
+                    <a
+                      href={`teamviewer10://control?device=${ticket.teamviewer_code.replace(/[\s-]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 font-medium text-[#2563eb] hover:underline"
+                    >
+                      {ticket.teamviewer_code}
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <MetaRow icon={Monitor} label="TeamViewer" value={ticket.teamviewer_code} />
+              )}
               <MetaRow icon={Building2} label="Negozio"        value={ticket.store_number} />
               <MetaRow icon={Users}     label="Team"           value={ticket.team_name} />
               <MetaRow icon={UserCheck} label="Assegnato a"    value={ticket.assignee_name} />
@@ -210,7 +321,7 @@ export default function TicketDetail() {
               <div className="pt-2 border-t border-gray-100">
                 <TicketCommentForm
                   onSubmit={(data) => commentMutation.mutate(data)}
-                  isManager={isAdmin}
+                  isManager={isHO}
                   isPending={commentMutation.isPending}
                 />
               </div>
@@ -221,8 +332,37 @@ export default function TicketDetail() {
         {/* ── Colonna destra ── */}
         <div className="w-64 shrink-0 space-y-4">
 
-          {/* Gestione (solo admin) */}
-          {isAdmin && (
+          {actionError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+              {actionError}
+            </div>
+          )}
+
+          {/* Prendi in carico — visibile a tutti i manager */}
+          {isHO && canTake && (
+            <button
+              onClick={() => takeMutation.mutate()}
+              disabled={takeMutation.isPending}
+              className="w-full flex items-center justify-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold text-sm py-2.5 rounded-xl shadow transition disabled:opacity-40"
+            >
+              <UserPlus size={15} />
+              {takeMutation.isPending ? "In corso..." : "Prendi in carico"}
+            </button>
+          )}
+
+          {/* Inoltra ticket */}
+          {canForward && !isClosed && (
+            <button
+              onClick={() => { setSelectedTeam(null); setShowForwardModal(true) }}
+              className="w-full flex items-center justify-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold text-sm py-2.5 rounded-xl transition"
+            >
+              <Forward size={15} />
+              Inoltra ticket
+            </button>
+          )}
+
+          {/* Gestione */}
+          {isHO && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                 Gestione
@@ -256,7 +396,7 @@ export default function TicketDetail() {
               </div>
 
               {/* Chiudi ticket */}
-              {!isClosed && (
+              {canClose && (
                 <button
                   onClick={() => statusMutation.mutate("closed")}
                   disabled={statusMutation.isPending}
@@ -284,5 +424,6 @@ export default function TicketDetail() {
         </div>
       </div>
     </div>
+    </>
   )
 }

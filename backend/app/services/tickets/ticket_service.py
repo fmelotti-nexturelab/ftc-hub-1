@@ -3,16 +3,18 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func, or_, cast, String
+from sqlalchemy import select, func, or_, cast, String, case, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth import User, UserDepartment
 from app.models.rbac_scope import UserAssignment
-from app.models.tickets import Ticket, TicketStatus
+from app.models.tickets import Ticket, TicketStatus, TicketComment, TicketAttachment
+from app.models.notification import Notification
 from app.models.ticket_config import (
     TicketCategoryModel,
     TicketSubcategoryModel,
     TicketTeamModel,
+    TicketTeamMemberModel,
 )
 from app.schemas.tickets import TicketCreate, TicketResponse, TicketStatusUpdate, TicketAssignUpdate, TicketBulkAction
 from app.services.tickets import notification_service, routing_service, chat_service
@@ -220,10 +222,34 @@ async def get_tickets(
     team_id: Optional[int] = None,
     created_by_id: Optional[UUID] = None,
     assigned_to_id: Optional[UUID] = None,
+    my_team: bool = False,
+    include_closed: bool = False,
 ) -> list[TicketResponse]:
-    stmt = select(Ticket).where(Ticket.is_active == True)
+    status_order = case(
+        (cast(Ticket.status, String) == "open", 0),
+        (cast(Ticket.status, String) == "in_progress", 1),
+        (cast(Ticket.status, String) == "waiting", 2),
+        (cast(Ticket.status, String) == "resolved", 3),
+        else_=4,
+    )
+    priority_order = case(
+        (cast(Ticket.priority, String) == "critical", 0),
+        (cast(Ticket.priority, String) == "high", 1),
+        (cast(Ticket.priority, String) == "medium", 2),
+        (cast(Ticket.priority, String) == "low", 3),
+        else_=4,
+    )
 
+    stmt = select(Ticket).where(Ticket.is_active == True)
+    if not include_closed:
+        stmt = stmt.where(cast(Ticket.status, String) != "closed")
+
+    from sqlalchemy import or_
     department = getattr(current_user, "department", None)
+    is_privileged = department in (
+        UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT
+    )
+
     if department == UserDepartment.STOREMANAGER:
         # Vede solo i ticket del suo negozio
         store_number = await _get_user_store_number(db, current_user.id)
@@ -231,15 +257,57 @@ async def get_tickets(
             stmt = stmt.where(Ticket.store_number == store_number)
         else:
             stmt = stmt.where(Ticket.created_by == current_user.id)
-    elif not is_manager:
-        stmt = stmt.where(Ticket.created_by == current_user.id)
+
+    elif is_privileged:
+        # IT / ADMIN / SUPERUSER: accesso completo con filtri opzionali
+        if my_team:
+            team_ids_result = await db.execute(
+                select(TicketTeamMemberModel.team_id).where(
+                    TicketTeamMemberModel.user_id == current_user.id
+                )
+            )
+            user_team_ids = list(team_ids_result.scalars().all())
+            if user_team_ids:
+                stmt = stmt.where(
+                    or_(Ticket.team_id.in_(user_team_ids), Ticket.assigned_to == current_user.id)
+                )
+        else:
+            if created_by_id:
+                stmt = stmt.where(Ticket.created_by == created_by_id)
+            if assigned_to_id:
+                stmt = stmt.where(Ticket.assigned_to == assigned_to_id)
+            if team_id:
+                stmt = stmt.where(Ticket.team_id == team_id)
+
     else:
-        if created_by_id:
-            stmt = stmt.where(Ticket.created_by == created_by_id)
-        if assigned_to_id:
-            stmt = stmt.where(Ticket.assigned_to == assigned_to_id)
-        if team_id:
-            stmt = stmt.where(Ticket.team_id == team_id)
+        # HO non-privilegiato (FACILITIES, HR, ecc.):
+        # vede solo i ticket del proprio team, indipendentemente da is_manager
+        team_ids_result = await db.execute(
+            select(TicketTeamMemberModel.team_id).where(
+                TicketTeamMemberModel.user_id == current_user.id
+            )
+        )
+        user_team_ids = list(team_ids_result.scalars().all())
+
+        if not user_team_ids:
+            # Fallback: team il cui nome corrisponde al department
+            dept_str = getattr(department, "value", str(department)) if department else ""
+            team_by_dept_result = await db.execute(
+                select(TicketTeamModel.id).where(
+                    func.upper(TicketTeamModel.name) == dept_str.upper()
+                )
+            )
+            user_team_ids = list(team_by_dept_result.scalars().all())
+
+        if user_team_ids:
+            stmt = stmt.where(
+                or_(Ticket.team_id.in_(user_team_ids), Ticket.assigned_to == current_user.id)
+            )
+        else:
+            # Nessun team trovato: solo ticket creati o assegnati all'utente
+            stmt = stmt.where(
+                or_(Ticket.created_by == current_user.id, Ticket.assigned_to == current_user.id)
+            )
 
     if status:
         stmt = stmt.where(Ticket.status == status)
@@ -248,7 +316,7 @@ async def get_tickets(
     if category_id:
         stmt = stmt.where(Ticket.category_id == category_id)
 
-    stmt = stmt.order_by(Ticket.created_at.desc())
+    stmt = stmt.order_by(status_order, priority_order, Ticket.created_at.asc())
     result = await db.execute(stmt)
     tickets = result.scalars().all()
 
@@ -292,7 +360,20 @@ async def get_ticket(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket non trovato")
     if not is_manager and ticket.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Accesso negato")
+        # Controlla se l'utente è membro del team a cui è assegnato il ticket
+        allowed = False
+        if ticket.team_id:
+            member_result = await db.execute(
+                select(TicketTeamMemberModel).where(
+                    TicketTeamMemberModel.user_id == current_user.id,
+                    TicketTeamMemberModel.team_id == ticket.team_id,
+                )
+            )
+            allowed = member_result.scalar_one_or_none() is not None
+        if not allowed and ticket.assigned_to == current_user.id:
+            allowed = True
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Accesso negato")
 
     cat_map, sub_map, team_map, _ = await _load_name_maps(
         db,
@@ -324,6 +405,14 @@ async def update_status(
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket non trovato")
+
+    # Solo IT/ADMIN o l'assegnatario del ticket possono chiuderlo
+    if data.status == TicketStatus.CLOSED:
+        dept = getattr(current_user, "department", None)
+        is_privileged = dept in (UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT)
+        is_assignee = ticket.assigned_to == current_user.id
+        if not is_privileged and not is_assignee:
+            raise HTTPException(status_code=403, detail="Solo l'assegnatario o un amministratore può chiudere il ticket")
 
     ticket.status = data.status
     if data.status == TicketStatus.CLOSED:
@@ -549,3 +638,88 @@ async def get_history(
         )
         for t in tickets
     ]
+
+async def admin_get_all(db: AsyncSession) -> list[TicketResponse]:
+    """Tutti i ticket (inclusi chiusi) ordinati per numero decrescente."""
+    stmt = select(Ticket).where(Ticket.is_active == True).order_by(Ticket.ticket_number.desc())
+    result = await db.execute(stmt)
+    tickets = result.scalars().all()
+
+    all_ids = set()
+    for t in tickets:
+        all_ids.add(t.created_by)
+        if t.assigned_to:
+            all_ids.add(t.assigned_to)
+    users = await _get_users(db, *all_ids) if all_ids else {}
+
+    cat_ids = list({t.category_id for t in tickets if t.category_id})
+    sub_ids = list({t.subcategory_id for t in tickets if t.subcategory_id})
+    t_ids = list({t.team_id for t in tickets if t.team_id})
+    cat_map, sub_map, team_map, _ = await _load_name_maps(db, cat_ids, sub_ids, t_ids)
+
+    return [
+        _enrich(
+            t,
+            users.get(t.created_by),
+            users.get(t.assigned_to),
+            category_name=cat_map.get(t.category_id) if t.category_id else None,
+            subcategory_name=sub_map.get(t.subcategory_id) if t.subcategory_id else None,
+            team_name=team_map.get(t.team_id) if t.team_id else None,
+        )
+        for t in tickets
+    ]
+
+
+async def admin_truncate_tickets(db: AsyncSession) -> int:
+    """Elimina tutti i ticket e i dati collegati. Restituisce il numero di ticket eliminati."""
+    count_result = await db.execute(select(func.count()).select_from(Ticket).where(Ticket.is_active == True))
+    total = count_result.scalar() or 0
+
+    # Elimina in ordine per rispettare i FK
+    await db.execute(delete(TicketAttachment))
+    await db.execute(delete(TicketComment))
+    await db.execute(delete(Notification).where(Notification.ticket_id != None))
+    await db.execute(delete(Ticket))
+    await db.commit()
+
+    return total
+
+
+async def forward_ticket(
+    db: AsyncSession,
+    ticket_id: UUID,
+    team_id: int,
+) -> TicketResponse:
+    """Inoltra il ticket a un altro team: resetta assegnatario e rimette in OPEN."""
+    result = await db.execute(
+        select(Ticket).where(Ticket.id == ticket_id, Ticket.is_active == True)
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket non trovato")
+    if ticket.status == TicketStatus.CLOSED:
+        raise HTTPException(status_code=400, detail="Impossibile inoltrare un ticket chiuso")
+
+    ticket.team_id = team_id
+    ticket.assigned_to = None
+    if ticket.status == TicketStatus.IN_PROGRESS:
+        ticket.status = TicketStatus.OPEN
+
+    await db.commit()
+    await db.refresh(ticket)
+
+    cat_map, sub_map, team_map, _ = await _load_name_maps(
+        db,
+        [ticket.category_id] if ticket.category_id else [],
+        [ticket.subcategory_id] if ticket.subcategory_id else [],
+        [ticket.team_id] if ticket.team_id else [],
+    )
+    users = await _get_users(db, ticket.created_by)
+    return _enrich(
+        ticket,
+        users.get(ticket.created_by),
+        None,
+        category_name=cat_map.get(ticket.category_id) if ticket.category_id else None,
+        subcategory_name=sub_map.get(ticket.subcategory_id) if ticket.subcategory_id else None,
+        team_name=team_map.get(ticket.team_id) if ticket.team_id else None,
+    )

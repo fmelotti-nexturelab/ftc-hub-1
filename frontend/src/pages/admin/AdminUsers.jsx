@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Pencil, KeyRound, UserX, UserCheck, X, Check, Trash2, ShieldCheck, Search } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Plus, Pencil, KeyRound, UserX, UserCheck, X, Check, Trash2, ShieldCheck, Search, LogOut } from "lucide-react"
 import * as Tabs from "@radix-ui/react-tabs"
 import { authApi } from "@/api/auth"
 import ModuleConfig from "./ModuleConfig"
@@ -295,6 +296,7 @@ function UsersTable({
 
 export default function AdminUsers() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [showNew, setShowNew] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [resetUser, setResetUser] = useState(null)
@@ -331,20 +333,29 @@ export default function AdminUsers() {
         <ChangeTypeModal user={changeTypeUser} onClose={() => setChangeTypeUser(null)} onSaved={invalidate} />
       )}
 
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">Amministrazione</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Gestione utenti e accesso moduli</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">Gestione Utenti</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Utenti, accesso moduli e utilities</p>
+        </div>
+        <button
+          onClick={() => navigate("/utilities")}
+          className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 font-semibold py-2 px-4 rounded-xl transition text-sm"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       <Tabs.Root defaultValue="users">
-        <Tabs.List className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-5">
+        <Tabs.List className="flex gap-0 border-b border-gray-200 mb-5">
           {[
-            { value: "users", label: "Utenti" },
-            { value: "modules", label: "Accesso Moduli" },
-            { value: "utilities", label: "Utilities" },
+            { value: "users",    label: "Utenti" },
+            { value: "modules",  label: "Accesso Moduli" },
+            { value: "utilities",label: "Utilities" },
           ].map((tab) => (
             <Tabs.Trigger key={tab.value} value={tab.value}
-              className="px-4 py-2 rounded-lg text-sm font-medium transition data-[state=active]:bg-white data-[state=active]:text-[#1e3a5f] data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700">
+              className="px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent -mb-px transition text-gray-500 hover:text-gray-700 hover:border-gray-300 data-[state=active]:border-[#1e3a5f] data-[state=active]:text-[#1e3a5f]">
               {tab.label}
             </Tabs.Trigger>
           ))}

@@ -34,7 +34,10 @@ class UserDepartment(str, enum.Enum):
     @classmethod
     def ho_types(cls) -> set:
         """Tipi HO (accesso globale, nessuna restrizione geografica)."""
-        return {cls.HR, cls.FINANCE, cls.MARKETING, cls.IT, cls.COMMERCIAL}
+        return {
+            cls.HR, cls.FINANCE, cls.MARKETING, cls.IT, cls.COMMERCIAL,
+            cls.MANAGER, cls.TOPMGR, cls.RETAIL, cls.HEALTHSAFETY, cls.FACILITIES,
+        }
 
     @classmethod
     def admin_types(cls) -> set:

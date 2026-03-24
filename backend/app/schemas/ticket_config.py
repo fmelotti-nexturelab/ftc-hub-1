@@ -116,12 +116,16 @@ class RoutingRuleCreate(BaseModel):
     subcategory_id: Optional[int] = None
     team_id: Optional[int] = None
     assigned_user_id: Optional[UUID] = None
+    backup_user_id_1: Optional[UUID] = None
+    backup_user_id_2: Optional[UUID] = None
     priority_override: Optional[str] = None
 
 
 class RoutingRuleUpdate(BaseModel):
     team_id: Optional[int] = None
     assigned_user_id: Optional[UUID] = None
+    backup_user_id_1: Optional[UUID] = None
+    backup_user_id_2: Optional[UUID] = None
     priority_override: Optional[str] = None
     is_active: Optional[bool] = None
 
@@ -132,11 +136,16 @@ class RoutingRuleResponse(BaseModel):
     subcategory_id: Optional[int] = None
     team_id: Optional[int] = None
     assigned_user_id: Optional[UUID] = None
+    backup_user_id_1: Optional[UUID] = None
+    backup_user_id_2: Optional[UUID] = None
     priority_override: Optional[str] = None
     is_active: bool
     category_name: Optional[str] = None
     subcategory_name: Optional[str] = None
     team_name: Optional[str] = None
+    assigned_user_name: Optional[str] = None
+    backup_user_name_1: Optional[str] = None
+    backup_user_name_2: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

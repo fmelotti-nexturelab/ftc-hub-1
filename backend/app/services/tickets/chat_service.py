@@ -20,6 +20,7 @@ from typing import Optional
 import httpx
 
 from app.config import settings
+from app.services.tickets.anonymizer import Anonymizer
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +199,10 @@ async def analyze_ticket(
             "subcategory_id": None, "priority": "medium",
         }
 
+    anon = Anonymizer()
+    safe_title = anon.anonymize(title)
+    safe_description = anon.anonymize(description)
+
     teams_desc, teams_names = _build_teams_block(teams)
     cats_block = _build_cats_block(categories)
 
@@ -225,13 +230,16 @@ Se NON pertinente:
 Se pertinente:
 {{"relevant": true, "suggested_teams": ["TEAM1"], "enhanced_description": "...", "category_id": <int>, "subcategory_id": <int|null>, "priority": "low|medium|high|critical"}}"""
 
-    user = f"Titolo: {title}\nDescrizione: {description}"
+    user = f"Titolo: {safe_title}\nDescrizione: {safe_description}"
 
     content = await _call_ai(system, user)
     json_match = re.search(r'\{[\s\S]*\}', content)
     if json_match:
         try:
-            return json.loads(json_match.group())
+            result = json.loads(json_match.group())
+            if "enhanced_description" in result:
+                result["enhanced_description"] = anon.rehydrate(result["enhanced_description"])
+            return result
         except json.JSONDecodeError:
             pass
 
@@ -248,27 +256,38 @@ async def enhance_description(title: str, description: str) -> str:
     if not is_available():
         return description
     try:
+        anon = Anonymizer()
+        safe_title = anon.anonymize(title)
+        safe_description = anon.anonymize(description)
+
         system = (
             "Sei un assistente tecnico. Riscrivi la descrizione del ticket in modo chiaro, "
             "strutturato e professionale, in italiano. Mantieni tutti i fatti originali. "
             "Niente titoli, niente markdown, solo testo scorrevole. "
             "Rispondi SOLO con la descrizione riscritta."
         )
-        result = await _call_ai(system, f"Titolo: {title}\n\nDescrizione: {description}")
-        return result or description
+        result = await _call_ai(system, f"Titolo: {safe_title}\n\nDescrizione: {safe_description}")
+        return anon.rehydrate(result) if result else description
     except Exception:
         return description
 
 
 async def chat(messages: list[dict], categories: list[dict]) -> dict:
     """Gestisce un turno di conversazione per la raccolta dati ticket."""
+    anon = Anonymizer()
+
     system = _build_chat_system(categories)
-    user_content = messages[-1]["content"] if messages else ""
+
+    # Anonimizza solo i messaggi utente (quelli assistant vengono dall'AI)
+    def safe_content(m: dict) -> str:
+        return anon.anonymize(m["content"]) if m["role"] == "user" else m["content"]
+
+    user_content = safe_content(messages[-1]) if messages else ""
 
     # Passa tutti i messaggi precedenti come contesto nel prompt utente
     if len(messages) > 1:
         history = "\n".join(
-            f"{'Utente' if m['role'] == 'user' else 'Assistente'}: {m['content']}"
+            f"{'Utente' if m['role'] == 'user' else 'Assistente'}: {safe_content(m)}"
             for m in messages[:-1]
         )
         user_content = f"Storico conversazione:\n{history}\n\nNuovo messaggio utente: {user_content}"
@@ -284,12 +303,12 @@ async def chat(messages: list[dict], categories: list[dict]) -> dict:
                     "reply": data.get("summary", "Perfetto, ho tutto quello che mi serve!"),
                     "complete": True,
                     "ticket_data": {
-                        "title": data["title"],
-                        "description": data["description"],
+                        "title": anon.rehydrate(data["title"]),
+                        "description": anon.rehydrate(data["description"]),
                         "category_id": data["category_id"],
                         "subcategory_id": data.get("subcategory_id"),
                         "priority": data["priority"],
-                        "requester_phone": data.get("requester_phone", ""),
+                        "requester_phone": anon.rehydrate(data.get("requester_phone", "")),
                         "teamviewer_code": data.get("teamviewer_code", ""),
                         "needs_attachment": data.get("needs_attachment", False),
                     },

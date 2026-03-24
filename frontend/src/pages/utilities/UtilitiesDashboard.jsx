@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Store, Users } from "lucide-react"
+import { Store, Users, Settings2 } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
@@ -12,10 +12,13 @@ const ADMIN_MODULES = [
   { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
 ]
 
+const DB_ADMIN_TYPES = ["SUPERUSER", "ADMIN", "IT"]
+
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()
-  const { hasRole } = useAuthStore()
+  const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
+  const canSeeDbAdmin = DB_ADMIN_TYPES.includes(user?.department)
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["utilities-my-access"],
@@ -25,6 +28,7 @@ export default function UtilitiesDashboard() {
   const visibleModules = [
     ...(isError || !access ? [] : ALL_MODULES.filter((m) => access[m.moduleCode]?.can_view)),
     ...(isAdmin ? ADMIN_MODULES : []),
+    ...(canSeeDbAdmin ? [{ path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" }] : []),
   ]
 
   if (isLoading) {

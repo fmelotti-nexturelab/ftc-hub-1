@@ -5,6 +5,7 @@ export const authApi = {
     apiClient.post("/api/auth/login", { username, password }),
   logout: () => apiClient.post("/api/auth/logout"),
   me: () => apiClient.get("/api/auth/me"),
+  getMyModules: () => apiClient.get("/api/auth/my-modules"),
   getProfile: () => apiClient.get("/api/auth/profile"),
   updateProfile: (data) => apiClient.put("/api/auth/profile", data),
   changePassword: (data) => apiClient.put("/api/auth/password", data),

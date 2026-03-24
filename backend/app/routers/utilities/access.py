@@ -28,4 +28,7 @@ async def my_access(
             can_manage = await _user_can_access_module(db, current_user, module_code, need_manage=True)
             result[module_code] = {"can_view": can_view, "can_manage": can_manage}
 
+    # Tickets è accessibile a tutti gli utenti autenticati
+    result["tickets"] = {"can_view": True, "can_manage": is_admin}
+
     return result

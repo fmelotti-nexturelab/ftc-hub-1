@@ -468,6 +468,7 @@ async def list_routing_rules(db: AsyncSession = Depends(get_db)):
     cat_map: dict = {}
     sub_map: dict = {}
     team_map: dict = {}
+    user_map: dict = {}
 
     if cat_ids:
         res = await db.execute(
@@ -487,12 +488,25 @@ async def list_routing_rules(db: AsyncSession = Depends(get_db)):
         )
         team_map = {t.id: t.name for t in res.scalars().all()}
 
+    # Raccoglie tutti gli user ID rilevanti
+    user_ids = set()
+    for rule in rules:
+        for uid in (rule.assigned_user_id, rule.backup_user_id_1, rule.backup_user_id_2):
+            if uid:
+                user_ids.add(uid)
+    if user_ids:
+        res = await db.execute(select(User).where(User.id.in_(list(user_ids))))
+        user_map = {u.id: (u.full_name or u.username) for u in res.scalars().all()}
+
     responses = []
     for rule in rules:
         r = RoutingRuleResponse.model_validate(rule)
         r.category_name = cat_map.get(rule.category_id)
         r.subcategory_name = sub_map.get(rule.subcategory_id) if rule.subcategory_id else None
         r.team_name = team_map.get(rule.team_id) if rule.team_id else None
+        r.assigned_user_name = user_map.get(rule.assigned_user_id) if rule.assigned_user_id else None
+        r.backup_user_name_1 = user_map.get(rule.backup_user_id_1) if rule.backup_user_id_1 else None
+        r.backup_user_name_2 = user_map.get(rule.backup_user_id_2) if rule.backup_user_id_2 else None
         responses.append(r)
     return responses
 
@@ -512,6 +526,8 @@ async def create_routing_rule(
         subcategory_id=data.subcategory_id,
         team_id=data.team_id,
         assigned_user_id=data.assigned_user_id,
+        backup_user_id_1=data.backup_user_id_1,
+        backup_user_id_2=data.backup_user_id_2,
         priority_override=data.priority_override,
     )
     db.add(rule)
