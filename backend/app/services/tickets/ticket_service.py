@@ -242,7 +242,8 @@ async def get_tickets(
 
     stmt = select(Ticket).where(Ticket.is_active == True)
     if not include_closed:
-        stmt = stmt.where(cast(Ticket.status, String) != "closed")
+        # escludi sia "closed" che "resolved" (trattati ugualmente come stati finali)
+        stmt = stmt.where(cast(Ticket.status, String).notin_(["closed", "resolved"]))
 
     from sqlalchemy import or_
     department = getattr(current_user, "department", None)
@@ -310,7 +311,11 @@ async def get_tickets(
             )
 
     if status:
-        stmt = stmt.where(Ticket.status == status)
+        # "closed" include anche i vecchi ticket con status "resolved"
+        if status == "closed":
+            stmt = stmt.where(cast(Ticket.status, String).in_(["closed", "resolved"]))
+        else:
+            stmt = stmt.where(Ticket.status == status)
     if priority:
         stmt = stmt.where(Ticket.priority == priority)
     if category_id:

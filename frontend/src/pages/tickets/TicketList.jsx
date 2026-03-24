@@ -8,7 +8,8 @@ import { useAuthStore } from "@/store/authStore"
 import TicketStatusBadge from "@/components/tickets/TicketStatusBadge"
 import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
 
-const STATUSES = ["open", "in_progress", "waiting", "resolved", "closed"]
+const STATUSES = ["open", "in_progress", "waiting", "closed"]
+const STATUS_LABELS = { open: "Aperto", in_progress: "In lavorazione", waiting: "In attesa", closed: "Chiuso" }
 const PRIORITIES = ["low", "medium", "high", "critical"]
 
 function elapsed(from, to = new Date()) {
@@ -415,7 +416,7 @@ export default function TicketList() {
 
         <select value={filters.status} onChange={set("status")} className={selectClass}>
           <option value="">Tutti gli stati</option>
-          {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
         </select>
 
         <select value={filters.priority} onChange={set("priority")} className={selectClass}>
@@ -512,7 +513,7 @@ export default function TicketList() {
                   <td className="px-4 py-3 text-xs">
                     {t.store_number
                       ? <span className="font-mono font-semibold text-gray-700">{t.store_number}</span>
-                      : <span className="text-gray-500">{t.requester_name || "—"}</span>
+                      : <span className="font-mono font-semibold text-gray-700">{t.requester_name || "—"}</span>
                     }
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>

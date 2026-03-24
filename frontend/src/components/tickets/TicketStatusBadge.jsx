@@ -2,7 +2,7 @@ const STATUS_CONFIG = {
   open:        { label: "Aperto",       className: "bg-blue-100 text-blue-700" },
   in_progress: { label: "In lavorazione", className: "bg-amber-100 text-amber-700" },
   waiting:     { label: "In attesa",    className: "bg-purple-100 text-purple-700" },
-  resolved:    { label: "Risolto",      className: "bg-green-100 text-green-700" },
+  resolved:    { label: "Chiuso",       className: "bg-gray-100 text-gray-500" },
   closed:      { label: "Chiuso",       className: "bg-gray-100 text-gray-500" },
 }
 

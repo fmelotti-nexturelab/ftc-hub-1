@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -17,7 +17,6 @@ const STATUSES = [
   { value: "open",        label: "Aperto" },
   { value: "in_progress", label: "In lavorazione" },
   { value: "waiting",     label: "In attesa" },
-  { value: "resolved",    label: "Risolto" },
   { value: "closed",      label: "Chiuso" },
 ]
 
@@ -65,6 +64,10 @@ export default function TicketDetail() {
   const users = usersData?.users ?? []
 
   const [actionError, setActionError] = useState(null)
+  const [assignSearch, setAssignSearch] = useState("")
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignHighlight, setAssignHighlight] = useState(-1) // -1 = "Non assegnato"
+  const assignListRef = useRef(null)
 
   const invalidate = () => {
     setActionError(null)
@@ -380,19 +383,77 @@ export default function TicketDetail() {
                 </select>
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-xs text-gray-500 mb-1">Assegnato a</label>
-                <select
-                  value={ticket.assigned_to ?? ""}
-                  onChange={e => assignMutation.mutate(e.target.value || null)}
+                <input
+                  type="text"
+                  value={assignSearch !== "" || assignOpen ? assignSearch : (ticket.assignee_name || "")}
+                  placeholder="— Non assegnato —"
+                  onFocus={() => { setAssignOpen(true); setAssignSearch(""); setAssignHighlight(-1) }}
+                  onBlur={() => setTimeout(() => setAssignOpen(false), 150)}
+                  onChange={e => { setAssignSearch(e.target.value); setAssignHighlight(-1) }}
                   disabled={assignMutation.isPending}
-                  className={selectClass}
-                >
-                  <option value="">— Non assegnato —</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
-                  ))}
-                </select>
+                  className={selectClass + " cursor-text"}
+                  autoComplete="off"
+                  onKeyDown={e => {
+                    const filtered = users.filter(u =>
+                      (u.full_name || u.username).toLowerCase().includes(assignSearch.toLowerCase())
+                    )
+                    // indice 0 = "Non assegnato", 1..n = utenti filtrati
+                    const total = filtered.length + 1
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault()
+                      if (!assignOpen) { setAssignOpen(true); return }
+                      const next = assignHighlight < total - 1 ? assignHighlight + 1 : 0
+                      setAssignHighlight(next)
+                      assignListRef.current?.children[next]?.scrollIntoView({ block: "nearest" })
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault()
+                      const prev = assignHighlight > 0 ? assignHighlight - 1 : total - 1
+                      setAssignHighlight(prev)
+                      assignListRef.current?.children[prev]?.scrollIntoView({ block: "nearest" })
+                    } else if (e.key === "Enter") {
+                      e.preventDefault()
+                      if (!assignOpen) return
+                      if (assignHighlight === 0) {
+                        assignMutation.mutate(null)
+                      } else if (assignHighlight > 0) {
+                        assignMutation.mutate(filtered[assignHighlight - 1].id)
+                      }
+                      setAssignOpen(false); setAssignSearch(""); setAssignHighlight(-1)
+                    } else if (e.key === "Escape") {
+                      setAssignOpen(false); setAssignSearch(""); setAssignHighlight(-1)
+                    }
+                  }}
+                />
+                {assignOpen && (
+                  <div ref={assignListRef} className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto text-xs">
+                    <div
+                      className={`px-3 py-2 cursor-pointer ${assignHighlight === 0 ? "bg-blue-50 text-[#2563eb]" : "text-gray-400 hover:bg-gray-50"}`}
+                      onMouseDown={() => { assignMutation.mutate(null); setAssignOpen(false); setAssignSearch(""); setAssignHighlight(-1) }}
+                    >
+                      — Non assegnato —
+                    </div>
+                    {users
+                      .filter(u => (u.full_name || u.username).toLowerCase().includes(assignSearch.toLowerCase()))
+                      .map((u, i) => (
+                        <div
+                          key={u.id}
+                          onMouseDown={() => { assignMutation.mutate(u.id); setAssignOpen(false); setAssignSearch(""); setAssignHighlight(-1) }}
+                          className={`px-3 py-2 cursor-pointer ${
+                            assignHighlight === i + 1
+                              ? "bg-blue-50 text-[#2563eb] font-medium"
+                              : ticket.assigned_to === u.id
+                              ? "font-semibold text-[#1e3a5f] hover:bg-blue-50"
+                              : "text-gray-700 hover:bg-blue-50 hover:text-[#2563eb]"
+                          }`}
+                        >
+                          {u.full_name || u.username}
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
               </div>
 
               {/* Chiudi ticket */}

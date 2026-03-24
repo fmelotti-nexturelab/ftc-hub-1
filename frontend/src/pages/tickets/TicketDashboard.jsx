@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
-  TicketCheck, Clock, Loader, PauseCircle, CheckCircle, XCircle,
+  TicketCheck, Clock, Loader, PauseCircle, XCircle,
   LayoutDashboard, ArrowLeft, Users,
 } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
@@ -11,7 +11,6 @@ const STATUS_COLS = [
   { key: "open",        label: "Aperti",        color: "text-blue-600" },
   { key: "in_progress", label: "In lavorazione", color: "text-amber-600" },
   { key: "waiting",     label: "In attesa",      color: "text-violet-600" },
-  { key: "resolved",    label: "Risolti",        color: "text-green-600" },
   { key: "closed",      label: "Chiusi",         color: "text-gray-500" },
 ]
 
@@ -20,12 +19,16 @@ const SUMMARY_CARDS = [
   { key: "open",        label: "Aperti",         bg: "bg-blue-50",     text: "text-blue-700",   icon: Clock },
   { key: "in_progress", label: "In lavorazione", bg: "bg-amber-50",    text: "text-amber-700",  icon: Loader },
   { key: "waiting",     label: "In attesa",      bg: "bg-violet-50",   text: "text-violet-700", icon: PauseCircle },
-  { key: "resolved",    label: "Risolti",        bg: "bg-green-50",    text: "text-green-700",  icon: CheckCircle },
   { key: "closed",      label: "Chiusi",         bg: "bg-gray-100",    text: "text-gray-600",   icon: XCircle },
 ]
 
+function mergeResolved(rows) {
+  return rows?.map(r => ({ ...r, closed: (r.closed ?? 0) + (r.resolved ?? 0) })) ?? []
+}
+
 function StatsTable({ rows, showCategory = false }) {
-  if (!rows?.length) {
+  const merged = mergeResolved(rows)
+  if (!merged.length) {
     return <p className="text-sm text-gray-400 py-4 text-center">Nessun dato.</p>
   }
   return (
@@ -41,7 +44,7 @@ function StatsTable({ rows, showCategory = false }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, i) => (
+        {merged.map((r, i) => (
           <tr key={i} className="border-b border-gray-100 last:border-0 odd:bg-white even:bg-gray-50/50">
             <td className="px-3 py-2 font-medium text-gray-700">{r.name}</td>
             {showCategory && <td className="px-3 py-2 text-gray-500">{r.category}</td>}
@@ -84,7 +87,9 @@ export default function TicketDashboard() {
     return <div className="py-16 text-center text-gray-400 text-sm">Caricamento statistiche...</div>
   }
 
-  const totals = stats?.totals ?? {}
+  const rawTotals = stats?.totals ?? {}
+  // "resolved" è trattato come "closed" — sommiamo i due contatori
+  const totals = { ...rawTotals, closed: (rawTotals.closed ?? 0) + (rawTotals.resolved ?? 0) }
 
   return (
     <div className="space-y-5">
