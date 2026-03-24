@@ -1,6 +1,7 @@
 ﻿import { Outlet } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
+import PwaUpdateBanner from "@/components/shared/PwaUpdateBanner"
 
 export default function Shell() {
   return (
@@ -12,6 +13,7 @@ export default function Shell() {
           <Outlet />
         </main>
       </div>
+      <PwaUpdateBanner />
     </div>
   )
 }
