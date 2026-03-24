@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, cast, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -40,7 +40,7 @@ async def get_diagnostics(
     stale_threshold = now - timedelta(days=3)
     result = await db.execute(
         select(func.count(Ticket.id)).where(
-            Ticket.status.in_([TicketStatus.OPEN, TicketStatus.IN_PROGRESS]),
+            cast(Ticket.status, String).in_(["open", "in_progress"]),
             Ticket.is_active == True,
             Ticket.updated_at < stale_threshold,
             Ticket.updated_at.isnot(None),
@@ -50,7 +50,7 @@ async def get_diagnostics(
     # Include anche quelli mai aggiornati (updated_at is null) creati >3gg fa
     result2 = await db.execute(
         select(func.count(Ticket.id)).where(
-            Ticket.status.in_([TicketStatus.OPEN, TicketStatus.IN_PROGRESS]),
+            cast(Ticket.status, String).in_(["open", "in_progress"]),
             Ticket.is_active == True,
             Ticket.updated_at.is_(None),
             Ticket.created_at < stale_threshold,
@@ -68,7 +68,7 @@ async def get_diagnostics(
     # 2. Ticket senza team assegnato
     result = await db.execute(
         select(func.count(Ticket.id)).where(
-            Ticket.status.in_([TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]),
+            cast(Ticket.status, String).in_(["open", "in_progress", "waiting"]),
             Ticket.is_active == True,
             Ticket.team_id.is_(None),
         )
