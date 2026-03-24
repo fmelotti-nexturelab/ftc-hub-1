@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/authStore"
 import TicketStatusBadge from "@/components/tickets/TicketStatusBadge"
 import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
 
-const STATUSES = ["open", "in_progress", "waiting", "resolved"]
+const STATUSES = ["open", "in_progress", "waiting", "resolved", "closed"]
 const PRIORITIES = ["low", "medium", "high", "critical"]
 
 function elapsed(from, to = new Date()) {

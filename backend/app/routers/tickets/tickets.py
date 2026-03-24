@@ -222,9 +222,12 @@ async def list_tickets(
     current_user: User = Depends(get_current_user),
 ):
     is_manager = await _check_manage(db, current_user)
-    # include_closed solo per STORE/STOREMANAGER (storico view)
+    # include_closed: per STORE/STOREMANAGER (storico view) o se si filtra esplicitamente per "closed"
     department = getattr(current_user, "department", None)
-    allow_closed = include_closed and department in (UserDepartment.STORE, UserDepartment.STOREMANAGER)
+    allow_closed = (
+        (include_closed and department in (UserDepartment.STORE, UserDepartment.STOREMANAGER))
+        or status == "closed"
+    )
     return await ticket_service.get_tickets(
         db, current_user, is_manager,
         status=status, priority=priority, category_id=category_id,
