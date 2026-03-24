@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { History, ExternalLink, Clock, X } from "lucide-react"
+import { History, ExternalLink, Clock, LogOut } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -70,10 +70,10 @@ export default function TicketHistory() {
         </div>
         <button
           onClick={() => navigate("/tickets")}
-          className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600"
-          title="Torna ai ticket"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <X size={18} />
+          <LogOut size={15} />
+          Esci
         </button>
       </div>
 
