@@ -1,7 +1,7 @@
 // FTC HUB — Service Worker
 // Strategia: cache-first per asset statici, network-first per API
 
-const CACHE_NAME = "ftc-hub-v1"
+const CACHE_NAME = "ftc-hub-v2"
 
 const STATIC_ASSETS = [
   "/",
