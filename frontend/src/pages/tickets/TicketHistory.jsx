@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { History, ExternalLink, Clock } from "lucide-react"
+import { History, ExternalLink, Clock, X } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -64,10 +64,17 @@ export default function TicketHistory() {
         <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
           <History size={18} className="text-[#1e3a5f]" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-800">Storico Ticket</h1>
           <p className="text-xs text-gray-400 mt-0.5">Ticket chiusi e tempi di risoluzione</p>
         </div>
+        <button
+          onClick={() => navigate("/tickets")}
+          className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-600"
+          title="Torna ai ticket"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Filtri */}
