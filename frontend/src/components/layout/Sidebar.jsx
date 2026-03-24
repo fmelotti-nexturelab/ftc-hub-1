@@ -41,7 +41,7 @@ function SidebarDiagnostics({ user }) {
     queryKey: ["diagnostics"],
     queryFn: () => diagnosticsApi.get().then(r => r.data),
     refetchInterval: 5 * 60_000,
-    enabled: isPrivileged,
+    enabled: true,
     staleTime: 60_000,
   })
 
@@ -55,13 +55,11 @@ function SidebarDiagnostics({ user }) {
       {/* Riga titolo + dot */}
       <div className="flex items-center gap-2">
         <span className="font-black text-lg leading-none">FTC HUB</span>
-        {isPrivileged && (
-          <button
-            onClick={() => setOpen(v => !v)}
-            title={tooltip}
-            className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor} ${pulse} hover:opacity-80 transition`}
-          />
-        )}
+        <button
+          onClick={() => isPrivileged && setOpen(v => !v)}
+          title={tooltip}
+          className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor} ${pulse} transition ${isPrivileged ? "hover:opacity-80 cursor-pointer" : "cursor-default"}`}
+        />
       </div>
       <div className="text-xs text-white/50 mt-0.5">{displayUserType(user)} Module</div>
 
