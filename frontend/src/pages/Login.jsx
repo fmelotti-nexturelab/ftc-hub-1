@@ -35,16 +35,16 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1e3a5f] to-[#2563eb] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1e3a5f] mb-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md px-8 pt-2 pb-0">
+        <div className="text-center mb-1">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#1e3a5f] mb-2">
             <span className="text-white text-2xl font-black">F</span>
           </div>
           <h1 className="text-2xl font-black text-[#1e3a5f]">FTC HUB</h1>
           <p className="text-gray-500 text-sm mt-1">Accedi al tuo account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
             <input
@@ -97,8 +97,8 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 flex justify-center">
-          <img src="/nexturelab-logo.png" alt="Nexturelab" className="h-6 opacity-50" />
+        <div className="border-t border-gray-100 flex justify-center">
+          <img src="/flying-tiger-logo.png" alt="Flying Tiger Copenhagen" className="w-32 opacity-60" />
         </div>
       </div>
     </div>
