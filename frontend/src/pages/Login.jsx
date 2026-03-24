@@ -96,6 +96,10 @@ export default function Login() {
             {loading ? "Accesso in corso..." : "Accedi"}
           </button>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-100 flex justify-center">
+          <img src="/nexturelab-logo.png" alt="Nexturelab" className="h-6 opacity-50" />
+        </div>
       </div>
     </div>
   )
