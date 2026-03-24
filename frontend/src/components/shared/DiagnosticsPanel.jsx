@@ -1,139 +1,113 @@
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Activity, X, RefreshCw, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp, RefreshCw } from "lucide-react"
 import { diagnosticsApi } from "@/api/diagnostics"
 import { useAuthStore } from "@/store/authStore"
-import { formatDistanceToNow } from "date-fns"
-import { it } from "date-fns/locale"
 
-function StatusIcon({ status, size = 14 }) {
-  if (status === "ok") return <CheckCircle size={size} className="text-green-500 shrink-0" />
-  if (status === "warning") return <AlertTriangle size={size} className="text-amber-500 shrink-0" />
-  return <XCircle size={size} className="text-red-500 shrink-0" />
+function StatusDot({ status }) {
+  const color = status === "ok" ? "bg-green-400" : status === "warning" ? "bg-amber-400" : "bg-red-500"
+  const pulse = status !== "ok" ? "animate-pulse" : ""
+  return <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${color} ${pulse}`} />
 }
 
-function globalBadgeClass(status) {
-  if (status === "ok") return "bg-green-500"
-  if (status === "warning") return "bg-amber-500"
-  return "bg-red-500"
+function StatusIcon({ status }) {
+  if (status === "ok") return <CheckCircle size={13} className="text-green-400 shrink-0" />
+  if (status === "warning") return <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+  return <XCircle size={13} className="text-red-400 shrink-0" />
 }
 
-function CheckRow({ check }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="border-b border-gray-50 last:border-0">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-center gap-3"
-      >
-        <StatusIcon status={check.status} />
-        <span className={`flex-1 text-xs ${check.status !== "ok" ? "font-semibold text-gray-800" : "text-gray-600"}`}>
-          {check.name}
-        </span>
-        {check.count > 0 && (
-          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${
-            check.status === "error" ? "bg-red-500" : "bg-amber-500"
-          }`}>
-            {check.count}
-          </span>
-        )}
-        {open ? <ChevronUp size={12} className="text-gray-400" /> : <ChevronDown size={12} className="text-gray-400" />}
-      </button>
-      {open && (
-        <div className="px-4 pb-3 ml-5">
-          <p className="text-[11px] text-gray-400 mb-1">{check.description}</p>
-          <p className={`text-xs font-medium ${
-            check.status === "ok" ? "text-green-600" :
-            check.status === "warning" ? "text-amber-600" : "text-red-600"
-          }`}>
-            {check.detail}
-          </p>
-        </div>
-      )}
-    </div>
-  )
+function statusLabel(status) {
+  if (status === "ok") return "Tutti i sistemi operativi"
+  if (status === "warning") return "Attenzione richiesta"
+  return "Problema critico rilevato"
 }
 
 export default function DiagnosticsPanel() {
   const { user } = useAuthStore()
   const [open, setOpen] = useState(false)
-  const panelRef = useRef(null)
-
   const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
 
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isFetching, refetch } = useQuery({
     queryKey: ["diagnostics"],
     queryFn: () => diagnosticsApi.get().then(r => r.data),
-    refetchInterval: 5 * 60_000, // ogni 5 minuti
+    refetchInterval: 5 * 60_000,
     enabled: isPrivileged,
   })
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
 
   if (!isPrivileged) return null
 
   const status = data?.status ?? "ok"
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div>
+      {/* Badge cliccabile accanto a FTC HUB — iniettato dalla Sidebar */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 transition text-gray-500 hover:text-gray-700"
-        aria-label="Stato sistema"
+        title={statusLabel(status)}
+        className="flex items-center"
       >
-        <Activity size={20} />
-        {!isLoading && (
-          <span className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${globalBadgeClass(status)}`} />
-        )}
+        <StatusDot status={status} />
       </button>
 
+      {/* Pannello espandibile inline */}
       {open && (
-        <div className="absolute right-0 top-11 w-80 bg-white rounded-xl border border-gray-200 shadow-xl z-50 flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <div className="flex items-center gap-2">
-              <StatusIcon status={status} size={15} />
-              <span className="font-bold text-gray-800 text-sm">Stato sistema</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => refetch()}
-                disabled={isFetching}
-                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-40"
-                title="Aggiorna"
-              >
-                <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
-              </button>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
-                <X size={16} />
-              </button>
-            </div>
+        <div className="mt-3 mx-1 bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+          {/* Header pannello */}
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+            <span className="text-xs font-semibold text-white/70">Stato sistema</span>
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="text-white/40 hover:text-white/70 transition disabled:opacity-30"
+            >
+              <RefreshCw size={11} className={isFetching ? "animate-spin" : ""} />
+            </button>
           </div>
 
-          {/* Checks */}
-          <div className="overflow-y-auto max-h-96">
-            {isLoading ? (
-              <div className="py-8 text-center text-gray-400 text-xs">Analisi in corso...</div>
-            ) : (
-              data?.checks?.map((check, i) => <CheckRow key={i} check={check} />)
-            )}
-          </div>
-
-          {/* Footer */}
-          {data?.checked_at && (
-            <div className="px-4 py-2 border-t border-gray-100 text-[10px] text-gray-300 text-right">
-              Aggiornato {formatDistanceToNow(new Date(data.checked_at), { addSuffix: true, locale: it })}
-            </div>
+          {/* Check list */}
+          {!data ? (
+            <div className="px-3 py-4 text-center text-white/40 text-xs">Analisi in corso...</div>
+          ) : (
+            data.checks?.map((check, i) => (
+              <div key={i} className="px-3 py-2 border-b border-white/5 last:border-0">
+                <div className="flex items-center gap-2">
+                  <StatusIcon status={check.status} />
+                  <span className="text-xs text-white/80 flex-1">{check.name}</span>
+                </div>
+                <p className="text-[10px] text-white/40 mt-0.5 ml-5">{check.detail}</p>
+              </div>
+            ))
           )}
         </div>
       )}
     </div>
+  )
+}
+
+// Componente separato solo per il dot — usato inline nella sidebar header
+export function DiagnosticsDot() {
+  const { user } = useAuthStore()
+  const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
+
+  const { data } = useQuery({
+    queryKey: ["diagnostics"],
+    queryFn: () => diagnosticsApi.get().then(r => r.data),
+    refetchInterval: 5 * 60_000,
+    enabled: isPrivileged,
+    staleTime: 60_000,
+  })
+
+  if (!isPrivileged) return null
+
+  const status = data?.status ?? "ok"
+  const color = status === "ok" ? "bg-green-400" : status === "warning" ? "bg-amber-400" : "bg-red-500"
+  const pulse = status !== "ok" ? "animate-pulse" : ""
+  const label = statusLabel(status)
+
+  return (
+    <span
+      className={`w-2.5 h-2.5 rounded-full shrink-0 ${color} ${pulse}`}
+      title={label}
+    />
   )
 }

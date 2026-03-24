@@ -1,8 +1,10 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
-import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, ChevronRight, Monitor, Ticket, Wrench, UserCircle, BookOpen, History, ShieldAlert } from "lucide-react"
+import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, ChevronRight, Monitor, Ticket, Wrench, UserCircle, BookOpen, History, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle } from "lucide-react"
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { diagnosticsApi } from "@/api/diagnostics"
 
 const displayUserType = (user) => {
   const t = user?.department || user?.role
@@ -25,6 +27,72 @@ const HO_MENU = [
   { path: "/ho/status", icon: Wifi, label: "Online/Offline", soon: true },
 ]
 
+function DiagStatusIcon({ status }) {
+  if (status === "ok") return <CheckCircle size={12} className="text-green-400 shrink-0" />
+  if (status === "warning") return <AlertTriangle size={12} className="text-amber-400 shrink-0" />
+  return <XCircle size={12} className="text-red-400 shrink-0" />
+}
+
+function SidebarDiagnostics({ user }) {
+  const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
+  const [open, setOpen] = useState(false)
+
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ["diagnostics"],
+    queryFn: () => diagnosticsApi.get().then(r => r.data),
+    refetchInterval: 5 * 60_000,
+    enabled: isPrivileged,
+    staleTime: 60_000,
+  })
+
+  const status = data?.status ?? "ok"
+  const dotColor = status === "ok" ? "bg-green-400" : status === "warning" ? "bg-amber-400" : "bg-red-500"
+  const pulse = status !== "ok" ? "animate-pulse" : ""
+  const tooltip = status === "ok" ? "Tutti i sistemi operativi" : status === "warning" ? "Attenzione richiesta" : "Problema critico rilevato"
+
+  return (
+    <div>
+      {/* Riga titolo + dot */}
+      <div className="flex items-center gap-2">
+        <span className="font-black text-lg leading-none">FTC HUB</span>
+        {isPrivileged && (
+          <button
+            onClick={() => setOpen(v => !v)}
+            title={tooltip}
+            className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor} ${pulse} hover:opacity-80 transition`}
+          />
+        )}
+      </div>
+      <div className="text-xs text-white/50 mt-0.5">{displayUserType(user)} Module</div>
+
+      {/* Pannello espandibile */}
+      {isPrivileged && open && (
+        <div className="mt-3 bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+            <span className="text-[11px] font-semibold text-white/60">Stato sistema</span>
+            <button onClick={() => refetch()} disabled={isFetching} className="text-white/40 hover:text-white/70 transition disabled:opacity-30">
+              <RefreshCw size={10} className={isFetching ? "animate-spin" : ""} />
+            </button>
+          </div>
+          {!data ? (
+            <div className="px-3 py-3 text-center text-white/40 text-[10px]">Analisi in corso...</div>
+          ) : (
+            data.checks?.map((check, i) => (
+              <div key={i} className="px-3 py-2 border-b border-white/5 last:border-0">
+                <div className="flex items-center gap-2">
+                  <DiagStatusIcon status={check.status} />
+                  <span className="text-[11px] text-white/80 flex-1">{check.name}</span>
+                </div>
+                <p className="text-[10px] text-white/40 mt-0.5 ml-[18px] leading-snug">{check.detail}</p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Sidebar() {
   const { user, clearAuth, canView } = useAuthStore()
   const navigate = useNavigate()
@@ -46,14 +114,13 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 bg-[#1e3a5f] text-white flex flex-col shadow-xl shrink-0">
-      <div className="px-6 py-5 border-b border-white/10">
+      <div className="px-4 py-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center">
+          <div className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
             <span className="font-black text-lg">F</span>
           </div>
-          <div>
-            <div className="font-black text-lg leading-none">FTC HUB</div>
-            <div className="text-xs text-white/50 mt-0.5">{displayUserType(user)} Module</div>
+          <div className="flex-1 min-w-0">
+            <SidebarDiagnostics user={user} />
           </div>
         </div>
       </div>
