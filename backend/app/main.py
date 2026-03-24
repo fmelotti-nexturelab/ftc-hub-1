@@ -25,6 +25,7 @@ from app.routers.tickets import chat as tickets_chat_router
 from app.routers.admin import tickets_config as admin_tickets_config_router
 from app.routers import notifications as notifications_router
 from app.routers.admin import support as admin_support_router
+from app.routers.admin import diagnostics as admin_diagnostics_router
 
 
 @asynccontextmanager
@@ -78,6 +79,7 @@ app.include_router(tickets_router.router)
 app.include_router(admin_tickets_config_router.router)
 app.include_router(notifications_router.router)
 app.include_router(admin_support_router.router)
+app.include_router(admin_diagnostics_router.router)
 
 
 @app.get("/api/health")
