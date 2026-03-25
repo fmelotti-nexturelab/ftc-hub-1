@@ -74,13 +74,13 @@ export default function StockTable({ sessionId }) {
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Pagina {page} di {totalPages}</span>
           <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} aria-label="Pagina precedente"
               className="p-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition">
-              <ChevronLeft size={14} />
+              <ChevronLeft size={14} aria-hidden="true" />
             </button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} aria-label="Pagina successiva"
               className="p-1.5 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition">
-              <ChevronRight size={14} />
+              <ChevronRight size={14} aria-hidden="true" />
             </button>
           </div>
         </div>

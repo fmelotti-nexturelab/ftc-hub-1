@@ -11,7 +11,7 @@ export function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
-export function StockCalendar({ value, onChange }) {
+export function StockCalendar({ value, onChange, highlightedDates }) {
   const todayRaw = new Date()
   const todayStr = toDateStr(todayRaw.getFullYear(), todayRaw.getMonth(), todayRaw.getDate())
 
@@ -41,11 +41,11 @@ export function StockCalendar({ value, onChange }) {
           {MONTHS[viewMonth]} {viewYear}
         </span>
         <div className="flex gap-1">
-          <button onClick={prev} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition">
-            <ChevronLeft size={15} />
+          <button onClick={prev} aria-label="Mese precedente" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition">
+            <ChevronLeft size={15} aria-hidden="true" />
           </button>
-          <button onClick={next} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition">
-            <ChevronRight size={15} />
+          <button onClick={next} aria-label="Mese successivo" className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition">
+            <ChevronRight size={15} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -62,19 +62,25 @@ export function StockCalendar({ value, onChange }) {
           const str = toDateStr(viewYear, viewMonth, day)
           const isSelected = value === str
           const isToday = todayStr === str
+          const isHighlighted = highlightedDates?.has(str)
           return (
             <button
               key={i}
               onClick={() => onChange(str)}
-              className={`w-full aspect-square flex items-center justify-center text-sm rounded-lg transition font-medium
+              className={`relative w-full aspect-square flex items-center justify-center text-sm rounded-lg transition font-medium
                 ${isSelected
                   ? "bg-[#1e3a5f] text-white shadow-sm"
                   : isToday
                   ? "ring-2 ring-[#2563eb] text-[#2563eb] hover:bg-blue-50"
+                  : isHighlighted
+                  ? "text-gray-800 hover:bg-amber-50"
                   : "text-gray-700 hover:bg-gray-100"
                 }`}
             >
               {day}
+              {isHighlighted && !isSelected && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-amber-400" />
+              )}
             </button>
           )
         })}

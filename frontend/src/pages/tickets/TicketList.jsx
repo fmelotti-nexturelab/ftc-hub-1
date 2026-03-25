@@ -19,6 +19,8 @@ function IconTip({ icon: Icon, color, label }) {
     <>
       <span
         ref={ref}
+        role="img"
+        aria-label={label}
         className="flex items-center cursor-default"
         onMouseEnter={() => {
           const r = ref.current?.getBoundingClientRect()
@@ -26,7 +28,7 @@ function IconTip({ icon: Icon, color, label }) {
         }}
         onMouseLeave={() => setPos(null)}
       >
-        <Icon size={13} className={color} />
+        <Icon size={13} aria-hidden="true" className={color} />
       </span>
       {pos && createPortal(
         <div
@@ -629,10 +631,10 @@ export default function TicketList() {
 
             <button
               onClick={() => setSelected(new Set())}
+              aria-label="Deseleziona tutto"
               className="p-1 rounded-lg hover:bg-white/20 transition"
-              title="Deseleziona tutto"
             >
-              <X size={15} />
+              <X size={15} aria-hidden="true" />
             </button>
           </div>
         </div>

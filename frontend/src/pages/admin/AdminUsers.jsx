@@ -52,7 +52,7 @@ function NewUserModal({ onClose, onSaved }) {
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-gray-800 text-lg">Nuovo utente</h2>
-          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} aria-hidden="true" /></button>
         </div>
         {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>}
         <div className="space-y-3">
@@ -89,7 +89,7 @@ function ChangeTypeModal({ user, onClose, onSaved }) {
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-gray-800">Cambia tipo utente</h2>
-          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} aria-hidden="true" /></button>
         </div>
         <p className="text-sm text-gray-500">Utente: <strong>{user.full_name || user.username}</strong></p>
         {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>}
@@ -147,7 +147,7 @@ function ResetPasswordModal({ user, onClose }) {
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-gray-800">Reset password</h2>
-          <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} aria-hidden="true" /></button>
         </div>
         <p className="text-sm text-gray-500">Utente: <strong>{user.full_name || user.username}</strong></p>
         {done ? (
@@ -246,19 +246,19 @@ function UsersTable({
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setEditingId(user.id)} title="Modifica" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><Pencil size={14} /></button>
-                          <button onClick={() => onChangeType(user)} title="Cambia tipo" className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition"><ShieldCheck size={14} /></button>
-                          <button onClick={() => onReset(user)} title="Reset password" className="p-1.5 rounded-lg text-gray-400 hover:text-[#2563eb] hover:bg-blue-50 transition"><KeyRound size={14} /></button>
+                          <button onClick={() => setEditingId(user.id)} aria-label="Modifica utente" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><Pencil size={14} aria-hidden="true" /></button>
+                          <button onClick={() => onChangeType(user)} aria-label="Cambia tipo utente" className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition"><ShieldCheck size={14} aria-hidden="true" /></button>
+                          <button onClick={() => onReset(user)} aria-label="Reset password" className="p-1.5 rounded-lg text-gray-400 hover:text-[#2563eb] hover:bg-blue-50 transition"><KeyRound size={14} aria-hidden="true" /></button>
                           {confirmToggle === user.id ? (
                             <span className="flex items-center gap-1">
                               <span className="text-xs text-red-600 font-medium">Confermi?</span>
-                              <button onClick={() => onToggleExecute(user)} className="p-0.5 text-red-600 hover:text-red-800"><Check size={13} /></button>
-                              <button onClick={() => setConfirmToggle(null)} className="p-0.5 text-gray-400 hover:text-gray-600"><X size={13} /></button>
+                              <button onClick={() => onToggleExecute(user)} aria-label="Conferma" className="p-0.5 text-red-600 hover:text-red-800"><Check size={13} aria-hidden="true" /></button>
+                              <button onClick={() => setConfirmToggle(null)} aria-label="Annulla" className="p-0.5 text-gray-400 hover:text-gray-600"><X size={13} aria-hidden="true" /></button>
                             </span>
                           ) : (
-                            <button onClick={() => setConfirmToggle(user.id)} title={user.is_active ? "Disattiva" : "Riattiva"}
+                            <button onClick={() => setConfirmToggle(user.id)} aria-label={user.is_active ? "Disattiva utente" : "Riattiva utente"}
                               className={`p-1.5 rounded-lg transition ${user.is_active ? "text-gray-300 hover:text-red-500 hover:bg-red-50" : "text-gray-300 hover:text-green-600 hover:bg-green-50"}`}>
-                              {user.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
+                              {user.is_active ? <UserX size={14} aria-hidden="true" /> : <UserCheck size={14} aria-hidden="true" />}
                             </button>
                           )}
                           {confirmDelete === user.id ? (

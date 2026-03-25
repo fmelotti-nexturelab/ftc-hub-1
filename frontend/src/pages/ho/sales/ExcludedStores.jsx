@@ -83,8 +83,8 @@ export default function ExcludedStores() {
             <span className="text-sm text-gray-600 flex-1">{s.store_name || "—"}</span>
             <span className={`text-xs px-2 py-0.5 rounded font-medium ${reasonColor[s.reason]}`}>{s.reason}</span>
             {s.notes && <span className="text-xs text-gray-400 italic">{s.notes}</span>}
-            <button onClick={() => removeMut.mutate(s.id)} className="text-red-400 hover:text-red-600 transition">
-              <Trash2 size={14} />
+            <button onClick={() => removeMut.mutate(s.id)} aria-label="Rimuovi store" className="text-red-400 hover:text-red-600 transition">
+              <Trash2 size={14} aria-hidden="true" />
             </button>
           </div>
         ))}

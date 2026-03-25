@@ -35,7 +35,7 @@ function StoreModal({ store, onClose }) {
             </div>
             <h2 className="text-lg font-bold text-gray-800">{store.store_name}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} aria-hidden="true" /></button>
         </div>
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -91,7 +91,7 @@ function StoreFormModal({ initial, onClose, onSaved }) {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h2 className="font-bold text-gray-800">{isEdit ? "Modifica Store" : "Nuovo Store"}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"><X size={18} aria-hidden="true" /></button>
         </div>
         {error && <div className="mx-5 mt-4 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>}
         <div className="p-5 grid grid-cols-2 gap-3">

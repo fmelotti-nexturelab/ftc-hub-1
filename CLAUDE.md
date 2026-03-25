@@ -403,7 +403,80 @@ Prima di scrivere codice, verifica:
 
 ---
 
-## 12. ERRORI COMUNI DA EVITARE
+## 12. ACCESSIBILITÀ — WCAG 2.1 Livello AA (obbligatorio)
+
+Il progetto è destinato alla commercializzazione ed è soggetto all'**European Accessibility Act (Direttiva 2019/882)**, recepita in Italia dal **28 giugno 2025**. Ogni componente UI DEVE rispettare la conformità **WCAG 2.1 livello AA**.
+
+### Regole obbligatorie
+
+#### Testo alternativo per elementi non testuali (WCAG 1.1.1)
+- Ogni `<button>` con sola icona DEVE avere `aria-label="..."` descrittivo
+- Icone puramente decorative DEVONO avere `aria-hidden="true"`
+- Icone che trasmettono informazioni DEVONO avere `aria-label` o testo visibile
+
+```jsx
+// ✅ Corretto
+<button aria-label="Chiudi"><X size={16} /></button>
+<button aria-label="Pagina precedente"><ChevronLeft size={14} /></button>
+
+// ✅ Icona decorativa
+<LifeBuoy size={18} aria-hidden="true" />
+
+// ❌ Sbagliato
+<button><X size={16} /></button>
+```
+
+#### Contrasto colori (WCAG 1.4.3)
+- Testo normale: rapporto minimo **4.5:1**
+- Testo grande (18px+ o 14px bold): rapporto minimo **3:1**
+- **NON usare** `text-gray-300` o `text-gray-400` su sfondo bianco per testo informativo → usa almeno `text-gray-500`
+
+#### Form accessibili (WCAG 1.3.1, 3.3.2)
+- Ogni `<input>`, `<select>`, `<textarea>` DEVE avere una `<label>` associata tramite `htmlFor` + `id`
+- Il `placeholder` NON sostituisce la `<label>`
+
+```jsx
+// ✅ Corretto
+<label htmlFor="store-code" className="sr-only">Codice store</label>
+<input id="store-code" placeholder="Codice store *" ... />
+
+// ❌ Sbagliato
+<input placeholder="Codice store *" ... />
+```
+
+#### Tabelle dati (WCAG 1.3.1)
+- Ogni `<th>` DEVE avere `scope="col"` (intestazione colonna) o `scope="row"` (intestazione riga)
+
+```jsx
+// ✅ Corretto
+<th scope="col" className="px-4 py-3">Titolo</th>
+
+// ❌ Sbagliato
+<th className="px-4 py-3">Titolo</th>
+```
+
+#### Navigazione da tastiera (WCAG 2.1.1, 2.4.7)
+- Tutti i controlli interattivi DEVONO essere raggiungibili con Tab
+- NON usare `tabIndex={-1}` su controlli che l'utente deve poter attivare
+- Il focus DEVE essere visibile: aggiungi `focus-visible:ring-2 focus-visible:ring-[#2563eb]` ai bottoni custom
+- I `<div>` con `onClick` interattivi DEVONO diventare `<button>` o avere `role` + `tabIndex={0}`
+
+#### Semantica (WCAG 4.1.2)
+- Usa elementi HTML semantici (`<button>`, `<nav>`, `<main>`, `<header>`) invece di `<div>` generici per elementi interattivi
+- I modali aperti DEVONO ricevere il focus automaticamente sull'elemento principale
+
+### Checklist accessibilità (aggiunta alla checklist di sezione 11)
+- [ ] I bottoni con sole icone hanno `aria-label`?
+- [ ] Le icone decorative hanno `aria-hidden="true"`?
+- [ ] Ogni input ha una `<label>` associata (non solo placeholder)?
+- [ ] Le tabelle hanno `scope="col"` sulle intestazioni?
+- [ ] Il contrasto del testo è almeno 4.5:1 (no `text-gray-300/400` su bianco)?
+- [ ] Tutti i controlli sono raggiungibili da tastiera?
+- [ ] Il focus visibile è presente su ogni elemento interattivo?
+
+---
+
+## 13. ERRORI COMUNI DA EVITARE
 
 1. **Creare tabelle con `create_all()`** → Usa SEMPRE Alembic
 2. **Dimenticare lo schema PostgreSQL** → Ogni tabella DEVE avere `{"schema": "auth"}` o `{"schema": "ho"}`
@@ -418,7 +491,7 @@ Prima di scrivere codice, verifica:
 
 ---
 
-## 13. CONTESTO BUSINESS
+## 14. CONTESTO BUSINESS
 
 - **Entity**: IT01, IT02, IT03 (divisioni geografiche/legali italiane)
 - **Store**: codici tipo IT207, IT315, ecc. (150+ negozi)

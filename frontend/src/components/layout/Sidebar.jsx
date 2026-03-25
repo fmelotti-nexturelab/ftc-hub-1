@@ -54,8 +54,8 @@ function SidebarDiagnostics({ user }) {
         <div className="mt-3 bg-white/5 rounded-xl border border-white/10 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
             <span className="text-[11px] font-semibold text-white/60">Stato sistema</span>
-            <button onClick={() => refetch()} disabled={isFetching} className="text-white/40 hover:text-white/70 transition disabled:opacity-30">
-              <RefreshCw size={10} className={isFetching ? "animate-spin" : ""} />
+            <button onClick={() => refetch()} disabled={isFetching} aria-label="Aggiorna stato sistema" className="text-white/40 hover:text-white/70 transition disabled:opacity-30">
+              <RefreshCw size={10} aria-hidden="true" className={isFetching ? "animate-spin" : ""} />
             </button>
           </div>
           {!data ? (

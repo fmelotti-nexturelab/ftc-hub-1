@@ -118,8 +118,8 @@ export default function NotificationPanel() {
                   Segna tutte lette
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 transition">
-                <X size={16} />
+              <button onClick={() => setOpen(false)} aria-label="Chiudi notifiche" className="text-gray-400 hover:text-gray-600 transition">
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
           </div>
