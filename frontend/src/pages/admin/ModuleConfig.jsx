@@ -32,10 +32,12 @@ function Toggle({ checked, onChange, disabled }) {
     <button
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      className={`w-3.5 h-3.5 rounded-full transition-colors
-        ${checked ? "bg-emerald-500" : "bg-rose-400"}
-        ${disabled ? "cursor-not-allowed" : "cursor-pointer hover:brightness-110"}`}
-    />
+      className={`text-[10px] font-bold leading-none transition-colors
+        ${checked ? "text-emerald-600 hover:text-emerald-800" : "text-rose-500 hover:text-rose-700"}
+        ${disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
+    >
+      {checked ? "ON" : "OFF"}
+    </button>
   )
 }
 
@@ -167,9 +169,10 @@ export default function ModuleConfig() {
         </table>
       </div>
 
-      <p className="text-xs text-gray-400">
-        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" /> Abilitato &nbsp;|&nbsp;
-        <span className="inline-block w-2 h-2 rounded-full bg-rose-400 mr-1 ml-1" /> Disabilitato
+      <p className="text-xs text-gray-400 flex items-center gap-2">
+        <span className="text-[10px] font-bold text-emerald-600">ON</span> Abilitato
+        <span className="mx-1">|</span>
+        <span className="text-[10px] font-bold text-rose-500">OFF</span> Disabilitato
       </p>
     </div>
   )

@@ -19,7 +19,9 @@ const TYPE_LABEL = {
 }
 
 const UTILITY_TABLES = [
-  { code: "utilities_stores", name: "Info Stores" },
+  { code: "utilities_stores",    name: "Info Stores" },
+  { code: "utilities_sales",     name: "Sales Data" },
+  { code: "utilities_stock_nav", name: "Stock NAV" },
 ]
 
 function Toggle({ checked, onChange, disabled }) {
@@ -27,23 +29,11 @@ function Toggle({ checked, onChange, disabled }) {
     <button
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
-      className={`w-12 h-5 rounded-full transition-colors relative ${
-        checked ? "bg-emerald-500" : "bg-rose-400"
-      } ${disabled ? "opacity-25 cursor-not-allowed" : "cursor-pointer hover:brightness-110"}`}
+      className={`text-[10px] font-bold leading-none transition-colors
+        ${checked ? "text-emerald-600 hover:text-emerald-800" : "text-rose-500 hover:text-rose-700"}
+        ${disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}`}
     >
-      <span
-        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
-          checked ? "right-0.5" : "left-0.5"
-        }`}
-      />
-      <span
-        className={`absolute inset-0 flex items-center text-white font-bold select-none transition-all duration-200 ${
-          checked ? "justify-start pl-1.5" : "justify-end pr-1.5"
-        }`}
-        style={{ fontSize: "8px", letterSpacing: "0.03em" }}
-      >
-        {checked ? "ON" : "OFF"}
-      </span>
+      {checked ? "ON" : "OFF"}
     </button>
   )
 }
@@ -160,9 +150,10 @@ export default function UtilitiesConfig() {
         </table>
       </div>
 
-      <p className="text-xs text-gray-400">
-        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" /> Abilitato &nbsp;|&nbsp;
-        <span className="inline-block w-2 h-2 rounded-full bg-rose-400 mr-1 ml-1" /> Disabilitato
+      <p className="text-xs text-gray-400 flex items-center gap-2">
+        <span className="text-[10px] font-bold text-emerald-600">ON</span> Abilitato
+        <span className="mx-1">|</span>
+        <span className="text-[10px] font-bold text-rose-500">OFF</span> Disabilitato
       </p>
     </div>
   )
