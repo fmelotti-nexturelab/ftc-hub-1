@@ -48,7 +48,12 @@ export default function StockTable({ sessionId }) {
             ) : items.map((item, i) => (
               <tr key={i} className="odd:bg-white even:bg-gray-50/50 border-b border-gray-100 last:border-0">
                 <td className="px-2 py-1 font-mono text-gray-700 sticky left-0 odd:bg-white even:bg-gray-50/50 whitespace-nowrap">{item.item_no}</td>
-                <td className="px-2 py-1 text-gray-600 max-w-[180px] truncate">{item.description}</td>
+                <td className="px-2 py-1 text-gray-600 max-w-[200px]">
+                  <div className="truncate">{item.description}</div>
+                  {item.description_local && item.description_local !== item.description && (
+                    <div className="truncate text-gray-400" style={{ fontSize: "10px" }}>{item.description_local}</div>
+                  )}
+                </td>
                 <td className={`px-2 py-1 text-right font-mono ${item.adm_stock === 0 ? "text-gray-300" : "text-gray-700"}`}>{item.adm_stock}</td>
                 {stores.map((s) => {
                   const qty = item.stores?.[s] ?? 0

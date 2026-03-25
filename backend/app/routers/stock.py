@@ -89,6 +89,31 @@ async def get_sessions(
     ]
 
 
+@router.get("/sessions/{session_id}/stores", dependencies=[Depends(_PERM)])
+async def get_session_stores(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Restituisce i codici negozio distinti per una sessione, letti direttamente dai dati."""
+    # Verifica esistenza sessione
+    sess_result = await db.execute(select(StockSession).where(StockSession.id == session_id))
+    sess = sess_result.scalar_one_or_none()
+    if not sess:
+        raise HTTPException(status_code=404, detail="Sessione non trovata")
+
+    # Legge sempre i negozi con dati reali (qty != 0) da StockStoreData
+    result = await db.execute(
+        select(StockStoreData.store_code)
+        .join(StockItem, StockStoreData.item_id == StockItem.id)
+        .where(StockItem.session_id == session_id)
+        .distinct()
+        .order_by(StockStoreData.store_code)
+    )
+    codes = [row[0] for row in result.all()]
+
+    return {"session_id": session_id, "store_codes": codes}
+
+
 # ---------------------------------------------------------------------------
 # Items (article view)
 # ---------------------------------------------------------------------------
@@ -192,7 +217,7 @@ async def get_all_session_items(
     rows = await db.execute(
         text("""
             SELECT
-                i.id, i.item_no, i.description, i.adm_stock,
+                i.id, i.item_no, i.description, i.description_local, i.adm_stock,
                 s.store_code, s.quantity
             FROM ho.stock_items i
             LEFT JOIN ho.stock_store_data s ON s.item_id = i.id
@@ -209,6 +234,7 @@ async def get_all_session_items(
             items_map[iid] = {
                 "item_no": row["item_no"],
                 "description": row["description"],
+                "description_local": row["description_local"],
                 "adm_stock": row["adm_stock"],
                 "stores": {},
             }
