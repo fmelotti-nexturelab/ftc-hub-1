@@ -315,9 +315,9 @@ async def get_tickets(
         if status == "closed":
             stmt = stmt.where(cast(Ticket.status, String).in_(["closed", "resolved"]))
         else:
-            stmt = stmt.where(Ticket.status == status)
+            stmt = stmt.where(cast(Ticket.status, String) == status)
     if priority:
-        stmt = stmt.where(Ticket.priority == priority)
+        stmt = stmt.where(cast(Ticket.priority, String) == priority)
     if category_id:
         stmt = stmt.where(Ticket.category_id == category_id)
 
@@ -613,7 +613,7 @@ async def get_history(
             stmt = stmt.where(Ticket.assigned_to == assignee_id)
 
     if priority:
-        stmt = stmt.where(Ticket.priority == priority)
+        stmt = stmt.where(cast(Ticket.priority, String) == priority)
     if category_id:
         stmt = stmt.where(Ticket.category_id == category_id)
 

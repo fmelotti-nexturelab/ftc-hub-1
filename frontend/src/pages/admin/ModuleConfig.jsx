@@ -1,5 +1,7 @@
 import React from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { LogOut } from "lucide-react"
 import { modulesApi } from "@/api/modules"
 
 // User types che hanno accesso configurabile (SUPERUSER e ADMIN bypassano sempre)
@@ -38,6 +40,7 @@ function Toggle({ checked, onChange, disabled }) {
 }
 
 export default function ModuleConfig() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
 
   const { data: modules = [], isLoading: loadingModules } = useQuery({
@@ -81,8 +84,18 @@ export default function ModuleConfig() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-sm text-gray-600">Configura quali moduli sono accessibili per ogni tipo di utente.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">Accessi Moduli</h1>
+          <p className="text-sm text-gray-600">Configura quali moduli sono accessibili per ogni tipo di utente.</p>
+        </div>
+        <button
+          onClick={() => navigate("/utilities")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">

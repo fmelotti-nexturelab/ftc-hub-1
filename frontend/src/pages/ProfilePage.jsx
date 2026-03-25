@@ -1,8 +1,11 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Lock, Save, Check, Calendar, UserCircle, Eye, EyeOff, Info } from "lucide-react"
+import { Lock, Save, Check, Calendar, UserCircle, Eye, EyeOff, Info, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle } from "lucide-react"
 import { authApi } from "@/api/auth"
 import { useAuthStore } from "@/store/authStore"
+import { useStockFolder } from "@/hooks/useStockFolder"
+
+const STOCK_DEPTS = ["SUPERUSER", "ADMIN", "IT"]
 
 const ROLE_LABEL = { ADMIN: "IT", HO: "Head Office", DM: "District Manager", STORE: "Store" }
 const TYPE_LABEL = {
@@ -17,6 +20,83 @@ function ReadonlyField({ label, value }) {
     <div className="bg-gray-50 rounded-lg px-4 py-3">
       <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
       <p className="text-sm font-medium text-gray-700">{value || "—"}</p>
+    </div>
+  )
+}
+
+function StockFolderSettings() {
+  const { folderName, isSupported, isConnected, connect, disconnect, importNow, importing, lastResult } = useStockFolder()
+
+  if (!isSupported) return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700">
+      Il tuo browser non supporta la File System Access API. Usa Chrome o Edge.
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      {/* Status */}
+      <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${isConnected ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+        <FolderOpen size={18} className={isConnected ? "text-green-600" : "text-gray-400"} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-gray-700">
+            {isConnected ? "Cartella collegata" : "Nessuna cartella collegata"}
+          </p>
+          {folderName && <p className="text-xs text-gray-500 truncate mt-0.5 font-mono">{folderName}</p>}
+        </div>
+        {isConnected ? (
+          <button onClick={disconnect} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-2.5 py-1.5 hover:bg-red-50 transition">
+            <Unlink size={13} />
+            Disconnetti
+          </button>
+        ) : (
+          <button onClick={connect} className="flex items-center gap-1.5 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold rounded-lg px-3 py-1.5 transition">
+            <FolderOpen size={13} />
+            Collega cartella
+          </button>
+        )}
+      </div>
+
+      {/* Manual import */}
+      {isConnected && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={importNow}
+            disabled={importing}
+            className="flex items-center gap-1.5 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={importing ? "animate-spin" : ""} />
+            {importing ? "Importazione in corso..." : "Importa ora"}
+          </button>
+
+          {lastResult && (
+            lastResult.error ? (
+              <div className="flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle size={13} />
+                {lastResult.error}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs text-green-600">
+                  <CheckCircle size={13} />
+                  {lastResult.count === 0 ? "Nessun file importato" : `${lastResult.count} file importati`}
+                </div>
+                {lastResult.failed?.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs text-red-500">
+                    <AlertCircle size={13} />
+                    Errore: {lastResult.failed.join(", ")}
+                  </div>
+                )}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      <p className="text-[11px] text-gray-400 leading-relaxed">
+        Collega la cartella dove Navision salva i file stock (es. OneDrive\Stock).
+        Ad ogni accesso, i nuovi file <span className="font-mono">Stock-YYYY-MM-DD-IT0X.csv</span> vengono importati automaticamente.
+      </p>
     </div>
   )
 }
@@ -272,6 +352,7 @@ export default function ProfilePage() {
         </form>
 
       </div>
+
     </div>
   )
 }

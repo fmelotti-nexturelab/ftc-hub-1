@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as Tabs from "@radix-ui/react-tabs"
-import { Shield, Plus, Trash2, Check, X, ChevronRight, ChevronDown, Tag, Search } from "lucide-react"
+import { Shield, Plus, Trash2, Check, X, ChevronRight, ChevronDown, Tag, Search, LogOut } from "lucide-react"
 import { rbacApi } from "@/api/rbac"
 import { authApi } from "@/api/auth"
 
@@ -732,12 +733,22 @@ function UserPermissionsTab() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function RbacConfig({ embedded = false }) {
+  const navigate = useNavigate()
   return (
     <div className="space-y-5">
       {!embedded && (
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Ruoli & Permessi</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Gestisci permessi per ruolo e override per singolo utente</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Ruoli & Permessi</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Gestisci permessi per ruolo e override per singolo utente</p>
+          </div>
+          <button
+            onClick={() => navigate("/utilities")}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+          >
+            <LogOut size={15} />
+            Esci
+          </button>
         </div>
       )}
 

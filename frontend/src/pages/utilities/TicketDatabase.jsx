@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { Database, Trash2, AlertTriangle, ChevronLeft, RefreshCw } from "lucide-react"
+import { Database, Trash2, AlertTriangle, ChevronLeft, RefreshCw, LogOut } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { useAuthStore } from "@/store/authStore"
 import TicketStatusBadge from "@/components/tickets/TicketStatusBadge"
@@ -94,6 +94,13 @@ export default function TicketDatabase() {
           >
             <Trash2 size={14} />
             Svuota tabella
+          </button>
+          <button
+            onClick={() => navigate("/utilities")}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+          >
+            <LogOut size={15} />
+            Esci
           </button>
         </div>
       </div>

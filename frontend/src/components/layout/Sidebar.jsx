@@ -1,7 +1,7 @@
-import { NavLink, useNavigate, useLocation } from "react-router-dom"
+import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
-import { BarChart3, ShoppingCart, Package, FileText, Wifi, LogOut, ChevronDown, ChevronRight, Monitor, Ticket, Wrench, UserCircle, BookOpen, History, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle } from "lucide-react"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
@@ -12,20 +12,6 @@ const displayUserType = (user) => {
   return labels[t] || t
 }
 
-const SALES_SUBMENU = [
-  { path: "/ho/sales/it01", label: "Sales Data IT01" },
-  { path: "/ho/sales/it02", label: "Sales Data IT02" },
-  { path: "/ho/sales/it03", label: "Sales Data IT03" },
-  { path: "/ho/sales/report", label: "Report" },
-  { path: "/ho/sales/excluded", label: "Negozi Esclusi" },
-]
-
-const HO_MENU = [
-  { path: "/ho/stock", icon: Package, label: "Stock", soon: true },
-  { path: "/ho/orders", icon: ShoppingCart, label: "Ordini", soon: true },
-  { path: "/ho/ftp", icon: FileText, label: "File FTP", soon: true },
-  { path: "/ho/status", icon: Wifi, label: "Online/Offline", soon: true },
-]
 
 function DiagStatusIcon({ status }) {
   if (status === "ok") return <CheckCircle size={12} className="text-green-400 shrink-0" />
@@ -94,21 +80,11 @@ function SidebarDiagnostics({ user }) {
 export default function Sidebar() {
   const { user, clearAuth, canView } = useAuthStore()
   const navigate = useNavigate()
-  const location = useLocation()
-  const [salesOpen, setSalesOpen] = useState(
-    location.pathname.startsWith("/ho/sales")
-  )
-
   const handleLogout = async () => {
     try { await authApi.logout() } catch {}
     clearAuth()
     navigate("/login")
   }
-
-  const isSalesActive = location.pathname.startsWith("/ho/sales")
-  const showNavision = canView("navision")
-  const showSales = canView("sales")
-  const showHoSection = showNavision || showSales
 
   return (
     <aside className="w-64 bg-[#1e3a5f] text-white flex flex-col shadow-xl shrink-0">
@@ -124,82 +100,6 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {showHoSection && (
-          <div>
-            <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
-              TABLES ADMIN functions
-            </div>
-
-            {/* Navision */}
-            {showNavision && (
-              <NavLink
-                to="/ho/navision"
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
-                  ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
-                }
-              >
-                <Monitor size={17} />
-                <span>Navision</span>
-              </NavLink>
-            )}
-
-            {/* Sales Data con submenu */}
-            {showSales && (
-              <div>
-                <button
-                  onClick={() => setSalesOpen(!salesOpen)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all w-full
-                    ${isSalesActive
-                      ? "bg-white/15 text-white font-medium"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                    }`}
-                >
-                  <BarChart3 size={17} />
-                  <span className="flex-1 text-left">Sales Data</span>
-                  {salesOpen
-                    ? <ChevronDown size={14} className="text-white/50" />
-                    : <ChevronRight size={14} className="text-white/50" />
-                  }
-                </button>
-
-                {salesOpen && (
-                  <div className="ml-4 border-l border-white/10 pl-3 mb-1">
-                    {SALES_SUBMENU.map(({ path, label }) => (
-                      <NavLink
-                        key={path}
-                        to={path}
-                        className={({ isActive }) =>
-                          `flex items-center px-3 py-2 rounded-lg mb-0.5 text-xs transition-all
-                          ${isActive
-                            ? "bg-white/15 text-white font-medium"
-                            : "text-white/60 hover:bg-white/10 hover:text-white"
-                          }`
-                        }
-                      >
-                        {label}
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Altri menu soon */}
-            {HO_MENU.map(({ path, icon: Icon, label }) => (
-              <div
-                key={path}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm text-white/30 cursor-not-allowed"
-              >
-                <Icon size={17} />
-                <span>{label}</span>
-                <span className="ml-auto text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/40">
-                  soon
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {user?.department === "SUPERUSER" && (
           <div className="mt-4">
@@ -243,6 +143,7 @@ export default function Sidebar() {
             </div>
             <NavLink
               to="/tickets"
+              end
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
                 ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
@@ -256,6 +157,18 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 pb-2">
+        {["SUPERUSER", "ADMIN", "IT"].includes(user?.department) && (
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 text-sm transition-all
+              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/60 hover:bg-white/10 hover:text-white"}`
+            }
+          >
+            <Settings size={17} />
+            <span>Impostazioni</span>
+          </NavLink>
+        )}
         <a
           href="/docs/index.html"
           target="_blank"

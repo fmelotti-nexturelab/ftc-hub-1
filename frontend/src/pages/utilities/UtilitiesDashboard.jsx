@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Store, Users, Settings2 } from "lucide-react"
+import { Users, Settings2, Database, ToggleRight, BookOpen, TableProperties } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
 const ALL_MODULES = [
-  { path: "/utilities/stores", icon: Store, label: "Info Stores", color: "bg-blue-500", desc: "Consulta l'anagrafica stores OneItaly", moduleCode: "utilities_stores" },
+  { path: "/utilities/consulta-database", icon: TableProperties, label: "Consulta Database", color: "bg-blue-500", desc: "Vedi il contenuto delle tabelle", moduleCode: "utilities_stores" },
 ]
 
 const ADMIN_MODULES = [
@@ -28,7 +28,12 @@ export default function UtilitiesDashboard() {
   const visibleModules = [
     ...(isError || !access ? [] : ALL_MODULES.filter((m) => access[m.moduleCode]?.can_view)),
     ...(isAdmin ? ADMIN_MODULES : []),
-    ...(canSeeDbAdmin ? [{ path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" }] : []),
+    ...(canSeeDbAdmin ? [
+      { path: "/utilities/ticket-config",  icon: Settings2,   label: "Configurazione Ticket", color: "bg-[#1e3a5f]",   desc: "Database ticket, team e regole di smistamento" },
+      { path: "/utilities/navision",       icon: BookOpen,    label: "Navision",              color: "bg-emerald-600", desc: "Accesso al gestionale" },
+      { path: "/utilities/genera-tabelle", icon: Database,    label: "Genera Tabelle",        color: "bg-violet-600",  desc: "Genera le tabelle per i tool" },
+      { path: "/utilities/online-offline", icon: ToggleRight, label: "Online / Offline",      color: "bg-amber-500",   desc: "Accendi e spegni i tool", soon: true },
+    ] : []),
   ]
 
   if (isLoading) {

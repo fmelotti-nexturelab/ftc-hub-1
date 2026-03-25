@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import {
   TicketCheck, Clock, Loader, PauseCircle, XCircle,
-  LayoutDashboard, ArrowLeft, Users,
+  LayoutDashboard, ArrowLeft, Users, TrendingUp,
 } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { useAuthStore } from "@/store/authStore"
@@ -102,10 +102,19 @@ export default function TicketDashboard() {
         >
           <ArrowLeft size={15} /> Lista ticket
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           <LayoutDashboard size={18} className="text-[#1e3a5f]" />
           <h1 className="text-xl font-bold text-gray-800">Dashboard Ticket</h1>
         </div>
+        {isSuperuser && (
+          <button
+            onClick={() => navigate("/tickets/performance")}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+          >
+            <TrendingUp size={15} />
+            Performance
+          </button>
+        )}
       </div>
 
       {/* Riepilogo totali */}

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { useQuery } from "@tanstack/react-query"
-import { Search, Copy, Check, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, Copy, Check, ShieldAlert, ChevronDown, ChevronUp, LogOut } from "lucide-react"
 import { apiClient } from "@/api/client"
 
 export default function SupportLookup() {
@@ -66,14 +66,23 @@ export default function SupportLookup() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
-          <ShieldAlert size={18} className="text-[#1e3a5f]" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
+            <ShieldAlert size={18} className="text-[#1e3a5f]" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Lookup Codici Supporto</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Inserisci il codice ricevuto dal tester oppure clicca su una riga per vedere le istruzioni</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Lookup Codici Supporto</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Inserisci il codice ricevuto dal tester oppure clicca su una riga per vedere le istruzioni</p>
-        </div>
+        <button
+          onClick={() => navigate("/utilities")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       {/* Search */}

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import * as Tabs from "@radix-ui/react-tabs"
-import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Users, AlertCircle, Check, X, Search } from "lucide-react"
+import { Plus, Pencil, Trash2, ChevronRight, ChevronDown, Users, AlertCircle, Check, X, Search, LogOut } from "lucide-react"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { ticketsApi } from "@/api/tickets"
 
@@ -901,11 +902,21 @@ function RoutingRulesTab() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function TicketConfig() {
+  const navigate = useNavigate()
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-800">Configurazione Ticketing</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Gestisci categorie, team e regole di assegnazione automatica</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-800">Configurazione Ticketing</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Gestisci categorie, team e regole di assegnazione automatica</p>
+        </div>
+        <button
+          onClick={() => navigate("/utilities")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       <Tabs.Root defaultValue="categories">

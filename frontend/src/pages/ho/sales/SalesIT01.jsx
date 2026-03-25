@@ -1,7 +1,8 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { salesApi } from "@/api/ho/sales"
-import { Upload, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react"
+import { Upload, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, LogOut } from "lucide-react"
 
 const fmt = (n) =>
   typeof n === "number"
@@ -84,6 +85,7 @@ function SalesTable({ preview }) {
 }
 
 export default function SalesIT01() {
+  const navigate = useNavigate()
   const [tsv, setTsv] = useState("")
   const [preview, setPreview] = useState(null)
 
@@ -94,6 +96,13 @@ export default function SalesIT01() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">Vendite IT01</h1>
+        <button onClick={() => navigate("/ho/sales")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+          <LogOut size={15} />
+          Esci
+        </button>
+      </div>
       <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm space-y-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">IT01</span>

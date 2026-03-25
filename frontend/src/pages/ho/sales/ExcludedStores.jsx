@@ -1,11 +1,13 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { salesApi } from "@/api/ho/sales"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, LogOut } from "lucide-react"
 
 const REASONS = ["CLOSED", "RESTYLING", "NEW OPENING"]
 
 export default function ExcludedStores() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [newStore, setNewStore] = useState({ store_code: "", store_name: "", reason: "CLOSED", notes: "" })
   const [showAdd, setShowAdd] = useState(false)
@@ -36,7 +38,15 @@ export default function ExcludedStores() {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-gray-800">Negozi Esclusi</h1>
+        <button onClick={() => navigate("/ho/sales")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+          <LogOut size={15} />
+          Esci
+        </button>
+      </div>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <h3 className="font-semibold text-gray-800">Negozi esclusi dal check</h3>
         <button onClick={() => setShowAdd(!showAdd)}
@@ -79,6 +89,7 @@ export default function ExcludedStores() {
           </div>
         ))}
       </div>
+    </div>
     </div>
   )
 }

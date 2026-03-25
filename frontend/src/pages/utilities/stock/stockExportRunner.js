@@ -1,0 +1,232 @@
+import * as XLSX from "xlsx/dist/xlsx.full.min.js"
+
+const FILE_NAMES = {
+  IT01: "tbl_Stock IT01 NAV.xlsm",
+  IT02: "tbl_Stock IT02 NAV.xlsm",
+  IT03: "tbl_Stock IT03 NAV.xlsm",
+}
+
+const ARCHIVE_FILE_NAMES = {
+  IT01: "tbl_StockIT01NAV.xlsm",
+  IT02: "tbl_StockIT02NAV.xlsm",
+  IT03: "tbl_StockIT03NAV.xlsm",
+}
+
+const EXCLUDED_STORE_COLS = {
+  IT01: new Set(["IT105A"]),
+  IT03: new Set(["IT131"]),
+}
+
+export const EXPORT_STEPS = [
+  "Lettura CSV...",
+  "Apertura file Excel...",
+  "Aggiornamento foglio STOCK...",
+  "Aggiornamento foglio data...",
+  "Salvataggio file principale...",
+  "Archivio: Stock by location...",
+  "Archivio: Commercial...",
+  "Archivio: Tables_for_FTP...",
+]
+
+function randomString8() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+}
+
+function parseCsv(arrayBuffer, entity) {
+  const text = new TextDecoder("iso-8859-1").decode(arrayBuffer)
+  const lines = text.split(/\r?\n/)
+  const headers = lines[0].split(";").map(h => h.trim())
+  const excluded = EXCLUDED_STORE_COLS[entity] ?? new Set()
+  const storeColsWithIdx = headers
+    .map((h, i) => ({ code: h, idx: i }))
+    .slice(4)
+    .filter(({ code }) => code && !excluded.has(code))
+  const storeCols = storeColsWithIdx.map(({ code }) => code)
+
+  const parseQty = (val) => {
+    if (!val || !val.trim()) return 0
+    return Math.round(parseFloat(val.trim().replace(",", ".")) || 0)
+  }
+
+  const items = []
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    const cols = line.split(";")
+    const itemNo = cols[0]?.trim()
+    if (!itemNo) continue
+    const stores = {}
+    storeColsWithIdx.forEach(({ code, idx }) => {
+      stores[code] = parseQty(cols[idx])
+    })
+    items.push({
+      item_no: itemNo,
+      description: cols[1]?.trim() || "",
+      adm_stock: parseQty(cols[3]),
+      stores,
+    })
+  }
+
+  const fixedHeaders = [headers[0], headers[1], headers[3]]
+  return { stores: storeCols, fixedHeaders, items }
+}
+
+async function writeToFolder(dirHandle, name, bytes) {
+  const fh = await dirHandle.getFileHandle(name, { create: true })
+  const w = await fh.createWritable()
+  await w.write(bytes)
+  await w.close()
+}
+
+/**
+ * Esegue l'esportazione Excel completa per una singola entity.
+ * Riceve il csvFileHandle già trovato (pre-flight).
+ *
+ * @param {object} params
+ * @param {string}  params.entity           - "IT01" | "IT02" | "IT03"
+ * @param {FileSystemFileHandle} params.csvFileHandle
+ * @param {string}  params.stockDate        - "YYYY-MM-DD"
+ * @param {FileSystemDirectoryHandle} params.rootHandle
+ * @param {FileSystemDirectoryHandle|null} params.commercialHandle
+ * @param {boolean} params.writeZeros
+ * @param {function} params.onStep          - (stepIndex, status, message?) => void
+ */
+export async function runStockExport({
+  entity,
+  csvFileHandle,
+  stockDate,
+  rootHandle,
+  commercialHandle,
+  writeZeros,
+  onStep,
+}) {
+  // ── Step 0: leggi CSV ──────────────────────────────────────────────────────
+  onStep(0, "running")
+  const csvFile = await csvFileHandle.getFile()
+  const csvBuffer = await csvFile.arrayBuffer()
+  const { stores, fixedHeaders, items } = parseCsv(csvBuffer, entity)
+  if (!items.length) throw new Error("Il file CSV è vuoto o non leggibile")
+  onStep(0, "done")
+
+  // ── Step 1: apri template Excel ────────────────────────────────────────────
+  onStep(1, "running")
+  let tablesHandle, xlsxFileHandle
+  try {
+    const serviceHandle = await rootHandle.getDirectoryHandle("97 - Service")
+    tablesHandle = await serviceHandle.getDirectoryHandle("01 - Tables")
+  } catch {
+    throw new Error('Percorso "97 - Service / 01 - Tables" non trovato')
+  }
+  try {
+    xlsxFileHandle = await tablesHandle.getFileHandle(FILE_NAMES[entity])
+  } catch {
+    throw new Error(`File "${FILE_NAMES[entity]}" non trovato in 97 - Service / 01 - Tables`)
+  }
+  const xlsxFile = await xlsxFileHandle.getFile()
+  const xlsxBuffer = await xlsxFile.arrayBuffer()
+  const workbook = XLSX.read(xlsxBuffer, { type: "array", cellStyles: false, cellNF: false, cellFormula: false })
+  onStep(1, "done")
+
+  // ── Step 2: aggiorna foglio STOCK ──────────────────────────────────────────
+  onStep(2, "running")
+  if (!workbook.SheetNames.includes("STOCK"))
+    throw new Error('Foglio "STOCK" non trovato nel file')
+  const stockSheet = workbook.Sheets["STOCK"]
+  delete stockSheet["!protect"]
+  for (const key of Object.keys(stockSheet)) {
+    if (key.startsWith("!")) continue
+    delete stockSheet[key]
+  }
+  const batchId = randomString8()
+  stockSheet[XLSX.utils.encode_cell({ r: 0, c: 1 })] = { v: batchId, t: "s" }
+  const headerRow = [...fixedHeaders, ...stores]
+  headerRow.forEach((val, c) => {
+    stockSheet[XLSX.utils.encode_cell({ r: 1, c })] = { v: val, t: "s" }
+  })
+  items.forEach((item, rowIdx) => {
+    const r = rowIdx + 2
+    const fixedCols = [item.item_no, item.description, item.adm_stock]
+    fixedCols.forEach((val, c) => {
+      stockSheet[XLSX.utils.encode_cell({ r, c })] = { v: val, t: typeof val === "number" ? "n" : "s" }
+    })
+    stores.forEach((s, idx) => {
+      const qty = item.stores?.[s] ?? 0
+      if (!writeZeros && qty === 0) return
+      stockSheet[XLSX.utils.encode_cell({ r, c: 3 + idx })] = { v: qty, t: "n" }
+    })
+  })
+  stockSheet["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: 2 + items.length - 1, c: headerRow.length - 1 },
+  })
+  stockSheet["!protect"] = { password: "lol", sheet: true }
+  onStep(2, "done")
+
+  // ── Step 3: aggiorna foglio data ───────────────────────────────────────────
+  onStep(3, "running")
+  if (!workbook.SheetNames.includes("data"))
+    throw new Error('Foglio "data" non trovato nel file')
+  const dataSheet = workbook.Sheets["data"]
+  delete dataSheet["!protect"]
+  const now = new Date()
+  dataSheet["B1"] = { v: now.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }), t: "s" }
+  dataSheet["C1"] = { v: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`, t: "s" }
+  dataSheet["B5"] = { v: batchId, t: "s" }
+  dataSheet["!protect"] = { password: "lol", sheet: true }
+  onStep(3, "done")
+
+  // ── Step 4: salva file principale ──────────────────────────────────────────
+  onStep(4, "running")
+  const wbout = XLSX.write(workbook, { type: "array", bookType: "xlsm", compression: true, bookSST: true })
+  const wbBytes = new Uint8Array(wbout)
+  const wboutXlsx = XLSX.write(workbook, { type: "array", bookType: "xlsx", compression: true, bookSST: true })
+  const wbBytesXlsx = new Uint8Array(wboutXlsx)
+  const writable = await xlsxFileHandle.createWritable()
+  await writable.write(wbBytes)
+  await writable.close()
+  onStep(4, "done")
+
+  const datePart = stockDate.replace(/-/g, "")
+  const archiveFileName = `${datePart} ${entity} STOCK NAV.xlsx`
+
+  // ── Step 5: archivio Stock by location ─────────────────────────────────────
+  onStep(5, "running")
+  try {
+    let d1, d2
+    try { d1 = await rootHandle.getDirectoryHandle("02 - Stock by location") }
+    catch { throw new Error("Cartella '02 - Stock by location' non trovata nella root") }
+    try { d2 = await d1.getDirectoryHandle("NAV  ( dati solo di test )") }
+    catch { throw new Error("Sottocartella 'NAV  ( dati solo di test )' non trovata in '02 - Stock by location'") }
+    try { await writeToFolder(d2, archiveFileName, wbBytesXlsx) }
+    catch { throw new Error(`Impossibile scrivere '${archiveFileName}' in 'NAV  ( dati solo di test )'`) }
+    onStep(5, "done")
+  } catch (e) { onStep(5, "warning", e.message) }
+
+  // ── Step 6: archivio Commercial ────────────────────────────────────────────
+  onStep(6, "running")
+  try {
+    if (!commercialHandle) throw new Error("Cartella Commercial non collegata — vai in Impostazioni e collega 'One Italy Commercial - Files'")
+    let d1
+    try { d1 = await commercialHandle.getDirectoryHandle("28 - Italy Shared Folder") }
+    catch { throw new Error("Sottocartella '28 - Italy Shared Folder' non trovata nella cartella Commercial") }
+    try { await writeToFolder(d1, archiveFileName, wbBytesXlsx) }
+    catch { throw new Error(`Impossibile scrivere '${archiveFileName}' in '28 - Italy Shared Folder'`) }
+    onStep(6, "done")
+  } catch (e) { onStep(6, "warning", e.message) }
+
+  // ── Step 7: archivio Tables_for_FTP ───────────────────────────────────────
+  onStep(7, "running")
+  try {
+    let d1, d2, d3
+    try { d1 = await rootHandle.getDirectoryHandle("97 - Service") }
+    catch { throw new Error("Cartella '97 - Service' non trovata nella root") }
+    try { d2 = await d1.getDirectoryHandle("01 - Tables") }
+    catch { throw new Error("Sottocartella '01 - Tables' non trovata in '97 - Service'") }
+    try { d3 = await d2.getDirectoryHandle("Tables_for_FTP") }
+    catch { throw new Error("Sottocartella 'Tables_for_FTP' non trovata in '97 - Service/01 - Tables'") }
+    try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], wbBytes) }
+    catch { throw new Error(`Impossibile scrivere '${ARCHIVE_FILE_NAMES[entity]}' in 'Tables_for_FTP'`) }
+    onStep(7, "done")
+  } catch (e) { onStep(7, "warning", e.message) }
+}

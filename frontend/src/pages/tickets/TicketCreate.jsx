@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { LifeBuoy, AlertCircle, CheckCircle2 } from "lucide-react"
+import { LifeBuoy, AlertCircle, CheckCircle2, LogOut } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import RequesterFields from "@/components/shared/RequesterFields"
 import ImageDropZone from "@/components/shared/ImageDropZone"
@@ -106,14 +106,23 @@ export default function TicketCreate() {
 
   return (
     <div className="max-w-2xl space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
-          <LifeBuoy size={18} className="text-[#1e3a5f]" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
+            <LifeBuoy size={18} className="text-[#1e3a5f]" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Nuovo Ticket</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Apri una richiesta di assistenza</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Nuovo Ticket</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Apri una richiesta di assistenza</p>
-        </div>
+        <button
+          onClick={() => navigate("/tickets")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       {/* Popup errore AI */}

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Store, Search, X, MapPin, Phone, Mail, User, Calendar, Building2, Plus, Pencil, Trash2 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Store, Search, X, MapPin, Phone, Mail, User, Calendar, Building2, Plus, Pencil, Trash2, LogOut } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
@@ -140,6 +141,7 @@ function Field({ label, value, onChange, type = "text" }) {
 
 // ── Pagina principale ──────────────────────────────────────────────────────────
 export default function StoresPage() {
+  const navigate = useNavigate()
   const { hasRole } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
   const qc = useQueryClient()
@@ -216,12 +218,21 @@ export default function StoresPage() {
             <p className="text-xs text-gray-400 mt-0.5">Consulta l'anagrafica stores OneItaly</p>
           </div>
         </div>
-        {isAdmin && (
-          <button onClick={() => { setEditStore(null); setShowForm(true) }}
-            className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition">
-            <Plus size={15} /> Nuovo store
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button onClick={() => { setEditStore(null); setShowForm(true) }}
+              className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition">
+              <Plus size={15} /> Nuovo store
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/utilities/consulta-database")}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+          >
+            <LogOut size={15} />
+            Esci
           </button>
-        )}
+        </div>
       </div>
 
       {/* Filtri */}

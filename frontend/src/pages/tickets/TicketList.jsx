@@ -11,6 +11,7 @@ import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
 const STATUSES = ["open", "in_progress", "waiting", "closed"]
 const STATUS_LABELS = { open: "Aperto", in_progress: "In lavorazione", waiting: "In attesa", closed: "Chiuso" }
 const PRIORITIES = ["low", "medium", "high", "critical"]
+const PRIORITY_LABELS = { low: "Bassa", medium: "Media", high: "Alta", critical: "Critica" }
 
 function elapsed(from, to = new Date()) {
   const ms = new Date(to) - new Date(from)
@@ -65,7 +66,7 @@ export default function TicketList() {
 
   // ── Admin/HO: filters + viewMode ──────────────────────────────────────────
   // HO non-admin: default "team"; admin: default null (tutti); store: n/a
-  const defaultViewMode = !isStore && !isAdmin ? "team" : null
+  const defaultViewMode = !isStore && !canSeeAll ? "team" : null
   const [viewMode, setViewMode] = useState(defaultViewMode) // null | "mine" | "team" | "all"
 
   const [filters, setFilters] = useState({
@@ -421,20 +422,9 @@ export default function TicketList() {
 
         <select value={filters.priority} onChange={set("priority")} className={selectClass}>
           <option value="">Tutte le priorità</option>
-          {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+          {PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
         </select>
 
-        <select value={filters.category_id} onChange={set("category_id")} className={selectClass}>
-          <option value="">Tutte le categorie</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-
-        {filters.category_id && subcategories.length > 0 && (
-          <select value={filters.subcategory_id} onChange={set("subcategory_id")} className={selectClass}>
-            <option value="">Tutte le sottocategorie</option>
-            {subcategories.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        )}
 
         {canSeeTeam && (
           <select value={filters.team_id} onChange={set("team_id")} className={selectClass}>

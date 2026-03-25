@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import { Monitor, Power, RefreshCw, Copy, Check, Eye, EyeOff } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Monitor, Power, RefreshCw, Copy, Check, Eye, EyeOff, LogOut } from "lucide-react"
 
 const AGENT = "http://localhost:9999"
 
@@ -64,6 +65,7 @@ function CredRow({ user, pwd }) {
 }
 
 export default function NavisionPage() {
+  const navigate = useNavigate()
   const [agentOk, setAgentOk] = useState(null)
   const [sessions, setSessions] = useState(0)
   const [loading, setLoading] = useState(null)
@@ -129,6 +131,13 @@ export default function NavisionPage() {
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-bold text-gray-800">Navision</h1>
+        <button onClick={() => navigate("/utilities")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+          <LogOut size={15} />
+          Esci
+        </button>
+      </div>
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 flex items-center gap-4">
         <Monitor size={20} className="text-[#1e3a5f]" />
         <div>
