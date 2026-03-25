@@ -1,5 +1,7 @@
 import { useNavigate } from "react-router-dom"
-import { Store, LogOut, Database } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Store, LogOut, Database, Package } from "lucide-react"
+import { utilitiesApi } from "@/api/utilities"
 
 const CARDS = [
   {
@@ -8,11 +10,27 @@ const CARDS = [
     color: "bg-blue-500",
     label: "Info Stores",
     desc: "Consulta l'anagrafica stores OneItaly",
+    moduleCode: "utilities_stores",
+  },
+  {
+    path: "/utilities/consulta-database/stock-nav",
+    icon: Package,
+    color: "bg-amber-500",
+    label: "Stock NAV",
+    desc: "Consulta lo stock giornaliero estratto da Navision",
+    moduleCode: "utilities_stock_nav",
   },
 ]
 
 export default function ConsultaDatabase() {
   const navigate = useNavigate()
+
+  const { data: access } = useQuery({
+    queryKey: ["utilities-my-access"],
+    queryFn: () => utilitiesApi.getMyAccess().then((r) => r.data),
+  })
+
+  const visibleCards = CARDS.filter((c) => access?.[c.moduleCode]?.can_view ?? false)
 
   return (
     <div className="space-y-5">
@@ -34,7 +52,7 @@ export default function ConsultaDatabase() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {CARDS.map(({ path, icon: Icon, color, label, desc }) => (
+        {visibleCards.map(({ path, icon: Icon, color, label, desc }) => (
           <button
             key={path}
             onClick={() => navigate(path)}

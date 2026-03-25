@@ -5,7 +5,14 @@ import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
 const ALL_MODULES = [
-  { path: "/utilities/consulta-database", icon: TableProperties, label: "Consulta Database", color: "bg-blue-500", desc: "Vedi il contenuto delle tabelle", moduleCode: "utilities_stores" },
+  {
+    path: "/utilities/consulta-database",
+    icon: TableProperties,
+    label: "Consulta Database",
+    color: "bg-blue-500",
+    desc: "Vedi il contenuto delle tabelle",
+    moduleCodes: ["utilities_stores", "utilities_stock_nav", "utilities_sales"],
+  },
 ]
 
 const ADMIN_MODULES = [
@@ -26,7 +33,10 @@ export default function UtilitiesDashboard() {
   })
 
   const visibleModules = [
-    ...(isError || !access ? [] : ALL_MODULES.filter((m) => access[m.moduleCode]?.can_view)),
+    ...(isError || !access ? [] : ALL_MODULES.filter((m) => {
+      const codes = m.moduleCodes ?? (m.moduleCode ? [m.moduleCode] : [])
+      return codes.some((code) => access[code]?.can_view)
+    })),
     ...(isAdmin ? ADMIN_MODULES : []),
     ...(canSeeDbAdmin ? [
       { path: "/utilities/ticket-config",  icon: Settings2,   label: "Configurazione Ticket", color: "bg-[#1e3a5f]",   desc: "Database ticket, team e regole di smistamento" },

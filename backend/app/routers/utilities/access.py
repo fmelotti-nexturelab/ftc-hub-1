@@ -7,7 +7,7 @@ from app.models.auth import User, UserDepartment
 
 router = APIRouter(prefix="/api/utilities", tags=["Utilities"])
 
-UTILITY_MODULES = ["utilities_stores"]
+UTILITY_MODULES = ["utilities_stores", "utilities_sales", "utilities_stock_nav"]
 
 
 @router.get("/my-access")
