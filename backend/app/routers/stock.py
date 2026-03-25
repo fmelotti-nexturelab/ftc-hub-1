@@ -21,7 +21,7 @@ from app.services.stock_service import (
 
 router = APIRouter(prefix="/api/stock", tags=["Stock"])
 
-_PERM = require_permission("stock")
+_PERM = require_permission("utilities_stock_nav")
 
 
 # ---------------------------------------------------------------------------

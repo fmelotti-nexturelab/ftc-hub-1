@@ -4,7 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { LogOut } from "lucide-react"
 import { modulesApi } from "@/api/modules"
 
-const CONFIGURABLE_TYPES = ["HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL", "DM", "STORE", "STOREMANAGER", "RETAIL"]
+const CONFIGURABLE_TYPES = [
+  "HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL",
+  "MANAGER", "TOPMGR", "HEALTHSAFETY", "FACILITIES", "RETAIL",
+  "DM", "STORE", "STOREMANAGER",
+]
 
 const TYPE_LABEL = {
   HR:           "HR",
@@ -12,10 +16,14 @@ const TYPE_LABEL = {
   MARKETING:    "Mktg",
   IT:           "IT",
   COMMERCIAL:   "Comm.",
+  MANAGER:      "Mgr",
+  TOPMGR:       "Top",
+  HEALTHSAFETY: "H&S",
+  FACILITIES:   "Fac.",
+  RETAIL:       "Retail",
   DM:           "DM",
   STORE:        "Store",
   STOREMANAGER: "StoreMgr",
-  RETAIL:       "Retail",
 }
 
 const UTILITY_TABLES = [
