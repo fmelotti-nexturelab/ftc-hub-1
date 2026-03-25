@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  ArrowLeft, AlertCircle, Lock, Tag, Users, UserCheck,
+  LogOut, AlertCircle, Lock, Tag, Users, UserCheck,
   User, Calendar, Phone, Monitor, Building2, XCircle, Mail, UserPlus, Forward, ExternalLink,
 } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
@@ -190,14 +190,8 @@ export default function TicketDetail() {
     )}
     <div className="space-y-3">
 
-      {/* Barra superiore: back + titolo + badge */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate("/tickets")}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition shrink-0"
-        >
-          <ArrowLeft size={15} /> Lista
-        </button>
+      {/* Barra superiore: titolo + badge + esci */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-mono text-gray-400 shrink-0">
             #{String(ticket.ticket_number).padStart(4, "0")}
@@ -206,6 +200,13 @@ export default function TicketDetail() {
           <TicketStatusBadge status={ticket.status} />
           <h1 className="text-base font-bold text-gray-800 truncate">{ticket.title}</h1>
         </div>
+        <button
+          onClick={() => navigate("/tickets")}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition shrink-0"
+        >
+          <LogOut size={15} />
+          Esci
+        </button>
       </div>
 
       {/* Layout 2 colonne */}

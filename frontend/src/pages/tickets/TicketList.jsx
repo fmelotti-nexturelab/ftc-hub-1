@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Filter, ExternalLink, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox } from "lucide-react"
+import { Plus, Filter, ExternalLink, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox, LogOut } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -235,6 +235,13 @@ export default function TicketList() {
               <Plus size={16} />
               Nuovo ticket
             </button>
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            >
+              <LogOut size={15} />
+              Esci
+            </button>
           </div>
         </div>
 
@@ -365,6 +372,13 @@ export default function TicketList() {
             <Plus size={16} />
             Nuovo ticket
           </button>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+          >
+            <LogOut size={15} />
+            Esci
+          </button>
         </div>
       </div>
 
@@ -473,7 +487,6 @@ export default function TicketList() {
                 {canSeeTeam && <th className="px-4 py-3 text-left">Team</th>}
                 <th className="px-4 py-3 text-left">Priorità</th>
                 <th className="px-4 py-3 text-left">Stato</th>
-                {canSeeTeam && <th className="px-4 py-3 text-left">Creato da</th>}
                 {canSeeTeam && <th className="px-4 py-3 text-left">Assegnato a</th>}
                 <th className="px-4 py-3 text-left">Data</th>
                 <th className="px-4 py-3 text-left">Durata</th>
@@ -519,7 +532,6 @@ export default function TicketList() {
                   )}
                   <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
                   <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
-                  {canSeeTeam && <td className="px-4 py-3 text-xs text-gray-600">{t.creator_name ?? "—"}</td>}
                   {canSeeTeam && <td className="px-4 py-3 text-xs text-gray-500">{t.assignee_name ?? "—"}</td>}
                   <td className="px-4 py-3 text-xs text-gray-400">
                     {new Date(t.created_at).toLocaleDateString("it-IT")}

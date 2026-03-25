@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth import User
+from app.models.ticket_config import TicketTeamMemberModel
 from app.models.tickets import Ticket, TicketComment, TicketStatus
 from app.schemas.tickets import CommentCreate, CommentResponse
 from app.services.tickets import notification_service
@@ -55,7 +56,12 @@ async def add_comment(
     author_name = current_user.full_name or current_user.username
     if not is_internal:
         if is_manager:
-            # Manager ha commentato → notifica l'autore del ticket
+            # Manager ha commentato pubblicamente → stato diventa WAITING
+            if ticket.status == TicketStatus.IN_PROGRESS:
+                ticket.status = TicketStatus.WAITING
+                await db.commit()
+
+            # Notifica l'autore del ticket
             creator_result = await db.execute(select(User).where(User.id == ticket.created_by))
             creator = creator_result.scalar_one_or_none()
             if creator and creator.id != current_user.id:
@@ -71,7 +77,7 @@ async def add_comment(
                     ticket_id=ticket.id,
                 )
         else:
-            # Autore ha commentato → notifica l'assegnato (se presente)
+            # Autore ha commentato → notifica l'assegnato (se presente), altrimenti tutto il team
             if ticket.assigned_to:
                 assignee_result = await db.execute(select(User).where(User.id == ticket.assigned_to))
                 assignee = assignee_result.scalar_one_or_none()
@@ -87,6 +93,31 @@ async def add_comment(
                         body=f"{author_name}: {data.content[:80]}{'...' if len(data.content) > 80 else ''}",
                         ticket_id=ticket.id,
                     )
+            elif ticket.team_id:
+                # Nessun assegnato → notifica tutti i membri del team
+                members_result = await db.execute(
+                    select(TicketTeamMemberModel).where(
+                        TicketTeamMemberModel.team_id == ticket.team_id
+                    )
+                )
+                member_ids = [m.user_id for m in members_result.scalars().all()]
+                if member_ids:
+                    users_result = await db.execute(
+                        select(User).where(User.id.in_(member_ids))
+                    )
+                    team_users = users_result.scalars().all()
+                    for member in team_users:
+                        if member.email:
+                            await notification_service.notify_new_comment(
+                                member.email, ticket.ticket_number, ticket.title, author_name
+                            )
+                        await notification_service.push(
+                            db, member.id,
+                            type="ticket_comment",
+                            title=f"Nuovo commento sul ticket #{ticket.ticket_number:04d}",
+                            body=f"{author_name}: {data.content[:80]}{'...' if len(data.content) > 80 else ''}",
+                            ticket_id=ticket.id,
+                        )
         await db.commit()
 
     return _enrich_comment(comment, current_user)
