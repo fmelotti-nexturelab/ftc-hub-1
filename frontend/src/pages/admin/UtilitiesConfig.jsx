@@ -92,7 +92,7 @@ export default function UtilitiesConfig() {
           onClick={() => navigate("/utilities")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>
@@ -101,19 +101,19 @@ export default function UtilitiesConfig() {
         <table className="text-xs w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-4 py-3 text-left text-gray-600 font-semibold w-40">Tabella</th>
+              <th scope="col" className="px-4 py-3 text-left text-gray-600 font-semibold w-40">Tabella</th>
               {CONFIGURABLE_TYPES.map((t) => (
-                <th key={t} className="px-2 py-3 text-center text-gray-600 font-semibold" colSpan={2}>
+                <th scope="col" key={t} className="px-2 py-3 text-center text-gray-600 font-semibold" colSpan={2}>
                   {TYPE_LABEL[t]}
                 </th>
               ))}
             </tr>
             <tr className="bg-gray-50 border-b border-gray-200 text-gray-400">
-              <th className="px-4 py-2" />
+              <th scope="col" className="px-4 py-2" />
               {CONFIGURABLE_TYPES.map((t) => (
                 <React.Fragment key={t}>
-                  <th className="px-2 py-1 text-center font-normal">Visualizza</th>
-                  <th className="px-2 py-1 text-center font-normal">Gestisci</th>
+                  <th scope="col" className="px-2 py-1 text-center font-normal">Visualizza</th>
+                  <th scope="col" className="px-2 py-1 text-center font-normal">Gestisci</th>
                 </React.Fragment>
               ))}
             </tr>

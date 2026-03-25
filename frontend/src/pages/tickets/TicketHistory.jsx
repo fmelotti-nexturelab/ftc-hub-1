@@ -72,7 +72,7 @@ export default function TicketHistory() {
           onClick={() => navigate("/tickets")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>
@@ -127,15 +127,15 @@ export default function TicketHistory() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
-                <th className="text-left px-4 py-2.5">#</th>
-                <th className="text-left px-4 py-2.5">Titolo</th>
-                <th className="text-left px-4 py-2.5">Priorità</th>
-                <th className="text-left px-4 py-2.5">Categoria</th>
-                {isAdmin && <th className="text-left px-4 py-2.5">Team</th>}
-                <th className="text-left px-4 py-2.5">Assegnato a</th>
-                <th className="text-left px-4 py-2.5">Chiuso il</th>
-                <th className="text-right px-4 py-2.5">Tempo risoluzione</th>
-                <th className="px-4 py-2.5"></th>
+                <th scope="col" className="text-left px-4 py-2.5">#</th>
+                <th scope="col" className="text-left px-4 py-2.5">Titolo</th>
+                <th scope="col" className="text-left px-4 py-2.5">Priorità</th>
+                <th scope="col" className="text-left px-4 py-2.5">Categoria</th>
+                {isAdmin && <th scope="col" className="text-left px-4 py-2.5">Team</th>}
+                <th scope="col" className="text-left px-4 py-2.5">Assegnato a</th>
+                <th scope="col" className="text-left px-4 py-2.5">Chiuso il</th>
+                <th scope="col" className="text-right px-4 py-2.5">Tempo risoluzione</th>
+                <th scope="col" className="px-4 py-2.5"></th>
               </tr>
             </thead>
             <tbody>

@@ -840,15 +840,15 @@ function RoutingRulesTab() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
-                <th className="px-4 py-3 text-left">Categoria</th>
-                <th className="px-4 py-3 text-left">Sottocategoria</th>
-                <th className="px-4 py-3 text-left">Team</th>
-                <th className="px-4 py-3 text-left">Utente principale</th>
-                <th className="px-4 py-3 text-left">Backup 1</th>
-                <th className="px-4 py-3 text-left">Backup 2</th>
-                <th className="px-4 py-3 text-left">Priorità</th>
-                <th className="px-4 py-3 text-left">Stato</th>
-                <th className="px-4 py-3 text-left"></th>
+                <th scope="col" className="px-4 py-3 text-left">Categoria</th>
+                <th scope="col" className="px-4 py-3 text-left">Sottocategoria</th>
+                <th scope="col" className="px-4 py-3 text-left">Team</th>
+                <th scope="col" className="px-4 py-3 text-left">Utente principale</th>
+                <th scope="col" className="px-4 py-3 text-left">Backup 1</th>
+                <th scope="col" className="px-4 py-3 text-left">Backup 2</th>
+                <th scope="col" className="px-4 py-3 text-left">Priorità</th>
+                <th scope="col" className="px-4 py-3 text-left">Stato</th>
+                <th scope="col" className="px-4 py-3 text-left"></th>
               </tr>
             </thead>
             <tbody>
@@ -914,7 +914,7 @@ export default function TicketConfig() {
           onClick={() => navigate("/utilities")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>

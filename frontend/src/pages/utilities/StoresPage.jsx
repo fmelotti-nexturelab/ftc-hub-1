@@ -24,7 +24,7 @@ function StoreModal({ store, onClose }) {
     "bg-violet-100 text-violet-700"
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" role="button" tabIndex={0} aria-label="Chiudi" onClick={onClose} onKeyDown={e => (e.key === "Enter" || e.key === " " || e.key === "Escape") && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between p-6 border-b border-gray-100">
           <div>
@@ -87,7 +87,7 @@ function StoreFormModal({ initial, onClose, onSaved }) {
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" role="button" tabIndex={0} aria-label="Chiudi" onClick={onClose} onKeyDown={e => (e.key === "Enter" || e.key === " " || e.key === "Escape") && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h2 className="font-bold text-gray-800">{isEdit ? "Modifica Store" : "Nuovo Store"}</h2>
@@ -131,10 +131,11 @@ function StoreFormModal({ initial, onClose, onSaved }) {
 }
 
 function Field({ label, value, onChange, type = "text" }) {
+  const id = "field-" + label.toLowerCase().replace(/[^a-z0-9]+/g, "-")
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <input type={type} value={value || ""} onChange={onChange} className={inputClass} />
+      <label htmlFor={id} className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <input id={id} type={type} value={value || ""} onChange={onChange} className={inputClass} />
     </div>
   )
 }
@@ -229,7 +230,7 @@ export default function StoresPage() {
             onClick={() => navigate("/utilities/consulta-database")}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
-            <LogOut size={15} />
+            <LogOut size={15} aria-hidden="true" />
             Esci
           </button>
         </div>

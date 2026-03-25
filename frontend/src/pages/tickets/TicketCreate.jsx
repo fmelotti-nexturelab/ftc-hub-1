@@ -109,7 +109,7 @@ export default function TicketCreate() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-[#1e3a5f]/10 rounded-xl flex items-center justify-center">
-            <LifeBuoy size={18} className="text-[#1e3a5f]" />
+            <LifeBuoy size={18} className="text-[#1e3a5f]" aria-hidden="true" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-800">Nuovo Ticket</h1>
@@ -120,7 +120,7 @@ export default function TicketCreate() {
           onClick={() => navigate("/tickets")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>

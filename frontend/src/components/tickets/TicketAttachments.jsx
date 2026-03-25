@@ -93,7 +93,7 @@ function AttachmentItem({ attachment }) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-700 truncate">{attachment.filename}</p>
-          <p className="text-xs text-gray-400">{formatSize(attachment.file_size)}</p>
+          <p className="text-xs text-gray-500">{formatSize(attachment.file_size)}</p>
         </div>
 
         {/* Preview thumbnail per immagini */}
@@ -148,12 +148,12 @@ export default function TicketAttachments({ ticketId }) {
         <Paperclip size={14} className="text-gray-400" />
         Allegati
         {attachments.length > 0 && (
-          <span className="text-xs font-normal text-gray-400">({attachments.length})</span>
+          <span className="text-xs font-normal text-gray-500">({attachments.length})</span>
         )}
       </h2>
 
       {attachments.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-3">Nessun allegato.</p>
+        <p className="text-sm text-gray-500 text-center py-3">Nessun allegato.</p>
       ) : (
         <div className="space-y-2">
           {attachments.map(a => (

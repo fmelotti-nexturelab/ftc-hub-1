@@ -80,7 +80,7 @@ export default function SupportLookup() {
           onClick={() => navigate("/utilities")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>
@@ -162,10 +162,10 @@ export default function SupportLookup() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold">
-                <th className="text-left px-4 py-2.5">Codice</th>
-                <th className="text-left px-4 py-2.5">Modulo</th>
-                <th className="text-left px-4 py-2.5">Descrizione</th>
-                <th className="px-4 py-2.5 w-8"></th>
+                <th scope="col" className="text-left px-4 py-2.5">Codice</th>
+                <th scope="col" className="text-left px-4 py-2.5">Modulo</th>
+                <th scope="col" className="text-left px-4 py-2.5">Descrizione</th>
+                <th scope="col" className="px-4 py-2.5 w-8"></th>
               </tr>
             </thead>
             <tbody>

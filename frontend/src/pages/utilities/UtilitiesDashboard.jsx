@@ -66,7 +66,7 @@ export default function UtilitiesDashboard() {
                 ${soon ? "opacity-50 cursor-not-allowed" : "hover:border-[#2563eb] cursor-pointer"}`}
             >
               <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
-                <Icon className="text-white" size={22} />
+                <Icon className="text-white" size={22} aria-hidden="true" />
               </div>
               <div className="font-semibold text-gray-800">{label}</div>
               <div className="text-sm text-gray-500 mt-1">{desc}</div>

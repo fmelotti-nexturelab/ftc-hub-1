@@ -271,7 +271,7 @@ export default function TicketList() {
               onClick={() => navigate("/")}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
             >
-              <LogOut size={15} />
+              <LogOut size={15} aria-hidden="true" />
               Esci
             </button>
           </div>
@@ -321,14 +321,14 @@ export default function TicketList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
-                  <th className="px-4 py-3 text-left">#</th>
-                  <th className="px-4 py-3 text-left">Titolo</th>
-                  <th className="px-4 py-3 text-left">Categoria</th>
-                  <th className="px-4 py-3 text-left">Priorità</th>
-                  <th className="px-4 py-3 text-left">Stato</th>
-                  <th className="px-4 py-3 text-left">Data</th>
-                  <th className="px-4 py-3 text-left">Durata</th>
-                  <th className="px-4 py-3"></th>
+                  <th scope="col" className="px-4 py-3 text-left">#</th>
+                  <th scope="col" className="px-4 py-3 text-left">Titolo</th>
+                  <th scope="col" className="px-4 py-3 text-left">Categoria</th>
+                  <th scope="col" className="px-4 py-3 text-left">Priorità</th>
+                  <th scope="col" className="px-4 py-3 text-left">Stato</th>
+                  <th scope="col" className="px-4 py-3 text-left">Data</th>
+                  <th scope="col" className="px-4 py-3 text-left">Durata</th>
+                  <th scope="col" className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -408,7 +408,7 @@ export default function TicketList() {
             onClick={() => navigate("/")}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
-            <LogOut size={15} />
+            <LogOut size={15} aria-hidden="true" />
             Esci
           </button>
         </div>
@@ -501,7 +501,7 @@ export default function TicketList() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
                 {canSeeTeam && (
-                  <th className="px-3 py-3 w-8">
+                  <th scope="col" className="px-3 py-3 w-8">
                     <input
                       type="checkbox"
                       checked={allChecked}
@@ -511,18 +511,18 @@ export default function TicketList() {
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 text-left">#</th>
-                <th className="px-4 py-3 text-left">Titolo</th>
-                <th className="px-4 py-3 text-left">Negozio / Richiedente</th>
-                <th className="px-4 py-3 text-left">Categoria</th>
-                <th className="px-4 py-3 text-left">Sottocategoria</th>
-                {canSeeTeam && <th className="px-4 py-3 text-left">Team</th>}
-                <th className="px-4 py-3 text-left">Priorità</th>
-                <th className="px-4 py-3 text-left">Stato</th>
-                {canSeeTeam && <th className="px-4 py-3 text-left">Assegnato a</th>}
-                <th className="px-4 py-3 text-left">Data</th>
-                <th className="px-4 py-3 text-left">Durata</th>
-                <th className="px-4 py-3"></th>
+                <th scope="col" className="px-4 py-3 text-left">#</th>
+                <th scope="col" className="px-4 py-3 text-left">Titolo</th>
+                <th scope="col" className="px-4 py-3 text-left">Negozio / Richiedente</th>
+                <th scope="col" className="px-4 py-3 text-left">Categoria</th>
+                <th scope="col" className="px-4 py-3 text-left">Sottocategoria</th>
+                {canSeeTeam && <th scope="col" className="px-4 py-3 text-left">Team</th>}
+                <th scope="col" className="px-4 py-3 text-left">Priorità</th>
+                <th scope="col" className="px-4 py-3 text-left">Stato</th>
+                {canSeeTeam && <th scope="col" className="px-4 py-3 text-left">Assegnato a</th>}
+                <th scope="col" className="px-4 py-3 text-left">Data</th>
+                <th scope="col" className="px-4 py-3 text-left">Durata</th>
+                <th scope="col" className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>

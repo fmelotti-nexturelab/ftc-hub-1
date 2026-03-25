@@ -32,11 +32,11 @@ export default function StockTable({ sessionId }) {
         <table className="text-xs" style={{ borderCollapse: "collapse" }}>
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-2 py-1.5 text-left font-semibold text-gray-600 sticky left-0 bg-gray-50 z-10 whitespace-nowrap min-w-[80px]">No.</th>
-              <th className="px-2 py-1.5 text-left font-semibold text-gray-600 whitespace-nowrap min-w-[160px]">Descrizione</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-gray-600 whitespace-nowrap min-w-[44px]">ADM</th>
+              <th scope="col" className="px-2 py-1.5 text-left font-semibold text-gray-600 sticky left-0 bg-gray-50 z-10 whitespace-nowrap min-w-[80px]">No.</th>
+              <th scope="col" className="px-2 py-1.5 text-left font-semibold text-gray-600 whitespace-nowrap min-w-[160px]">Descrizione</th>
+              <th scope="col" className="px-2 py-1.5 text-right font-semibold text-gray-600 whitespace-nowrap min-w-[44px]">ADM</th>
               {stores.map((s) => (
-                <th key={s} className="px-1 py-1.5 text-right font-semibold text-gray-600 whitespace-nowrap min-w-[40px]">{s}</th>
+                <th scope="col" key={s} className="px-1 py-1.5 text-right font-semibold text-gray-600 whitespace-nowrap min-w-[40px]">{s}</th>
               ))}
             </tr>
           </thead>

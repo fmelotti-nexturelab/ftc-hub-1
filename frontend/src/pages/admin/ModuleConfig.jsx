@@ -95,7 +95,7 @@ export default function ModuleConfig() {
           onClick={() => navigate("/utilities")}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>
@@ -104,19 +104,19 @@ export default function ModuleConfig() {
         <table style={{ fontSize: "11px", borderCollapse: "collapse" }} className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-2 py-2 text-left text-gray-600 font-semibold" style={{ width: "80px", minWidth: "80px" }}>Modulo</th>
+              <th scope="col" className="px-2 py-2 text-left text-gray-600 font-semibold" style={{ width: "80px", minWidth: "80px" }}>Modulo</th>
               {CONFIGURABLE_TYPES.map((t) => (
-                <th key={t} className="py-2 text-center text-gray-600 font-semibold" colSpan={2} style={{ minWidth: "44px" }}>
+                <th scope="col" key={t} className="py-2 text-center text-gray-600 font-semibold" colSpan={2} style={{ minWidth: "44px" }}>
                   {TYPE_LABEL[t]}
                 </th>
               ))}
             </tr>
             <tr className="bg-gray-50 border-b border-gray-200 text-gray-400" style={{ fontSize: "10px" }}>
-              <th className="px-2 py-1" />
+              <th scope="col" className="px-2 py-1" />
               {CONFIGURABLE_TYPES.map((t) => (
                 <React.Fragment key={t}>
-                  <th className="py-1 text-center font-normal pl-2" style={{ width: "22px" }}>V</th>
-                  <th className="py-1 text-center font-normal pr-2" style={{ width: "22px" }}>G</th>
+                  <th scope="col" className="py-1 text-center font-normal pl-2" style={{ width: "22px" }}>V</th>
+                  <th scope="col" className="py-1 text-center font-normal pr-2" style={{ width: "22px" }}>G</th>
                 </React.Fragment>
               ))}
             </tr>

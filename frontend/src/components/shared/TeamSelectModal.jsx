@@ -45,7 +45,7 @@ export default function TeamSelectModal({ analysis, onSelect, onClose, isPending
           <>
             <div>
               <h2 className="text-base font-bold text-gray-800">Codice TeamViewer</h2>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Il team <span className="font-semibold text-[#1e3a5f]">{pendingTeam.name}</span> ha
                 bisogno del codice TeamViewer per accedere al tuo dispositivo.
               </p>
@@ -79,13 +79,13 @@ export default function TeamSelectModal({ analysis, onSelect, onClose, isPending
           <>
             <div>
               <h2 className="text-base font-bold text-gray-800">A chi vuoi inviare il ticket?</h2>
-              <p className="text-xs text-gray-400 mt-1">Seleziona il team di destinazione</p>
+              <p className="text-xs text-gray-500 mt-1">Seleziona il team di destinazione</p>
             </div>
 
             {analysis.suggested_teams?.length > 0 ? (
               <div className="space-y-3">
                 <div>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Suggerito dall'AI
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -130,7 +130,7 @@ export default function TeamSelectModal({ analysis, onSelect, onClose, isPending
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-gray-400">Seleziona il team destinatario:</p>
+                <p className="text-xs text-gray-500">Seleziona il team destinatario:</p>
                 <div className="flex flex-wrap gap-2">
                   {analysis.all_teams?.map(team => (
                     <button
@@ -154,7 +154,7 @@ export default function TeamSelectModal({ analysis, onSelect, onClose, isPending
                 ← Modifica
               </button>
               {isPending && (
-                <span className="text-xs text-gray-400">Creazione in corso...</span>
+                <span className="text-xs text-gray-500">Creazione in corso...</span>
               )}
             </div>
           </>

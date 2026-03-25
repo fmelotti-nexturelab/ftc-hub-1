@@ -35,11 +35,11 @@ function StatsTable({ rows, showCategory = false }) {
     <table className="w-full text-xs">
       <thead>
         <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold">
-          <th className="px-3 py-2 text-left">Nome</th>
-          {showCategory && <th className="px-3 py-2 text-left">Categoria</th>}
-          <th className="px-3 py-2 text-right">Tot.</th>
+          <th scope="col" className="px-3 py-2 text-left">Nome</th>
+          {showCategory && <th scope="col" className="px-3 py-2 text-left">Categoria</th>}
+          <th scope="col" className="px-3 py-2 text-right">Tot.</th>
           {STATUS_COLS.map(s => (
-            <th key={s.key} className={`px-3 py-2 text-right ${s.color}`}>{s.label}</th>
+            <th scope="col" key={s.key} className={`px-3 py-2 text-right ${s.color}`}>{s.label}</th>
           ))}
         </tr>
       </thead>
@@ -114,7 +114,7 @@ export default function TicketDashboard() {
             onClick={() => navigate("/tickets")}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
-            <LogOut size={15} />
+            <LogOut size={15} aria-hidden="true" />
             Esci
           </button>
         </div>
@@ -154,10 +154,10 @@ export default function TicketDashboard() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 font-semibold">
-                <th className="px-3 py-2 text-left flex items-center gap-1.5">
-                  <Users size={11} /> Assegnatario
+                <th scope="col" className="px-3 py-2 text-left flex items-center gap-1.5">
+                  <Users size={11} aria-hidden="true" /> Assegnatario
                 </th>
-                <th className="px-3 py-2 text-right text-gray-500">Ticket chiusi</th>
+                <th scope="col" className="px-3 py-2 text-right text-gray-500">Ticket chiusi</th>
               </tr>
             </thead>
             <tbody>

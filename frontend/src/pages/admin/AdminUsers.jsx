@@ -56,13 +56,28 @@ function NewUserModal({ onClose, onSaved }) {
         </div>
         {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>}
         <div className="space-y-3">
-          <input placeholder="Username *" value={form.username} onChange={set("username")} className={inputClass} />
-          <input placeholder="Email *" type="email" value={form.email} onChange={set("email")} className={inputClass} />
-          <input placeholder="Nome completo" value={form.full_name} onChange={set("full_name")} className={inputClass} />
-          <input placeholder="Password *" type="password" value={form.password} onChange={set("password")} className={inputClass} />
-          <select value={form.department} onChange={set("department")} className={inputClass + " bg-white"}>
-            {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <div>
+            <label htmlFor="nu-username" className="sr-only">Username</label>
+            <input id="nu-username" placeholder="Username *" value={form.username} onChange={set("username")} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="nu-email" className="sr-only">Email</label>
+            <input id="nu-email" placeholder="Email *" type="email" value={form.email} onChange={set("email")} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="nu-fullname" className="sr-only">Nome completo</label>
+            <input id="nu-fullname" placeholder="Nome completo" value={form.full_name} onChange={set("full_name")} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="nu-password" className="sr-only">Password</label>
+            <input id="nu-password" placeholder="Password *" type="password" value={form.password} onChange={set("password")} className={inputClass} />
+          </div>
+          <div>
+            <label htmlFor="nu-department" className="sr-only">Tipo utente</label>
+            <select id="nu-department" value={form.department} onChange={set("department")} className={inputClass + " bg-white"}>
+              {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
         </div>
         <div className="flex gap-2 justify-end pt-2">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition">Annulla</button>
@@ -93,9 +108,12 @@ function ChangeTypeModal({ user, onClose, onSaved }) {
         </div>
         <p className="text-sm text-gray-500">Utente: <strong>{user.full_name || user.username}</strong></p>
         {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">{error}</div>}
-        <select value={userType} onChange={(e) => setUserType(e.target.value)} className={inputClass + " bg-white"}>
-          {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        <div>
+          <label htmlFor="ct-usertype" className="sr-only">Tipo utente</label>
+          <select id="ct-usertype" value={userType} onChange={(e) => setUserType(e.target.value)} className={inputClass + " bg-white"}>
+            {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition">Annulla</button>
           <button onClick={() => mutation.mutate()} disabled={mutation.isPending || userType === user.department}
@@ -212,13 +230,13 @@ function UsersTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
-                <th className="px-4 py-3 text-left">Username</th>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Tipo</th>
-                <th className="px-4 py-3 text-left">Stato</th>
-                <th className="px-4 py-3 text-left">Ultimo accesso</th>
-                <th className="px-4 py-3 text-left"></th>
+                <th scope="col" className="px-4 py-3 text-left">Username</th>
+                <th scope="col" className="px-4 py-3 text-left">Nome</th>
+                <th scope="col" className="px-4 py-3 text-left">Email</th>
+                <th scope="col" className="px-4 py-3 text-left">Tipo</th>
+                <th scope="col" className="px-4 py-3 text-left">Stato</th>
+                <th scope="col" className="px-4 py-3 text-left">Ultimo accesso</th>
+                <th scope="col" className="px-4 py-3 text-left"></th>
               </tr>
             </thead>
             <tbody>
@@ -342,7 +360,7 @@ export default function AdminUsers() {
           onClick={() => navigate("/utilities")}
           className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 font-semibold py-2 px-4 rounded-xl transition text-sm"
         >
-          <LogOut size={15} />
+          <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
       </div>

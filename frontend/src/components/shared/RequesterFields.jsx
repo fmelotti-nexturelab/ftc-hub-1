@@ -12,7 +12,7 @@ export default function RequesterFields({ values, onChange, defaults = {} }) {
 
   return (
     <div>
-      <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Dati richiedente</div>
+      <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">Dati richiedente</div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Nome richiedente *</label>
@@ -36,7 +36,7 @@ export default function RequesterFields({ values, onChange, defaults = {} }) {
         </div>
         <div className="col-span-2">
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Email richiedente <span className="font-normal text-gray-400 text-xs">(opzionale)</span>
+            Email richiedente <span className="font-normal text-gray-500 text-xs">(opzionale)</span>
           </label>
           <input
             type="email"

@@ -165,9 +165,9 @@ export default function NotificationPanel() {
                       )}
                     </div>
                     {n.body && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">{n.body}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">{n.body}</p>
                     )}
-                    <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.created_at)}</p>
+                    <p className="text-[10px] text-gray-500 mt-1">{timeAgo(n.created_at)}</p>
                   </div>
                 </button>
               ))
