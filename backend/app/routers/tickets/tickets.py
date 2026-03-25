@@ -462,6 +462,7 @@ async def list_attachments(
 async def upload_attachment(
     ticket_id: UUID,
     file: UploadFile = File(...),
+    comment_id: Optional[UUID] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -481,6 +482,7 @@ async def upload_attachment(
 
     attachment = TicketAttachment(
         ticket_id=ticket_id,
+        comment_id=comment_id,
         filename=file.filename,
         file_path=str(dest_path),
         file_size=len(content),

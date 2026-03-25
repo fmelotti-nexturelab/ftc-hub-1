@@ -80,6 +80,11 @@ class TicketResponse(BaseModel):
     category_name: Optional[str] = None
     subcategory_name: Optional[str] = None
     team_name: Optional[str] = None
+    # Flag icone lista
+    has_attachments: bool = False
+    has_comments: bool = False
+    has_internal_notes: bool = False
+    has_solution: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -89,6 +94,7 @@ class TicketResponse(BaseModel):
 class CommentCreate(BaseModel):
     content: str
     is_internal: bool = False
+    is_solution: bool = False
 
 
 class CommentResponse(BaseModel):

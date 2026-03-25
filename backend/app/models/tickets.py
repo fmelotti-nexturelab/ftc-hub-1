@@ -59,6 +59,7 @@ class Ticket(Base):
     closed_at = Column(DateTime(timezone=True), nullable=True)
     taken_at = Column(DateTime(timezone=True), nullable=True)       # quando qualcuno ha preso in carico
     resolution_minutes = Column(Integer, nullable=True)             # taken_at → closed_at (minuti)
+    has_solution = Column(Boolean, default=False, nullable=False, server_default="false")
 
 
 class TicketComment(Base):

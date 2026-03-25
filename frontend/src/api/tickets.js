@@ -17,11 +17,13 @@ export const ticketsApi = {
 
   // Attachments
   listAttachments: (ticketId) => apiClient.get(`/api/tickets/${ticketId}/attachments`),
-  uploadAttachment: (ticketId, file) => {
+  uploadAttachment: (ticketId, file, commentId = null) => {
     const form = new FormData()
     form.append("file", file)
+    const params = commentId ? { comment_id: commentId } : {}
     return apiClient.post(`/api/tickets/${ticketId}/attachments`, form, {
       headers: { "Content-Type": "multipart/form-data" },
+      params,
     })
   },
   fetchAttachmentBlob: (attachmentId) =>

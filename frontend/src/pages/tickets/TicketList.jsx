@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
+import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Filter, ExternalLink, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox, LogOut } from "lucide-react"
+import { Plus, Filter, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox, LogOut, Paperclip, MessageSquare, Lock, Lightbulb } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -10,6 +11,35 @@ import TicketPriorityBadge from "@/components/tickets/TicketPriorityBadge"
 
 const STATUSES = ["open", "in_progress", "waiting", "closed"]
 const STATUS_LABELS = { open: "Aperto", in_progress: "In lavorazione", waiting: "In attesa", closed: "Chiuso" }
+
+function IconTip({ icon: Icon, color, label }) {
+  const ref = useRef(null)
+  const [pos, setPos] = useState(null)
+  return (
+    <>
+      <span
+        ref={ref}
+        className="flex items-center cursor-default"
+        onMouseEnter={() => {
+          const r = ref.current?.getBoundingClientRect()
+          if (r) setPos({ x: r.left + r.width / 2, y: r.top })
+        }}
+        onMouseLeave={() => setPos(null)}
+      >
+        <Icon size={13} className={color} />
+      </span>
+      {pos && createPortal(
+        <div
+          style={{ position: "fixed", left: pos.x, top: pos.y - 6, transform: "translate(-50%, -100%)", zIndex: 99999, pointerEvents: "none" }}
+          className="bg-gray-800 text-white text-[11px] font-medium px-2 py-1 rounded-lg shadow-lg whitespace-nowrap"
+        >
+          {label}
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
 const PRIORITIES = ["low", "medium", "high", "critical"]
 const PRIORITY_LABELS = { low: "Bassa", medium: "Media", high: "Alta", critical: "Critica" }
 
@@ -317,13 +347,13 @@ export default function TicketList() {
                       {new Date(t.created_at).toLocaleDateString("it-IT")}
                     </td>
                     <td className="px-4 py-3"><ElapsedBadge ticket={t} /></td>
-                    <td className="px-3 py-3 text-right">
-                      <button
-                        onClick={e => { e.stopPropagation(); navigate(`/tickets/${t.id}`) }}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 transition"
-                      >
-                        <ExternalLink size={14} />
-                      </button>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {t.has_attachments && <IconTip icon={Paperclip} color="text-blue-400" label="Ha allegati" />}
+                        {t.has_comments && <IconTip icon={MessageSquare} color="text-emerald-500" label="Ha commenti" />}
+                        {t.has_internal_notes && <IconTip icon={Lock} color="text-amber-500" label="Ha note interne" />}
+                        {t.has_solution && <IconTip icon={Lightbulb} color="text-violet-500" label="Soluzione presente" />}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -539,14 +569,13 @@ export default function TicketList() {
                   <td className="px-4 py-3">
                     <ElapsedBadge ticket={t} />
                   </td>
-                  <td className="px-3 py-3 text-right">
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/tickets/${t.id}`) }}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 transition"
-                      title="Apri ticket"
-                    >
-                      <ExternalLink size={14} />
-                    </button>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      {t.has_attachments && <IconTip icon={Paperclip} color="text-blue-400" label="Ha allegati" />}
+                      {t.has_comments && <IconTip icon={MessageSquare} color="text-emerald-500" label="Ha commenti" />}
+                      {t.has_internal_notes && <IconTip icon={Lock} color="text-amber-500" label="Ha note interne" />}
+                      {t.has_solution && <IconTip icon={Lightbulb} color="text-violet-500" label="Soluzione presente" />}
+                    </div>
                   </td>
                 </tr>
               ))}

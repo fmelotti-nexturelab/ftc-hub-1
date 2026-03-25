@@ -39,6 +39,7 @@ def _enrich(
     subcategory_name: Optional[str] = None,
     team_name: Optional[str] = None,
     team_email: Optional[str] = None,
+    flags: Optional[dict] = None,
 ) -> TicketResponse:
     r = TicketResponse.model_validate(ticket)
     r.creator_name = creator.full_name or creator.username if creator else None
@@ -46,7 +47,56 @@ def _enrich(
     r.category_name = category_name
     r.subcategory_name = subcategory_name
     r.team_name = team_name
+    if flags:
+        r.has_attachments = flags.get("has_attachments", False)
+        r.has_comments = flags.get("has_comments", False)
+        r.has_internal_notes = flags.get("has_internal_notes", False)
+        # has_solution viene già da model_validate (campo DB)
     return r
+
+
+async def _get_ticket_flags(db: AsyncSession, ticket_ids: list) -> dict:
+    """Restituisce {ticket_id: {has_attachments, has_comments, has_internal_notes}} via batch query."""
+    if not ticket_ids:
+        return {}
+
+    att_res = await db.execute(
+        select(TicketAttachment.ticket_id)
+        .where(TicketAttachment.ticket_id.in_(ticket_ids))
+        .distinct()
+    )
+    att_set = set(att_res.scalars().all())
+
+    pub_res = await db.execute(
+        select(TicketComment.ticket_id)
+        .where(
+            TicketComment.ticket_id.in_(ticket_ids),
+            TicketComment.is_active == True,
+            TicketComment.is_internal == False,
+        )
+        .distinct()
+    )
+    pub_set = set(pub_res.scalars().all())
+
+    int_res = await db.execute(
+        select(TicketComment.ticket_id)
+        .where(
+            TicketComment.ticket_id.in_(ticket_ids),
+            TicketComment.is_active == True,
+            TicketComment.is_internal == True,
+        )
+        .distinct()
+    )
+    int_set = set(int_res.scalars().all())
+
+    return {
+        tid: {
+            "has_attachments": tid in att_set,
+            "has_comments": tid in pub_set,
+            "has_internal_notes": tid in int_set,
+        }
+        for tid in ticket_ids
+    }
 
 
 async def _get_users(db: AsyncSession, *uuids) -> dict:
@@ -339,6 +389,10 @@ async def get_tickets(
     t_ids = list({t.team_id for t in tickets if t.team_id})
     cat_map, sub_map, team_map, _ = await _load_name_maps(db, cat_ids, sub_ids, t_ids)
 
+    # Flag icone lista
+    ticket_ids = [t.id for t in tickets]
+    flags_map = await _get_ticket_flags(db, ticket_ids)
+
     return [
         _enrich(
             t,
@@ -347,6 +401,7 @@ async def get_tickets(
             category_name=cat_map.get(t.category_id) if t.category_id else None,
             subcategory_name=sub_map.get(t.subcategory_id) if t.subcategory_id else None,
             team_name=team_map.get(t.team_id) if t.team_id else None,
+            flags=flags_map.get(t.id, {}),
         )
         for t in tickets
     ]

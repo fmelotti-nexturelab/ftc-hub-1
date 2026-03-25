@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -37,6 +37,12 @@ export default function TicketDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") navigate("/tickets") }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [navigate])
   const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
   const isHO = !["STORE", "STOREMANAGER"].includes(user?.department)
@@ -115,7 +121,13 @@ export default function TicketDetail() {
   })
 
   const commentMutation = useMutation({
-    mutationFn: (data) => ticketsApi.addComment(id, data),
+    mutationFn: async ({ file, ...commentData }) => {
+      const res = await ticketsApi.addComment(id, commentData)
+      if (file) {
+        await ticketsApi.uploadAttachment(id, file, res.data.id)
+      }
+      return res
+    },
     onSuccess: invalidate,
   })
 

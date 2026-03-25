@@ -34,8 +34,10 @@ async def add_comment(
     if not is_manager and ticket.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Accesso negato")
 
-    # Solo i manager possono fare note interne
+    # Solo i manager possono fare note interne o marcare come soluzione
     is_internal = data.is_internal and is_manager
+    if data.is_solution and is_manager:
+        ticket.has_solution = True
 
     comment = TicketComment(
         ticket_id=ticket_id,
