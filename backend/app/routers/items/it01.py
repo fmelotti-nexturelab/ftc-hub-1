@@ -8,8 +8,8 @@ from app.services.items.it01 import get_items_it01, get_sessions_it01, import_it
 
 router = APIRouter(prefix="/api/items/it01", tags=["Items - IT01"])
 
-_PERM_VIEW   = require_permission("items.view")
-_PERM_IMPORT = require_permission("items.import")
+_PERM_VIEW   = require_permission("items_view")
+_PERM_IMPORT = require_permission("items_view", need_manage=True)
 
 
 @router.post("/import", dependencies=[Depends(_PERM_IMPORT)])
