@@ -30,6 +30,9 @@ import TicketConfigHub from "@/pages/utilities/TicketConfigHub"
 import ProfilePage from "@/pages/ProfilePage"
 import SettingsPage from "@/pages/SettingsPage"
 import StockUnifiedPage from "@/pages/utilities/stock/StockUnifiedPage"
+import StockNavPage from "@/pages/utilities/StockNavPage"
+import ItemListPage from "@/pages/utilities/ItemListPage"
+import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
 
 
 function RoleRedirect() {
@@ -71,6 +74,9 @@ export default function App() {
         <Route path="utilities/ticket-database" element={<RoleRoute roles={["ADMIN"]}><TicketDatabase /></RoleRoute>} />
         <Route path="utilities/ticket-config" element={<RoleRoute roles={["ADMIN"]}><TicketConfigHub /></RoleRoute>} />
         <Route path="utilities/genera-tabelle/stock" element={<RoleRoute roles={["ADMIN", "HO"]}><StockUnifiedPage /></RoleRoute>} />
+        <Route path="utilities/genera-tabelle/item-list" element={<RoleRoute roles={["ADMIN", "HO", "COMMERCIAL"]}><ItemListPage /></RoleRoute>} />
+        <Route path="utilities/consulta-database/stock-nav" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><StockNavPage /></RoleRoute>} />
+        <Route path="utilities/consulta-database/item-list" element={<RoleRoute roles={["ADMIN", "HO"]}><ItemListConsultPage /></RoleRoute>} />
         <Route path="tickets" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketList /></RoleRoute>} />
         <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN"]}><TicketDashboard /></RoleRoute>} />
         <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "DM"]}><TicketHistory /></RoleRoute>} />

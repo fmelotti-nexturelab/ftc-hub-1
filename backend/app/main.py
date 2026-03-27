@@ -11,6 +11,7 @@ from app.models import auth, ho, rbac_scope, modules, stores
 from app.models import notification  # noqa: F401
 from app.models import support  # noqa: F401
 from app.models import stock  # noqa: F401
+from app.models import items  # noqa: F401
 
 from app.routers import auth as auth_router
 from app.routers import test_rbac
@@ -29,6 +30,7 @@ from app.routers.admin import support as admin_support_router
 from app.routers.admin import diagnostics as admin_diagnostics_router
 from app.routers.admin import ticket_performance as admin_ticket_performance_router
 from app.routers import stock as stock_router
+from app.routers.items import it01 as items_it01_router
 
 
 @asynccontextmanager
@@ -85,6 +87,7 @@ app.include_router(admin_support_router.router)
 app.include_router(admin_diagnostics_router.router)
 app.include_router(admin_ticket_performance_router.router)
 app.include_router(stock_router.router)
+app.include_router(items_it01_router.router)
 
 
 @app.get("/api/health")

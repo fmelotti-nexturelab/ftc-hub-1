@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Store, LogOut, Database, Package } from "lucide-react"
+import { Store, LogOut, Database, Package, List } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 
 const CARDS = [
@@ -19,6 +19,14 @@ const CARDS = [
     label: "Stock NAV",
     desc: "Consulta lo stock giornaliero estratto da Navision",
     moduleCode: "utilities_stock_nav",
+  },
+  {
+    path: "/utilities/consulta-database/item-list",
+    icon: List,
+    color: "bg-teal-500",
+    label: "ItemList",
+    desc: "Consulta l'anagrafe articoli IT01",
+    moduleCode: "items_view",
   },
 ]
 
