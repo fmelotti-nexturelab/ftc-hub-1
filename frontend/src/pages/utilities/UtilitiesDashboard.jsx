@@ -11,7 +11,7 @@ const ALL_MODULES = [
     label: "Consulta Database",
     color: "bg-blue-500",
     desc: "Vedi il contenuto delle tabelle",
-    moduleCodes: ["utilities_stores", "utilities_stock_nav", "utilities_sales"],
+    moduleCodes: ["utilities_stores", "utilities_stock_nav", "utilities_sales", "items_view"],
   },
 ]
 
@@ -19,7 +19,7 @@ const ADMIN_MODULES = [
   { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
 ]
 
-const DB_ADMIN_TYPES = ["SUPERUSER", "ADMIN", "IT"]
+const DB_ADMIN_TYPES = ["SUPERUSER", "ADMIN", "IT", "COMMERCIAL"]
 
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()

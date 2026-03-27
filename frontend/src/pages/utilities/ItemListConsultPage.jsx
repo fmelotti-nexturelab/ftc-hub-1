@@ -124,12 +124,12 @@ function ProductImageTooltip({ itemNo, x, y }) {
 const COLUMNS = [
   { key: "item_no",        label: "Cod. Articolo", cls: "sticky left-0 bg-inherit z-[1] w-28 min-w-[7rem]" },
   { key: "description",    label: "Descrizione",   cls: "min-w-[15rem]" },
-  { key: "unit_price",     label: "Prezzo unit.",  cls: "w-24 min-w-[6rem] text-right" },
-  { key: "barcode",        label: "Barcode",       cls: "w-32 min-w-[8rem]" },
-  { key: "units_per_pack", label: "U/Collo",       cls: "w-16 min-w-[4rem] text-right" },
-  { key: "model_store",    label: "Model Store",   cls: "w-28 min-w-[7rem]" },
-  { key: "category",       label: "Category",      cls: "w-28 min-w-[7rem]" },
-  { key: "vat_pct",        label: "IVA",           cls: "w-16 min-w-[4rem] text-right" },
+  { key: "unit_price",     label: "Prezzo unit.",  cls: "w-24 min-w-[6rem] text-center" },
+  { key: "barcode",        label: "Barcode",       cls: "w-32 min-w-[8rem] text-center" },
+  { key: "units_per_pack", label: "U/Collo",       cls: "w-16 min-w-[4rem] text-center" },
+  { key: "model_store",    label: "Model Store",   cls: "w-28 min-w-[7rem] text-center" },
+  { key: "category",       label: "Category",      cls: "w-28 min-w-[7rem] text-center" },
+  { key: "vat_pct",        label: "IVA",           cls: "w-16 min-w-[4rem] text-center" },
   { key: "description2",   label: "Descrizione 2", cls: "min-w-[12rem]" },
 ]
 
@@ -532,29 +532,33 @@ export default function ItemListConsultPage() {
                       )}
                     </td>
                     {/* Prezzo */}
-                    <td className="px-3 py-2 text-right text-gray-700 tabular-nums text-xs whitespace-nowrap">
+                    <td className="px-3 py-2 text-center text-gray-700 tabular-nums text-xs whitespace-nowrap">
                       {item.unit_price != null
                         ? item.unit_price.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                         : "—"}
                     </td>
                     {/* Barcode */}
-                    <td className="px-3 py-2 font-mono text-xs text-gray-500 whitespace-nowrap">{item.barcode ?? "—"}</td>
+                    <td className="px-3 py-2 text-center font-mono text-xs text-gray-500 whitespace-nowrap">{item.barcode ?? "—"}</td>
                     {/* U/Collo */}
-                    <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums whitespace-nowrap">
+                    <td className="px-3 py-2 text-center text-xs text-gray-500 tabular-nums whitespace-nowrap">
                       {item.units_per_pack ?? "—"}
                     </td>
                     {/* Model Store */}
-                    <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.model_store || "—"}</td>
+                    <td className="px-3 py-2 text-center text-xs text-gray-500 whitespace-nowrap">{item.model_store || "—"}</td>
                     {/* Category */}
-                    <td className="px-3 py-2 text-xs text-gray-500 whitespace-nowrap">{item.category || "—"}</td>
+                    <td className="px-3 py-2 text-center text-xs text-gray-500 whitespace-nowrap">{item.category || "—"}</td>
                     {/* IVA */}
-                    <td className="px-3 py-2 text-right text-xs text-gray-500 tabular-nums whitespace-nowrap">
+                    <td className="px-3 py-2 text-center text-xs text-gray-500 tabular-nums whitespace-nowrap">
                       {item.vat_pct != null
                         ? item.vat_pct.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + "%"
                         : "—"}
                     </td>
-                    {/* Descrizione 2 */}
-                    <td className="px-3 py-2 text-xs text-gray-400 max-w-[14rem] truncate">{item.description2 || "—"}</td>
+                    {/* Descrizione 2 — blank se "No Name 2" o "0" */}
+                    <td className="px-3 py-2 text-xs text-gray-400 max-w-[14rem] truncate">
+                      {item.description2 && item.description2 !== "No Name 2" && item.description2 !== "0"
+                        ? item.description2
+                        : "—"}
+                    </td>
                   </tr>
                 ))
               )}
