@@ -23,6 +23,7 @@ export const EXPORT_STEPS = [
   "Aggiornamento foglio STOCK...",
   "Aggiornamento foglio data...",
   "Salvataggio file principale...",
+  "Generazione files di archivio...",
   "Archivio: Stock by location...",
   "Archivio: Commercial...",
   "Archivio: Tables_for_FTP...",
@@ -63,12 +64,13 @@ function parseCsv(arrayBuffer, entity) {
     items.push({
       item_no: itemNo,
       description: cols[1]?.trim() || "",
+      description_local: cols[2]?.trim() || "",
       adm_stock: parseQty(cols[3]),
       stores,
     })
   }
 
-  const fixedHeaders = [headers[0], headers[1], headers[3]]
+  const fixedHeaders = [headers[0], headers[1], headers[2], headers[3]]
   return { stores: storeCols, fixedHeaders, items }
 }
 
@@ -146,14 +148,14 @@ export async function runStockExport({
   })
   items.forEach((item, rowIdx) => {
     const r = rowIdx + 2
-    const fixedCols = [item.item_no, item.description, item.adm_stock]
+    const fixedCols = [item.item_no, item.description, item.description_local, item.adm_stock]
     fixedCols.forEach((val, c) => {
       stockSheet[XLSX.utils.encode_cell({ r, c })] = { v: val, t: typeof val === "number" ? "n" : "s" }
     })
     stores.forEach((s, idx) => {
       const qty = item.stores?.[s] ?? 0
       if (!writeZeros && qty === 0) return
-      stockSheet[XLSX.utils.encode_cell({ r, c: 3 + idx })] = { v: qty, t: "n" }
+      stockSheet[XLSX.utils.encode_cell({ r, c: 4 + idx })] = { v: qty, t: "n" }
     })
   })
   stockSheet["!ref"] = XLSX.utils.encode_range({
@@ -190,33 +192,54 @@ export async function runStockExport({
   const datePart = stockDate.replace(/-/g, "")
   const archiveFileName = `${datePart} ${entity} STOCK NAV.xlsx`
 
-  // ── Step 5: archivio Stock by location ─────────────────────────────────────
+  // ── Step 5: genera workbook archivio pulito (intestazione in riga 1, no batchId) ──
   onStep(5, "running")
+  const buildArchiveWb = (withZeros) => {
+    const rows = [
+      headerRow,
+      ...items.map(item => [
+        item.item_no,
+        item.description,
+        item.description_local,
+        item.adm_stock,
+        ...stores.map(s => { const q = item.stores?.[s] ?? 0; return (withZeros || q !== 0) ? q : null }),
+      ]),
+    ]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "STOCK")
+    return wb
+  }
+  const archiveBytesXlsx = new Uint8Array(XLSX.write(buildArchiveWb(false), { type: "array", bookType: "xlsx", compression: true }))
+  const archiveBytesXlsm = new Uint8Array(XLSX.write(buildArchiveWb(true),  { type: "array", bookType: "xlsm", compression: true }))
+  onStep(5, "done")
+
+  // ── Step 6: archivio Stock by location ─────────────────────────────────────
+  onStep(6, "running")
   try {
     let d1, d2
     try { d1 = await rootHandle.getDirectoryHandle("02 - Stock by location") }
     catch { throw new Error("Cartella '02 - Stock by location' non trovata nella root") }
     try { d2 = await d1.getDirectoryHandle("NAV  ( dati solo di test )") }
     catch { throw new Error("Sottocartella 'NAV  ( dati solo di test )' non trovata in '02 - Stock by location'") }
-    try { await writeToFolder(d2, archiveFileName, wbBytesXlsx) }
+    try { await writeToFolder(d2, archiveFileName, archiveBytesXlsx) }
     catch { throw new Error(`Impossibile scrivere '${archiveFileName}' in 'NAV  ( dati solo di test )'`) }
-    onStep(5, "done")
-  } catch (e) { onStep(5, "warning", e.message) }
+    onStep(6, "done")
+  } catch (e) { onStep(6, "warning", e.message) }
 
-  // ── Step 6: archivio Commercial ────────────────────────────────────────────
-  onStep(6, "running")
+  // ── Step 7: archivio Commercial ────────────────────────────────────────────
+  onStep(7, "running")
   try {
     if (!commercialHandle) throw new Error("Cartella Commercial non collegata — vai in Impostazioni e collega 'One Italy Commercial - Files'")
     let d1
     try { d1 = await commercialHandle.getDirectoryHandle("28 - Italy Shared Folder") }
     catch { throw new Error("Sottocartella '28 - Italy Shared Folder' non trovata nella cartella Commercial") }
-    try { await writeToFolder(d1, archiveFileName, wbBytesXlsx) }
+    try { await writeToFolder(d1, archiveFileName, archiveBytesXlsx) }
     catch { throw new Error(`Impossibile scrivere '${archiveFileName}' in '28 - Italy Shared Folder'`) }
-    onStep(6, "done")
-  } catch (e) { onStep(6, "warning", e.message) }
+    onStep(7, "done")
+  } catch (e) { onStep(7, "warning", e.message) }
 
-  // ── Step 7: archivio Tables_for_FTP ───────────────────────────────────────
-  onStep(7, "running")
+  // ── Step 8: archivio Tables_for_FTP ───────────────────────────────────────
+  onStep(8, "running")
   try {
     let d1, d2, d3
     try { d1 = await rootHandle.getDirectoryHandle("97 - Service") }
@@ -225,8 +248,8 @@ export async function runStockExport({
     catch { throw new Error("Sottocartella '01 - Tables' non trovata in '97 - Service'") }
     try { d3 = await d2.getDirectoryHandle("Tables_for_FTP") }
     catch { throw new Error("Sottocartella 'Tables_for_FTP' non trovata in '97 - Service/01 - Tables'") }
-    try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], wbBytes) }
+    try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], archiveBytesXlsm) }
     catch { throw new Error(`Impossibile scrivere '${ARCHIVE_FILE_NAMES[entity]}' in 'Tables_for_FTP'`) }
-    onStep(7, "done")
-  } catch (e) { onStep(7, "warning", e.message) }
+    onStep(8, "done")
+  } catch (e) { onStep(8, "warning", e.message) }
 }

@@ -16,6 +16,8 @@ export const stockApi = {
     apiClient.get(`/api/stock/sessions/${sessionId}/all-items`),
   getStoreItems: (sessionId, storeCode, params) =>
     apiClient.get(`/api/stock/sessions/${sessionId}/by-store/${storeCode}`, { params }),
+  getSessionStores: (sessionId) =>
+    apiClient.get(`/api/stock/sessions/${sessionId}/stores`),
   exportExcel: (sessionId, storeCode) =>
     apiClient.get(`/api/stock/sessions/${sessionId}/export`, {
       params: { format: "xlsx", store_code: storeCode || undefined },

@@ -125,6 +125,8 @@ async def get_session_items(
     page_size: int = 50,
     search: str = "",
     store_code: str = "",
+    sort_by: str = "item_no",
+    sort_dir: str = "asc",
     db: AsyncSession = Depends(get_db),
 ):
     # Verify session exists
@@ -155,6 +157,10 @@ async def get_session_items(
                 )
             )
         )
+
+    # Sort
+    sort_col = StockItem.description if sort_by == "description" else StockItem.item_no
+    stmt = stmt.order_by(sort_col.asc() if sort_dir == "asc" else sort_col.desc())
 
     # Count
     count_result = await db.execute(select(func.count()).select_from(stmt.subquery()))
@@ -260,6 +266,8 @@ async def get_session_by_store(
     page_size: int = 50,
     search: str = "",
     hide_zero: bool = True,
+    sort_by: str = "item_no",
+    sort_dir: str = "asc",
     db: AsyncSession = Depends(get_db),
 ):
     sess_result = await db.execute(select(StockSession).where(StockSession.id == session_id))
@@ -281,6 +289,9 @@ async def get_session_by_store(
 
     if hide_zero:
         stmt = stmt.where(StockStoreData.quantity != 0)
+
+    sort_col = StockItem.description if sort_by == "description" else StockItem.item_no
+    stmt = stmt.order_by(sort_col.asc() if sort_dir == "asc" else sort_col.desc())
 
     count_result = await db.execute(select(func.count()).select_from(stmt.subquery()))
     total = count_result.scalar()

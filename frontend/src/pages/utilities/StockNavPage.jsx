@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { Package, LogOut, CalendarDays, Search, X, Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Package, LogOut, CalendarDays, Search, X, Download, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2 } from "lucide-react"
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query"
 import { stockApi } from "@/api/stock"
 import { StockCalendar, toDateStr } from "./stock/components/StockCalendar"
@@ -139,9 +139,14 @@ function EntityView({ entity }) {
   })
   const [search, setSearch] = useState("")
   const [selectedStore, setSelectedStore] = useState("")
+  const [sort, setSort] = useState({ by: "item_no", dir: "asc" })
   const [exportingAll, setExportingAll] = useState(false)
   const [exportingStore, setExportingStore] = useState(false)
   const debouncedSearch = useDebounce(search, 300)
+
+  function toggleSort(col) {
+    setSort((s) => s.by === col ? { by: col, dir: s.dir === "asc" ? "desc" : "asc" } : { by: col, dir: "asc" })
+  }
   const tableContainerRef = useRef(null)
   const loaderRef = useRef(null)
   const hoverTimerRef = useRef(null)
@@ -196,12 +201,14 @@ function EntityView({ entity }) {
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery({
-    queryKey: ["stock-consulta-items", entity, session?.id, debouncedSearch, selectedStore],
+    queryKey: ["stock-consulta-items", entity, session?.id, debouncedSearch, selectedStore, sort],
     queryFn: ({ pageParam }) => stockApi.getSessionItems(session.id, {
       page: pageParam,
       page_size: PAGE_SIZE,
       search: debouncedSearch,
       store_code: selectedStore || undefined,
+      sort_by: sort.by,
+      sort_dir: sort.dir,
     }).then(r => r.data),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
@@ -375,8 +382,22 @@ function EntityView({ entity }) {
             <table className="text-sm" style={{ minWidth: "max-content" }}>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 sticky top-0 left-0 bg-gray-50 z-30">No.</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 sticky top-0 left-[88px] bg-gray-50 z-30 min-w-[220px]">Descrizione</th>
+                  <th scope="col" className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 sticky top-0 left-0 bg-gray-50 z-30">
+                    <button onClick={() => toggleSort("item_no")} className="flex items-center gap-1 hover:text-gray-900 transition" aria-label="Ordina per No.">
+                      No.
+                      {sort.by === "item_no"
+                        ? sort.dir === "asc" ? <ChevronUp size={11} aria-hidden="true" /> : <ChevronDown size={11} aria-hidden="true" />
+                        : <ChevronUp size={11} className="text-gray-300" aria-hidden="true" />}
+                    </button>
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-left text-xs font-semibold text-gray-600 sticky top-0 left-[88px] bg-gray-50 z-30 min-w-[220px]">
+                    <button onClick={() => toggleSort("description")} className="flex items-center gap-1 hover:text-gray-900 transition" aria-label="Ordina per Descrizione">
+                      Descrizione
+                      {sort.by === "description"
+                        ? sort.dir === "asc" ? <ChevronUp size={11} aria-hidden="true" /> : <ChevronDown size={11} aria-hidden="true" />
+                        : <ChevronUp size={11} className="text-gray-300" aria-hidden="true" />}
+                    </button>
+                  </th>
                   {!selectedStore && <th className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600 sticky top-0 bg-gray-50 z-20">ADM</th>}
                   {selectedStore
                     ? <th className="px-4 py-2.5 text-right text-xs font-semibold text-[#1e3a5f] sticky top-0 bg-gray-50 z-20">{selectedStore}</th>

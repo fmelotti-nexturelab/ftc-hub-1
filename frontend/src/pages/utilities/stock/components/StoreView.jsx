@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react"
 import { stockApi } from "@/api/stock"
 
 export default function StoreView({ sessionId, stores }) {
@@ -9,16 +9,24 @@ export default function StoreView({ sessionId, stores }) {
   const [search, setSearch] = useState("")
   const [searchInput, setSearchInput] = useState("")
   const [hideZero, setHideZero] = useState(true)
+  const [sort, setSort] = useState({ by: "item_no", dir: "asc" })
   const PAGE_SIZE = 50
 
+  function toggleSort(col) {
+    setPage(1)
+    setSort((s) => s.by === col ? { by: col, dir: s.dir === "asc" ? "desc" : "asc" } : { by: col, dir: "asc" })
+  }
+
   const { data, isLoading } = useQuery({
-    queryKey: ["stock-store", sessionId, selectedStore, page, search, hideZero],
+    queryKey: ["stock-store", sessionId, selectedStore, page, search, hideZero, sort],
     queryFn: () =>
       stockApi.getStoreItems(sessionId, selectedStore, {
         page,
         page_size: PAGE_SIZE,
         search,
         hide_zero: hideZero,
+        sort_by: sort.by,
+        sort_dir: sort.dir,
       }).then((r) => r.data),
     enabled: !!sessionId && !!selectedStore,
     keepPreviousData: true,
@@ -87,10 +95,24 @@ export default function StoreView({ sessionId, stores }) {
         <table className="text-xs w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="px-2 py-1.5 text-left font-semibold text-gray-600 min-w-[80px]">No.</th>
-              <th className="px-2 py-1.5 text-left font-semibold text-gray-600">Descrizione</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-gray-600 min-w-[44px]">ADM</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-gray-600 min-w-[60px]">Quantità</th>
+              <th scope="col" className="px-2 py-1.5 text-left font-semibold text-gray-600 min-w-[80px]">
+                <button onClick={() => toggleSort("item_no")} className="flex items-center gap-1 hover:text-gray-900 transition" aria-label="Ordina per No.">
+                  No.
+                  {sort.by === "item_no"
+                    ? sort.dir === "asc" ? <ChevronUp size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />
+                    : <ChevronUp size={12} className="text-gray-300" aria-hidden="true" />}
+                </button>
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-left font-semibold text-gray-600">
+                <button onClick={() => toggleSort("description")} className="flex items-center gap-1 hover:text-gray-900 transition" aria-label="Ordina per Descrizione">
+                  Descrizione
+                  {sort.by === "description"
+                    ? sort.dir === "asc" ? <ChevronUp size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />
+                    : <ChevronUp size={12} className="text-gray-300" aria-hidden="true" />}
+                </button>
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-right font-semibold text-gray-600 min-w-[44px]">ADM</th>
+              <th scope="col" className="px-2 py-1.5 text-right font-semibold text-gray-600 min-w-[60px]">Quantità</th>
             </tr>
           </thead>
           <tbody>
