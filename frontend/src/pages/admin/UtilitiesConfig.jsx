@@ -30,6 +30,7 @@ const UTILITY_TABLES = [
   { code: "utilities_stores",    name: "Info Stores" },
   { code: "utilities_sales",     name: "Sales Data" },
   { code: "utilities_stock_nav", name: "Stock NAV" },
+  { code: "items_view",          name: "ItemList" },
 ]
 
 function Toggle({ checked, onChange, disabled }) {
