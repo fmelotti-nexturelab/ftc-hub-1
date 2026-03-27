@@ -58,8 +58,8 @@ const CONFIG_FIELDS = [
 ]
 
 export default function NavAgentSettingsPage() {
-  const { hasRole } = useAuthStore()
-  const canEdit = hasRole("HO", "ADMIN")
+  const { user } = useAuthStore()
+  const canEdit = !["STORE", "STOREMANAGER", "DM"].includes(user?.department)
   const queryClient = useQueryClient()
   const folderInputRef = useRef(null)
 

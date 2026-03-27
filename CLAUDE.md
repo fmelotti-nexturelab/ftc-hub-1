@@ -381,6 +381,10 @@ migration(rbac): add scopes table and seed data
 style(sidebar): fix active link highlight color
 ```
 
+### ⛔ Vietato nei commit
+- **NON includere** riferimenti a modelli o strumenti di IA nel messaggio di commit (es. "Co-Authored-By: Claude", "Generated with Claude", "Claude Sonnet", ecc.)
+- Il commit deve sembrare scritto da uno sviluppatore umano, senza tracce di assistenza AI
+
 ---
 
 ## 11. CHECKLIST PRIMA DI OGNI MODIFICA
@@ -476,7 +480,34 @@ Il progetto è destinato alla commercializzazione ed è soggetto all'**European 
 
 ---
 
-## 13. ERRORI COMUNI DA EVITARE
+## 13. CONTROLLO ACCESSI — Regola fondamentale
+
+### Il pannello di comando sono le griglie in Gestione Utenti
+
+La visibilità di moduli e utility per ogni utente è controllata **esclusivamente** dalle due griglie amministrative:
+
+- **Accesso Moduli** (`/admin` → tab "Accesso Moduli") — moduli principali dell'app
+- **Accesso Utilities** (`/admin` → tab "Utilities") — utility specifiche (Info Stores, Sales Data, Stock NAV, ItemList, ecc.)
+
+Ogni department ha una riga nella griglia con interruttori ON/OFF per `can_view` e `can_manage`. Il sistema legge il department dell'utente loggato e mostra/nasconde i contenuti di conseguenza.
+
+### Regole rigide
+
+- **MAI liste hardcoded** nel frontend che decidono chi vede cosa (es. `const TIPI_CHE_VEDONO = ["IT", "COMMERCIAL"]`)
+- **MAI condizioni su `user.department`** per mostrare card, menu o sezioni legate ai moduli/utility
+- La visibilità si legge **sempre** da `canView(moduleCode)` / `canManage(moduleCode)` o dall'API `/api/utilities/my-access`
+- **Genera Tabelle** e **Consulta Database** sono contenitori: visibili solo se almeno una sotto-utility è abilitata per quel department
+- **Gestione Utenti** e **Configurazione Ticket** sono funzioni IT/ADMIN per natura: sempre visibili a `ADMIN`, `SUPERUSER`, `IT` — non vanno in griglia
+
+### Quando aggiungi una nuova utility o modulo
+1. Aggiungila alla griglia (`UTILITY_TABLES` in `UtilitiesConfig.jsx` o equivalente per moduli)
+2. Aggiungila a `UTILITY_MODULES` in `access.py`
+3. Crea la migration Alembic con i valori di default per ogni department
+4. La card nella dashboard si mostra/nasconde automaticamente via `canView`
+
+---
+
+## 14. ERRORI COMUNI DA EVITARE
 
 1. **Creare tabelle con `create_all()`** → Usa SEMPRE Alembic
 2. **Dimenticare lo schema PostgreSQL** → Ogni tabella DEVE avere `{"schema": "auth"}` o `{"schema": "ho"}`
@@ -488,10 +519,11 @@ Il progetto è destinato alla commercializzazione ed è soggetto all'**European 
 8. **Dimenticare il router in main.py** → Sempre `app.include_router(nuovo_router.router)`
 9. **Cambiare `client.js`** → Il sistema di interceptors e refresh è stabile, non toccarlo
 10. **Mettere business logic nei router** → Router thin, logica nei `services/`
+11. **Liste hardcoded per visibilità moduli** → Usa sempre le griglie di Gestione Utenti (vedi sezione 13)
 
 ---
 
-## 14. CONTESTO BUSINESS
+## 15. CONTESTO BUSINESS
 
 - **Entity**: IT01, IT02, IT03 (divisioni geografiche/legali italiane)
 - **Store**: codici tipo IT207, IT315, ecc. (150+ negozi)

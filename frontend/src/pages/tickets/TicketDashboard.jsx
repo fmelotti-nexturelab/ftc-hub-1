@@ -75,7 +75,7 @@ function Card({ title, children }) {
 export default function TicketDashboard() {
   const navigate = useNavigate()
   const { hasRole } = useAuthStore()
-  const isSuperuser = hasRole("ADMIN") // SUPERUSER ha role=ADMIN
+  const isSuperuser = hasRole("ADMIN")
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ["ticket-stats"],

@@ -38,8 +38,8 @@ import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
 function RoleRedirect() {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
-  const roleHome = { ADMIN: "/ho", HO: "/ho", DM: "/ho", STORE: "/ho" }
-  return <Navigate to={roleHome[user.role] || "/ho"} replace />
+  if (["SUPERUSER", "ADMIN", "IT"].includes(user.department)) return <Navigate to="/admin" replace />
+  return <Navigate to="/utilities" replace />
 }
 
 export default function App() {
@@ -57,32 +57,32 @@ export default function App() {
         }
       >
         <Route index element={<RoleRedirect />} />
-        <Route path="ho" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><HODashboard /></RoleRoute>} />
-        <Route path="ho/sales/it01" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT01 /></RoleRoute>} />
-        <Route path="ho/sales/it02" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT02 /></RoleRoute>} />
-        <Route path="ho/sales/it03" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesIT03 /></RoleRoute>} />
-        <Route path="ho/sales/report" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><SalesReport /></RoleRoute>} />
-        <Route path="ho/sales/excluded" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><ExcludedStores /></RoleRoute>} />
-        <Route path="utilities/navision" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><NavisionPage /></RoleRoute>} />
-        <Route path="admin" element={<RoleRoute roles={["ADMIN"]}><AdminUsers /></RoleRoute>} />
-        <Route path="admin/support" element={<RoleRoute roles={["ADMIN"]}><SupportLookup /></RoleRoute>} />
-        <Route path="admin/ticket-config" element={<RoleRoute roles={["ADMIN"]}><TicketConfig /></RoleRoute>} />
-        <Route path="utilities" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><UtilitiesDashboard /></RoleRoute>} />
-        <Route path="utilities/consulta-database" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><ConsultaDatabase /></RoleRoute>} />
-        <Route path="utilities/genera-tabelle" element={<RoleRoute roles={["ADMIN", "HO"]}><GeneraTabelle /></RoleRoute>} />
-        <Route path="utilities/stores" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><StoresPage /></RoleRoute>} />
-        <Route path="utilities/ticket-database" element={<RoleRoute roles={["ADMIN"]}><TicketDatabase /></RoleRoute>} />
-        <Route path="utilities/ticket-config" element={<RoleRoute roles={["ADMIN"]}><TicketConfigHub /></RoleRoute>} />
-        <Route path="utilities/genera-tabelle/stock" element={<RoleRoute roles={["ADMIN", "HO"]}><StockUnifiedPage /></RoleRoute>} />
-        <Route path="utilities/genera-tabelle/item-list" element={<RoleRoute roles={["ADMIN", "HO", "COMMERCIAL"]}><ItemListPage /></RoleRoute>} />
-        <Route path="utilities/consulta-database/stock-nav" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><StockNavPage /></RoleRoute>} />
-        <Route path="utilities/consulta-database/item-list" element={<RoleRoute roles={["ADMIN", "HO"]}><ItemListConsultPage /></RoleRoute>} />
-        <Route path="tickets" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketList /></RoleRoute>} />
+        <Route path="ho" element={<HODashboard />} />
+        <Route path="ho/sales/it01" element={<SalesIT01 />} />
+        <Route path="ho/sales/it02" element={<SalesIT02 />} />
+        <Route path="ho/sales/it03" element={<SalesIT03 />} />
+        <Route path="ho/sales/report" element={<SalesReport />} />
+        <Route path="ho/sales/excluded" element={<ExcludedStores />} />
+        <Route path="utilities/navision" element={<NavisionPage />} />
+        <Route path="admin" element={<RoleRoute roles={["ADMIN", "IT"]}><AdminUsers /></RoleRoute>} />
+        <Route path="admin/support" element={<RoleRoute roles={["ADMIN", "IT"]}><SupportLookup /></RoleRoute>} />
+        <Route path="admin/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfig /></RoleRoute>} />
+        <Route path="utilities" element={<UtilitiesDashboard />} />
+        <Route path="utilities/consulta-database" element={<ConsultaDatabase />} />
+        <Route path="utilities/genera-tabelle" element={<GeneraTabelle />} />
+        <Route path="utilities/stores" element={<StoresPage />} />
+        <Route path="utilities/ticket-database" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketDatabase /></RoleRoute>} />
+        <Route path="utilities/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfigHub /></RoleRoute>} />
+        <Route path="utilities/genera-tabelle/stock" element={<StockUnifiedPage />} />
+        <Route path="utilities/genera-tabelle/item-list" element={<ItemListPage />} />
+        <Route path="utilities/consulta-database/stock-nav" element={<StockNavPage />} />
+        <Route path="utilities/consulta-database/item-list" element={<ItemListConsultPage />} />
+        <Route path="tickets" element={<TicketList />} />
         <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN"]}><TicketDashboard /></RoleRoute>} />
         <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "DM"]}><TicketHistory /></RoleRoute>} />
         <Route path="tickets/performance" element={<RoleRoute roles={["ADMIN"]}><TicketPerformance /></RoleRoute>} />
-        <Route path="tickets/new" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketCreate /></RoleRoute>} />
-        <Route path="tickets/:id" element={<RoleRoute roles={["ADMIN", "HO", "DM", "STORE"]}><TicketDetail /></RoleRoute>} />
+        <Route path="tickets/new" element={<TicketCreate />} />
+        <Route path="tickets/:id" element={<TicketDetail />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

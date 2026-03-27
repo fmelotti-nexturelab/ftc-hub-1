@@ -1,31 +1,18 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Users, Settings2, Database, ToggleRight, BookOpen, TableProperties } from "lucide-react"
+import { Users, Settings2, Database, ToggleRight, TableProperties } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
-const ALL_MODULES = [
-  {
-    path: "/utilities/consulta-database",
-    icon: TableProperties,
-    label: "Consulta Database",
-    color: "bg-blue-500",
-    desc: "Vedi il contenuto delle tabelle",
-    moduleCodes: ["utilities_stores", "utilities_stock_nav", "utilities_sales", "items_view"],
-  },
-]
-
-const ADMIN_MODULES = [
-  { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
-]
-
-const DB_ADMIN_TYPES = ["SUPERUSER", "ADMIN", "IT", "COMMERCIAL"]
+// Genera Tabelle è un contenitore: visibile se almeno una delle sue sotto-utility è abilitata
+const GENERA_CODES = ["utilities_stock_nav", "items_view"]
 
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()
-  const { hasRole, user } = useAuthStore()
-  const isAdmin = hasRole("ADMIN")
-  const canSeeDbAdmin = DB_ADMIN_TYPES.includes(user?.department)
+  const { hasRole } = useAuthStore()
+
+  // Gestione Utenti e Configurazione Ticket: funzioni IT/ADMIN per natura, non in griglia
+  const isItAdmin = hasRole("ADMIN", "IT")
 
   const { data: access, isLoading, isError } = useQuery({
     queryKey: ["utilities-my-access"],
@@ -33,16 +20,19 @@ export default function UtilitiesDashboard() {
   })
 
   const visibleModules = [
-    ...(isError || !access ? [] : ALL_MODULES.filter((m) => {
-      const codes = m.moduleCodes ?? (m.moduleCode ? [m.moduleCode] : [])
-      return codes.some((code) => access[code]?.can_view)
-    })),
-    ...(isAdmin ? ADMIN_MODULES : []),
-    ...(canSeeDbAdmin ? [
-      { path: "/utilities/ticket-config",  icon: Settings2,   label: "Configurazione Ticket", color: "bg-[#1e3a5f]",   desc: "Database ticket, team e regole di smistamento" },
-      { path: "/utilities/navision",       icon: BookOpen,    label: "Navision",              color: "bg-emerald-600", desc: "Accesso al gestionale" },
-      { path: "/utilities/genera-tabelle", icon: Database,    label: "Genera Tabelle",        color: "bg-violet-600",  desc: "Genera le tabelle per i tool" },
-      { path: "/utilities/online-offline", icon: ToggleRight, label: "Online / Offline",      color: "bg-amber-500",   desc: "Accendi e spegni i tool", soon: true },
+    // Consulta Database: visibile se almeno una sotto-utility è ON (dalla griglia Utilities)
+    ...(!isError && access && ["utilities_stores", "utilities_stock_nav", "utilities_sales", "items_view"].some((c) => access[c]?.can_view) ? [
+      { path: "/utilities/consulta-database", icon: TableProperties, label: "Consulta Database", color: "bg-blue-500", desc: "Vedi il contenuto delle tabelle" },
+    ] : []),
+    // Genera Tabelle: visibile se almeno una sotto-utility è gestibile (can_manage) — generare = operazione di gestione
+    ...(!isError && access && GENERA_CODES.some((c) => access[c]?.can_manage) ? [
+      { path: "/utilities/genera-tabelle", icon: Database, label: "Genera Tabelle", color: "bg-violet-600", desc: "Genera le tabelle per i tool" },
+    ] : []),
+    // Online/Offline: coming soon — pilotato da canView quando sarà disponibile
+    // Gestione Utenti e Configurazione Ticket: funzioni IT/ADMIN, non in griglia (regola 13 CLAUDE.md)
+    ...(isItAdmin ? [
+      { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
+      { path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" },
     ] : []),
   ]
 

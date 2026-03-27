@@ -1,5 +1,5 @@
 // Registro delle guide disponibili nel sistema.
-// roles: array di ruoli che possono vedere la guida
+// roles: array di department che possono vedere la guida (SUPERUSER bypassa sempre)
 // id: deve corrispondere al nome del file in src/docs/{lang}/{id}.md
 
 export const GUIDES = [
@@ -33,7 +33,7 @@ export const GUIDES = [
       en: "How to open, manage and resolve internal support tickets",
     },
     icon: "LifeBuoy",
-    roles: ["ADMIN", "HO", "DM", "STORE"],
+    roles: ["ADMIN", "COMMERCIAL", "HR", "FINANCE", "MARKETING", "IT", "RETAIL", "MANAGER", "TOPMGR", "DM", "STORE", "STOREMANAGER"],
     category: { it: "Operativo", en: "Operations" },
   },
   {
@@ -44,7 +44,7 @@ export const GUIDES = [
       en: "Import and view sales data from Navision",
     },
     icon: "BarChart2",
-    roles: ["ADMIN", "HO"],
+    roles: ["ADMIN", "COMMERCIAL", "HR", "FINANCE", "MARKETING", "IT", "RETAIL", "MANAGER", "TOPMGR"],
     category: { it: "Head Office", en: "Head Office" },
   },
 ]

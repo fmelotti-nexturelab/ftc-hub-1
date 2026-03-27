@@ -1,10 +1,15 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { utilitiesApi } from "@/api/utilities"
 
+// Ogni group ha un moduleCode: visibile solo se can_manage è ON per quel modulo
+// (generare = operazione di gestione, non solo visualizzazione)
 const GROUPS = [
   {
     id: "sales",
+    moduleCode: "utilities_sales",
     icon: BarChart3,
     color: "bg-blue-500",
     label: "Sales Data",
@@ -19,6 +24,7 @@ const GROUPS = [
   },
   {
     id: "stock",
+    moduleCode: "utilities_stock_nav",
     icon: Package,
     color: "bg-amber-500",
     label: "Stock OneItaly",
@@ -27,7 +33,18 @@ const GROUPS = [
     items: [],
   },
   {
+    id: "item-list",
+    moduleCode: "items_view",
+    icon: List,
+    color: "bg-teal-500",
+    label: "Anagrafe Articoli",
+    desc: "Genera tbl_ItemM da ITEM LIST NAV",
+    directPath: "/utilities/genera-tabelle/item-list",
+    items: [],
+  },
+  {
     id: "orders",
+    moduleCode: "ordini",
     icon: ShoppingCart,
     color: "bg-orange-500",
     label: "Ordini",
@@ -37,6 +54,7 @@ const GROUPS = [
   },
   {
     id: "ftp",
+    moduleCode: "file_ftp",
     icon: FileText,
     color: "bg-teal-500",
     label: "File FTP",
@@ -50,7 +68,19 @@ export default function GeneraTabelle() {
   const navigate = useNavigate()
   const [activeGroup, setActiveGroup] = useState(null)
 
-  const group = GROUPS.find((g) => g.id === activeGroup)
+  const { data: access } = useQuery({
+    queryKey: ["utilities-my-access"],
+    queryFn: () => utilitiesApi.getMyAccess().then((r) => r.data),
+  })
+
+  // Mostra la card se: soon (coming soon), nessun moduleCode (sempre visibile), oppure can_manage=ON
+  const visibleGroups = GROUPS.filter(({ soon, moduleCode }) => {
+    if (soon) return true
+    if (!moduleCode) return true
+    return access?.[moduleCode]?.can_manage === true
+  })
+
+  const group = visibleGroups.find((g) => g.id === activeGroup)
 
   return (
     <div className="space-y-5">
@@ -98,8 +128,7 @@ export default function GeneraTabelle() {
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {!group
-          ? /* Primo livello — gruppi */
-            GROUPS.map(({ id, icon: Icon, color, label, desc, soon, directPath }) => (
+          ? visibleGroups.map(({ id, icon: Icon, color, label, desc, soon, directPath }) => (
               <button
                 key={id}
                 onClick={() => !soon && (directPath ? navigate(directPath) : setActiveGroup(id))}
@@ -108,7 +137,7 @@ export default function GeneraTabelle() {
                   ${soon ? "opacity-50 cursor-not-allowed" : "hover:border-[#2563eb] cursor-pointer"}`}
               >
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
-                  <Icon className="text-white" size={22} />
+                  <Icon className="text-white" size={22} aria-hidden="true" />
                 </div>
                 <div className="font-semibold text-gray-800">{label}</div>
                 <div className="text-sm text-gray-500 mt-1">{desc}</div>
@@ -119,8 +148,7 @@ export default function GeneraTabelle() {
                 )}
               </button>
             ))
-          : /* Secondo livello — sotto-card del gruppo */
-            group.items.map(({ path, icon: Icon, color, label, desc, soon }) => (
+          : group.items.map(({ path, icon: Icon, color, label, desc, soon }) => (
               <button
                 key={path}
                 onClick={() => !soon && navigate(path)}
@@ -129,7 +157,7 @@ export default function GeneraTabelle() {
                   ${soon ? "opacity-50 cursor-not-allowed" : "hover:border-[#2563eb] cursor-pointer"}`}
               >
                 <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
-                  <Icon className="text-white" size={22} />
+                  <Icon className="text-white" size={22} aria-hidden="true" />
                 </div>
                 <div className="font-semibold text-gray-800">{label}</div>
                 <div className="text-sm text-gray-500 mt-1">{desc}</div>

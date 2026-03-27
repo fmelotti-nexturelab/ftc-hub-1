@@ -63,7 +63,9 @@ export const useAuthStore = create((set, get) => ({
 
   hasRole: (...roles) => {
     const user = get().user
-    return user ? roles.includes(user.role) : false
+    if (!user) return false
+    if (user.department === "SUPERUSER") return true
+    return roles.includes(user.department)
   },
 
   canView: (moduleCode) => {

@@ -27,10 +27,11 @@ const TYPE_LABEL = {
 }
 
 const UTILITY_TABLES = [
-  { code: "utilities_stores",    name: "Info Stores" },
-  { code: "utilities_sales",     name: "Sales Data" },
-  { code: "utilities_stock_nav", name: "Stock NAV" },
-  { code: "items_view",          name: "ItemList" },
+  { code: "utilities_stores",    name: "Info Stores",  module: "utilities_stores" },
+  { code: "utilities_sales",     name: "Sales Data",   module: "utilities_sales" },
+  { code: "utilities_stock_nav", name: "Stock NAV",    module: "utilities_stock_nav" },
+  { code: "items_view",          name: "ItemList",     module: "items_view" },
+  { code: "ordini",              name: "Ordini",       module: "ordini" },
 ]
 
 function Toggle({ checked, onChange, disabled }) {
@@ -125,8 +126,9 @@ export default function UtilitiesConfig() {
                 key={table.code}
                 className="border-b border-gray-100 last:border-0 odd:bg-white even:bg-gray-50/50"
               >
-                <td className="px-4 py-2.5 text-gray-700 font-medium whitespace-nowrap">
-                  {table.name}
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <div className="text-gray-700 font-medium">{table.name}</div>
+                  <div className="text-[10px] text-gray-400 font-normal">{table.module}</div>
                 </td>
                 {CONFIGURABLE_TYPES.map((department) => {
                   const access = getAccess(department, table.code)

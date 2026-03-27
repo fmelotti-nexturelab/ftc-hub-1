@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
-import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings } from "lucide-react"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
@@ -121,7 +121,7 @@ export default function Sidebar() {
 
         <div className="mt-4">
           <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
-            UTILITIES
+            DATABASE
           </div>
           <NavLink
             to="/utilities"
@@ -130,10 +130,21 @@ export default function Sidebar() {
               ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
             }
           >
-            <Wrench size={17} />
-            <span>Utilities</span>
+            <Wrench size={17} aria-hidden="true" />
+            <span>Database</span>
           </NavLink>
-
+          {canView("navision") && (
+            <NavLink
+              to="/utilities/navision"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+                ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+              }
+            >
+              <Globe size={17} aria-hidden="true" />
+              <span>Navision</span>
+            </NavLink>
+          )}
         </div>
 
         {canView("tickets") && (

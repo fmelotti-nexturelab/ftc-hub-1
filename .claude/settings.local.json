@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(docker compose exec backend python -c \":*)",
+      "Bash(docker ps:*)",
+      "Bash(curl:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(head -15 grep -n \"ChevronLeft\\\\|ChevronRight\\\\|aria-label\" C:/Projects/FTC_HUB/frontend/src/pages/utilities/stock/components/StockCalendar.jsx)",
+      "Bash(head -15 grep -n \"setSelected\\\\|Deseleziona\\\\|<button\" C:/Projects/FTC_HUB/frontend/src/pages/tickets/TicketList.jsx)",
+      "Bash(head -10 grep -n \"ChevronLeft\\\\|ChevronRight\\\\|<button\" C:/Projects/FTC_HUB/frontend/src/pages/utilities/stock/components/StockCalendar.jsx)"
     ]
   }
 }
