@@ -1,5 +1,6 @@
 import { useState, useRef } from "react"
 import { X, Download, Loader2, AlertCircle, CheckCircle, Mail } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { stockApi } from "@/api/stock"
 import { StockCalendar, toDateStr } from "./StockCalendar"
 
@@ -19,6 +20,22 @@ export default function StockSplitModal({ onClose }) {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
   const blobRef = useRef(null)
+
+  const { data: archiveDates } = useQuery({
+    queryKey: ["archive-dates", "STOCK_NAV"],
+    queryFn: async () => {
+      const [r1, r2, r3] = await Promise.all([
+        stockApi.getArchiveDates("STOCK_NAV", "IT01"),
+        stockApi.getArchiveDates("STOCK_NAV", "IT02"),
+        stockApi.getArchiveDates("STOCK_NAV", "IT03"),
+      ])
+      const s1 = new Set(r1.data.dates)
+      const s2 = new Set(r2.data.dates)
+      const s3 = new Set(r3.data.dates)
+      return new Set([...s1].filter(d => s2.has(d) && s3.has(d)))
+    },
+    staleTime: 60_000,
+  })
 
   function handleDateChange(d) {
     setStockDate(d)
@@ -96,7 +113,7 @@ export default function StockSplitModal({ onClose }) {
         </div>
 
         <div className="px-6 pt-5 pb-3">
-          <StockCalendar value={stockDate} onChange={handleDateChange} />
+          <StockCalendar value={stockDate} onChange={handleDateChange} highlightedDates={archiveDates} />
         </div>
 
         <div className="px-6 pb-5 space-y-3">

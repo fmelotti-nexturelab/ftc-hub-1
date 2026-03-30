@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { X, CheckCircle, AlertCircle, Loader2, TriangleAlert } from "lucide-react"
 import { getFolderHandle } from "@/utils/folderStorage"
+import { stockApi } from "@/api/stock"
 import * as XLSX from "xlsx/dist/xlsx.full.min.js"
 
 const FILE_NAMES = {
@@ -71,7 +72,7 @@ const ARCHIVE_FILE_NAMES = {
   IT03: "tbl_StockIT03NAV.xlsm",
 }
 
-const STEPS = [
+const STEPS_LEGACY = [
   "Lettura CSV dalla cartella...",
   "Apertura file Excel...",
   "Aggiornamento foglio STOCK...",
@@ -81,9 +82,20 @@ const STEPS = [
   "Archivio: Stock by location...",
   "Archivio: Commercial...",
   "Archivio: Tables_for_FTP...",
+  "Archivio: FTC HUB Storage...",
+]
+
+const STEPS_NEW = [
+  "Lettura CSV dalla cartella...",
+  "Creazione file Excel...",
+  "Salvataggio FTC HUB Storage...",
+  "Caricamento nel DB...",
 ]
 
 export default function ExcelExportModal({ entity, stockDate, onClose }) {
+  const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
+  const STEPS = legacyMode ? STEPS_LEGACY : STEPS_NEW
+
   const [stepStatus, setStepStatus] = useState(STEPS.map(() => "pending"))
   const [stepMessages, setStepMessages] = useState(STEPS.map(() => null))
   const [error, setError] = useState(null)
@@ -101,7 +113,121 @@ export default function ExcelExportModal({ entity, stockDate, onClose }) {
     runExport(writeZeros)
   }
 
+  async function runExportNew() {
+    try {
+      const datePart = stockDate ? stockDate.replace(/-/g, "") : new Date().toISOString().slice(0, 10).replace(/-/g, "")
+      const [yyyy, mm, dd] = datePart.length === 8
+        ? [datePart.slice(0, 4), datePart.slice(4, 6), datePart.slice(6, 8)]
+        : ["", "", ""]
+
+      // ── Step 0: leggi CSV ────────────────────────────────────────────────
+      setStep(0, "running")
+      const rootHandle = await getFolderHandle("stock_folder")
+      if (!rootHandle) throw new Error("Nessuna cartella collegata nelle impostazioni")
+      const perm = await rootHandle.requestPermission({ mode: "readwrite" })
+      if (perm !== "granted") throw new Error("Permesso negato. Riconnetti la cartella.")
+      let navHandle
+      try { navHandle = await rootHandle.getDirectoryHandle("91 - Files from NAV") }
+      catch { throw new Error('Sottocartella "91 - Files from NAV" non trovata') }
+      const STOCK_RE = /^Stock-(\d{4}-\d{2}-\d{2})-(IT0[123])\.csv$/i
+      const preferredName = stockDate ? `Stock-${stockDate}-${entity}.csv` : null
+      let csvFileHandle = null
+      for await (const [name, fh] of navHandle.entries()) {
+        if (fh.kind !== "file") continue
+        const m = STOCK_RE.exec(name)
+        if (!m || m[2].toUpperCase() !== entity) continue
+        if (preferredName && name === preferredName) { csvFileHandle = fh; break }
+        if (!csvFileHandle) csvFileHandle = fh
+      }
+      if (!csvFileHandle) throw new Error(`Nessun file CSV trovato per ${entity} in "91 - Files from NAV"`)
+      const csvFile = await csvFileHandle.getFile()
+      const csvBuffer = await csvFile.arrayBuffer()
+      const text = new TextDecoder("iso-8859-1").decode(csvBuffer)
+      const lines = text.split(/\r?\n/)
+      const headers = lines[0].split(";").map(h => h.trim())
+      const EXCLUDED = { IT01: new Set(["IT105A"]), IT03: new Set(["IT131"]) }
+      const excluded = EXCLUDED[entity] ?? new Set()
+      const storeColsWithIdx = headers.map((h, i) => ({ code: h, idx: i })).slice(4).filter(({ code }) => code && !excluded.has(code))
+      const storeCols = storeColsWithIdx.map(({ code }) => code)
+      const parseQty = (val) => !val || !val.trim() ? 0 : Math.round(parseFloat(val.trim().replace(",", ".")) || 0)
+      const items = []
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim(); if (!line) continue
+        const cols = line.split(";"); const itemNo = cols[0]?.trim(); if (!itemNo) continue
+        const stores = {}
+        storeColsWithIdx.forEach(({ code, idx }) => { stores[code] = parseQty(cols[idx]) })
+        items.push({ item_no: itemNo, description: cols[1]?.trim() || "", description_local: cols[2]?.trim() || "", adm_stock: parseQty(cols[3]), stores })
+      }
+      if (!items.length) throw new Error("Il file CSV è vuoto o non leggibile")
+      const fixedHeaders = [headers[0], headers[1], headers[2], headers[3]]
+      const headerRow = [...fixedHeaders, ...storeCols]
+      setStep(0, "done")
+
+      // ── Step 1: costruisci Excel da zero ─────────────────────────────────
+      setStep(1, "running")
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+      const batchId = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+      const wb = XLSX.utils.book_new()
+      const stockSheet = {}
+      stockSheet[XLSX.utils.encode_cell({ r: 0, c: 1 })] = { v: batchId, t: "s" }
+      headerRow.forEach((val, c) => { stockSheet[XLSX.utils.encode_cell({ r: 1, c })] = { v: val, t: "s" } })
+      items.forEach((item, rowIdx) => {
+        const r = rowIdx + 2
+        ;[item.item_no, item.description, item.description_local, item.adm_stock].forEach((val, c) => {
+          stockSheet[XLSX.utils.encode_cell({ r, c })] = { v: val, t: typeof val === "number" ? "n" : "s" }
+        })
+        storeCols.forEach((s, idx) => {
+          stockSheet[XLSX.utils.encode_cell({ r, c: 4 + idx })] = { v: item.stores?.[s] ?? 0, t: "n" }
+        })
+      })
+      stockSheet["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 2 + items.length - 1, c: headerRow.length - 1 } })
+      XLSX.utils.book_append_sheet(wb, stockSheet, "STOCK")
+      const now = new Date()
+      const dataSheet = {
+        B1: { v: now.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }), t: "s" },
+        C1: { v: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`, t: "s" },
+        B5: { v: batchId, t: "s" },
+        "!ref": "A1:C5",
+      }
+      XLSX.utils.book_append_sheet(wb, dataSheet, "data")
+      const wbBytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true, bookSST: true }))
+      setStep(1, "done")
+
+      // ── Step 2: salva in FTC HUB Storage ────────────────────────────────
+      setStep(2, "running")
+      const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
+      if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni")
+      const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
+      if (perm3 !== "granted") throw new Error("Permesso negato sulla cartella FTC HUB Storage")
+      if (!yyyy) throw new Error("Data non valida")
+      const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
+      const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
+      let dir = ftchubStorageHandle
+      for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
+        dir = await dir.getDirectoryHandle(part, { create: true })
+      }
+      const fh = await dir.getFileHandle(ftchubFileName, { create: true })
+      const w = await fh.createWritable(); await w.write(wbBytes); await w.close()
+      setStep(2, "done")
+
+      // ── Step 3: carica nel DB + registra ────────────────────────────────
+      setStep(3, "running")
+      await stockApi.uploadCsv(csvFile, entity)
+      try {
+        await stockApi.registerArchive({ file_type: "STOCK_NAV", entity, file_date: stockDate, file_path: filePath })
+      } catch { /* non blocca */ }
+      setStep(3, "done")
+
+      setDone(true)
+    } catch (e) {
+      setError(e.message || "Errore imprevisto")
+    }
+  }
+
   async function runExport(withZeros) {
+    if (!legacyMode) {
+      return await runExportNew()
+    }
     try {
       // ── Step 0: read CSV ───────────────────────────────────────────────────
       setStep(0, "running")
@@ -237,6 +363,20 @@ export default function ExcelExportModal({ entity, stockDate, onClose }) {
       const datePart = stockDate ? stockDate.replace(/-/g, "") : new Date().toISOString().slice(0, 10).replace(/-/g, "")
       const archiveFileName = `${datePart} ${entity} STOCK NAV.xlsx`
 
+      // Buffer FTP: identico al principale ma con zeri espliciti su tutte le celle store
+      if (!withZeros) {
+        items.forEach((item, rowIdx) => {
+          const r = rowIdx + 2
+          stores.forEach((s, idx) => {
+            const cell = XLSX.utils.encode_cell({ r, c: 4 + idx })
+            if (!stockSheet[cell]) {
+              stockSheet[cell] = { v: 0, t: "n" }
+            }
+          })
+        })
+      }
+      const wbBytesForFTP = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsm", compression: true, bookSST: true }))
+
       // Helper: scrive bytes in una cartella con create:true
       async function writeToFolder(dirHandle, name, bytes) {
         const fh = await dirHandle.getFileHandle(name, { create: true })
@@ -308,11 +448,33 @@ export default function ExcelExportModal({ entity, stockDate, onClose }) {
         catch { throw new Error("Sottocartella '01 - Tables' non trovata in '97 - Service'") }
         try { d3 = await d2.getDirectoryHandle("Tables_for_FTP") }
         catch { throw new Error("Sottocartella 'Tables_for_FTP' non trovata in '97 - Service/01 - Tables'") }
-        try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], archiveBytesXlsm) }
+        try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], wbBytesForFTP) }
         catch { throw new Error(`Impossibile scrivere '${ARCHIVE_FILE_NAMES[entity]}' in 'Tables_for_FTP'`) }
         setStep(8, "done")
       } catch (e) {
         setStep(8, "warning", e.message)
+      }
+
+      // ── Step 9: archivio FTC HUB Storage ──────────────────────────────────
+      setStep(9, "running")
+      try {
+        const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
+        if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni e collega la cartella")
+        const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
+        if (perm3 !== "granted") throw new Error("Permesso negato sulla cartella FTC HUB Storage — riconnettila nelle Impostazioni")
+        const [yyyy, mm, dd] = datePart.length === 8
+          ? [datePart.slice(0, 4), datePart.slice(4, 6), datePart.slice(6, 8)]
+          : ["", "", ""]
+        if (!yyyy) throw new Error("Data non valida per il salvataggio in FTC HUB Storage")
+        const ftchubFileName = `stock_${entity}_${datePart}.xlsx`
+        let dir = ftchubStorageHandle
+        for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
+          dir = await dir.getDirectoryHandle(part, { create: true })
+        }
+        await writeToFolder(dir, ftchubFileName, archiveBytesXlsx)
+        setStep(9, "done")
+      } catch (e) {
+        setStep(9, "warning", e.message)
       }
 
       setDone(true)

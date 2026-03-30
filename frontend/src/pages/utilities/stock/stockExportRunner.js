@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx/dist/xlsx.full.min.js"
+import { stockApi } from "@/api/stock"
 
 const FILE_NAMES = {
   IT01: "tbl_Stock IT01 NAV.xlsm",
@@ -17,6 +18,7 @@ const EXCLUDED_STORE_COLS = {
   IT03: new Set(["IT131"]),
 }
 
+// Step legacy (compatibilità vecchi tool)
 export const EXPORT_STEPS = [
   "Lettura CSV...",
   "Apertura file Excel...",
@@ -27,6 +29,15 @@ export const EXPORT_STEPS = [
   "Archivio: Stock by location...",
   "Archivio: Commercial...",
   "Archivio: Tables_for_FTP...",
+  "Archivio: FTC HUB Storage...",
+]
+
+// Step nuovo archivio (compatibilità disabilitata)
+export const EXPORT_STEPS_NEW = [
+  "Lettura CSV...",
+  "Creazione file Excel...",
+  "Salvataggio FTC HUB Storage...",
+  "Caricamento nel DB...",
 ]
 
 function randomString8() {
@@ -82,17 +93,94 @@ async function writeToFolder(dirHandle, name, bytes) {
 }
 
 /**
- * Esegue l'esportazione Excel completa per una singola entity.
- * Riceve il csvFileHandle già trovato (pre-flight).
- *
- * @param {object} params
- * @param {string}  params.entity           - "IT01" | "IT02" | "IT03"
- * @param {FileSystemFileHandle} params.csvFileHandle
- * @param {string}  params.stockDate        - "YYYY-MM-DD"
- * @param {FileSystemDirectoryHandle} params.rootHandle
- * @param {FileSystemDirectoryHandle|null} params.commercialHandle
- * @param {boolean} params.writeZeros
- * @param {function} params.onStep          - (stepIndex, status, message?) => void
+ * Flusso NUOVO (legacyMode=false):
+ * 0. Lettura CSV
+ * 1. Creazione Excel da zero (batchId B1, headers riga 2, dati riga 3, zeri espliciti, foglio data)
+ * 2. Salvataggio FTC HUB Storage  → YYYYMMDD_STOCK_IT01_NAV.xlsx
+ * 3. Caricamento nel DB + registrazione file_archive
+ */
+async function runStockExportNew({ entity, csvFileHandle, stockDate, ftchubStorageHandle, onStep }) {
+  const datePart = stockDate.replace(/-/g, "")
+  const [yyyy, mm, dd] = stockDate.split("-")
+
+  // ── Step 0: leggi CSV ──────────────────────────────────────────────────────
+  onStep(0, "running")
+  const csvFile = await csvFileHandle.getFile()
+  const csvBuffer = await csvFile.arrayBuffer()
+  const { stores, fixedHeaders, items } = parseCsv(csvBuffer, entity)
+  if (!items.length) throw new Error("Il file CSV è vuoto o non leggibile")
+  onStep(0, "done")
+
+  // ── Step 1: costruisci Excel da zero ───────────────────────────────────────
+  onStep(1, "running")
+  const batchId = randomString8()
+  const headerRow = [...fixedHeaders, ...stores]
+  const wb = XLSX.utils.book_new()
+
+  // Foglio STOCK: riga 0 = batchId in B1, riga 1 = intestazioni, riga 2+ = dati
+  const stockSheet = {}
+  stockSheet[XLSX.utils.encode_cell({ r: 0, c: 1 })] = { v: batchId, t: "s" }
+  headerRow.forEach((val, c) => {
+    stockSheet[XLSX.utils.encode_cell({ r: 1, c })] = { v: val, t: "s" }
+  })
+  items.forEach((item, rowIdx) => {
+    const r = rowIdx + 2
+    const fixedCols = [item.item_no, item.description, item.description_local, item.adm_stock]
+    fixedCols.forEach((val, c) => {
+      stockSheet[XLSX.utils.encode_cell({ r, c })] = { v: val, t: typeof val === "number" ? "n" : "s" }
+    })
+    stores.forEach((s, idx) => {
+      const qty = item.stores?.[s] ?? 0
+      stockSheet[XLSX.utils.encode_cell({ r, c: 4 + idx })] = { v: qty, t: "n" }
+    })
+  })
+  stockSheet["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: 2 + items.length - 1, c: headerRow.length - 1 },
+  })
+  XLSX.utils.book_append_sheet(wb, stockSheet, "STOCK")
+
+  // Foglio data: B1=data, C1=ora, B5=batchId
+  const now = new Date()
+  const dataSheet = {
+    B1: { v: now.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" }), t: "s" },
+    C1: { v: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`, t: "s" },
+    B5: { v: batchId, t: "s" },
+    "!ref": "A1:C5",
+  }
+  XLSX.utils.book_append_sheet(wb, dataSheet, "data")
+
+  const wbBytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true, bookSST: true }))
+  onStep(1, "done")
+
+  // ── Step 2: salva in FTC HUB Storage ──────────────────────────────────────
+  onStep(2, "running")
+  const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
+  const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
+  if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni")
+  let dir = ftchubStorageHandle
+  for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
+    dir = await dir.getDirectoryHandle(part, { create: true })
+  }
+  await writeToFolder(dir, ftchubFileName, wbBytes)
+  onStep(2, "done")
+
+  // ── Step 3: carica nel DB + registra in file_archive ──────────────────────
+  onStep(3, "running")
+  await stockApi.uploadCsv(csvFile, entity)
+  await stockApi.registerArchive({
+    file_type: "STOCK_NAV",
+    entity,
+    file_date: stockDate,
+    file_path: filePath,
+  })
+  onStep(3, "done")
+}
+
+/**
+ * Esegue l'esportazione Excel per una singola entity.
+ * legacyMode=true  → flusso completo con template + archivi legacy
+ * legacyMode=false → solo FTC HUB Storage + DB
  */
 export async function runStockExport({
   entity,
@@ -100,9 +188,15 @@ export async function runStockExport({
   stockDate,
   rootHandle,
   commercialHandle,
+  ftchubStorageHandle,
   writeZeros,
+  legacyMode = true,
   onStep,
 }) {
+  if (!legacyMode) {
+    return await runStockExportNew({ entity, csvFileHandle, stockDate, ftchubStorageHandle, onStep })
+  }
+
   // ── Step 0: leggi CSV ──────────────────────────────────────────────────────
   onStep(0, "running")
   const csvFile = await csvFileHandle.getFile()
@@ -182,8 +276,6 @@ export async function runStockExport({
   onStep(4, "running")
   const wbout = XLSX.write(workbook, { type: "array", bookType: "xlsm", compression: true, bookSST: true })
   const wbBytes = new Uint8Array(wbout)
-  const wboutXlsx = XLSX.write(workbook, { type: "array", bookType: "xlsx", compression: true, bookSST: true })
-  const wbBytesXlsx = new Uint8Array(wboutXlsx)
   const writable = await xlsxFileHandle.createWritable()
   await writable.write(wbBytes)
   await writable.close()
@@ -192,7 +284,21 @@ export async function runStockExport({
   const datePart = stockDate.replace(/-/g, "")
   const archiveFileName = `${datePart} ${entity} STOCK NAV.xlsx`
 
-  // ── Step 5: genera workbook archivio pulito (intestazione in riga 1, no batchId) ──
+  // Buffer FTP: identico al principale ma con zeri espliciti
+  if (!writeZeros) {
+    items.forEach((item, rowIdx) => {
+      const r = rowIdx + 2
+      stores.forEach((s, idx) => {
+        const cell = XLSX.utils.encode_cell({ r, c: 4 + idx })
+        if (!stockSheet[cell]) {
+          stockSheet[cell] = { v: 0, t: "n" }
+        }
+      })
+    })
+  }
+  const wbBytesForFTP = new Uint8Array(XLSX.write(workbook, { type: "array", bookType: "xlsm", compression: true, bookSST: true }))
+
+  // ── Step 5: genera workbook archivio pulito ────────────────────────────────
   onStep(5, "running")
   const buildArchiveWb = (withZeros) => {
     const rows = [
@@ -210,7 +316,6 @@ export async function runStockExport({
     return wb
   }
   const archiveBytesXlsx = new Uint8Array(XLSX.write(buildArchiveWb(false), { type: "array", bookType: "xlsx", compression: true }))
-  const archiveBytesXlsm = new Uint8Array(XLSX.write(buildArchiveWb(true),  { type: "array", bookType: "xlsm", compression: true }))
   onStep(5, "done")
 
   // ── Step 6: archivio Stock by location ─────────────────────────────────────
@@ -248,8 +353,26 @@ export async function runStockExport({
     catch { throw new Error("Sottocartella '01 - Tables' non trovata in '97 - Service'") }
     try { d3 = await d2.getDirectoryHandle("Tables_for_FTP") }
     catch { throw new Error("Sottocartella 'Tables_for_FTP' non trovata in '97 - Service/01 - Tables'") }
-    try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], archiveBytesXlsm) }
+    try { await writeToFolder(d3, ARCHIVE_FILE_NAMES[entity], wbBytesForFTP) }
     catch { throw new Error(`Impossibile scrivere '${ARCHIVE_FILE_NAMES[entity]}' in 'Tables_for_FTP'`) }
     onStep(8, "done")
   } catch (e) { onStep(8, "warning", e.message) }
+
+  // ── Step 9: archivio FTC HUB Storage ──────────────────────────────────────
+  onStep(9, "running")
+  try {
+    if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni e collega la cartella")
+    const [yyyy, mm, dd] = stockDate.split("-")
+    const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
+    const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
+    let dir = ftchubStorageHandle
+    for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
+      dir = await dir.getDirectoryHandle(part, { create: true })
+    }
+    await writeToFolder(dir, ftchubFileName, archiveBytesXlsx)
+    try {
+      await stockApi.registerArchive({ file_type: "STOCK_NAV", entity, file_date: stockDate, file_path: filePath })
+    } catch { /* non blocca se la registrazione fallisce */ }
+    onStep(9, "done")
+  } catch (e) { onStep(9, "warning", e.message) }
 }

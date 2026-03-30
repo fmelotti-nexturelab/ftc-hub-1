@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { utilitiesApi } from "@/api/utilities"
 
@@ -67,6 +67,15 @@ const GROUPS = [
 export default function GeneraTabelle() {
   const navigate = useNavigate()
   const [activeGroup, setActiveGroup] = useState(null)
+  const [legacyMode, setLegacyMode] = useState(
+    () => localStorage.getItem("ftchub_legacy_mode") !== "false"
+  )
+
+  function toggleLegacyMode() {
+    const next = !legacyMode
+    setLegacyMode(next)
+    localStorage.setItem("ftchub_legacy_mode", next ? "true" : "false")
+  }
 
   const { data: access } = useQuery({
     queryKey: ["utilities-my-access"],
@@ -95,6 +104,23 @@ export default function GeneraTabelle() {
             {group ? group.label : "Genera le tabelle per i tool"}
           </p>
         </div>
+        {/* Toggle compatibilità */}
+        <button
+          onClick={toggleLegacyMode}
+          className={`flex items-center gap-2 text-xs font-medium border rounded-lg px-3 py-1.5 transition select-none
+            ${legacyMode
+              ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+              : "bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100"
+            }`}
+          title={legacyMode ? "Compatibilità vecchi tool attiva — clicca per disabilitare" : "Compatibilità vecchi tool disabilitata — clicca per abilitare"}
+        >
+          <Settings2 size={13} aria-hidden="true" />
+          <span className="hidden sm:inline">Compatibilità tool Excel</span>
+          <span className={`w-7 h-4 rounded-full relative transition-colors ${legacyMode ? "bg-amber-400" : "bg-gray-300"}`}>
+            <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${legacyMode ? "left-3.5" : "left-0.5"}`} />
+          </span>
+        </button>
+
         {group ? (
           <button
             onClick={() => setActiveGroup(null)}

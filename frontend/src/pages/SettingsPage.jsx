@@ -139,6 +139,12 @@ export default function SettingsPage() {
             label="One Italy Commercial - Files"
             hint={`Cartella COMMERCIAL — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy Commercial - Files\\`}
           />
+          <div className="border-t border-gray-100" />
+          <FolderRow
+            folderKey="ftchub_storage"
+            label="FTC HUB Storage"
+            hint={`Cartella archivio locale FTC HUB — es: D:\\ftchub_data\\`}
+          />
         </div>
       )}
 

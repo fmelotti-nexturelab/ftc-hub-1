@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { X, CheckCircle, Loader2, AlertCircle, TriangleAlert, FileText, Trash2 } from "lucide-react"
 import { getFolderHandle } from "@/utils/folderStorage"
-import { EXPORT_STEPS, runStockExport } from "../stockExportRunner"
+import { EXPORT_STEPS, EXPORT_STEPS_NEW, runStockExport } from "../stockExportRunner"
 
 const ENTITIES = ["IT01", "IT02", "IT03"]
 const STOCK_RE = /^Stock-(\d{4}-\d{2}-\d{2})-(IT0[123])\.csv$/i
@@ -12,13 +12,13 @@ const ENTITY_COLORS = {
   IT03: "bg-violet-100 text-violet-700",
 }
 
-function makeEntityState() {
+function makeEntityState(steps) {
   return {
     fileName: null,
     stockDate: null,
     csvFileHandle: null,
-    stepStatus: EXPORT_STEPS.map(() => "pending"),
-    stepMessages: EXPORT_STEPS.map(() => null),
+    stepStatus: steps.map(() => "pending"),
+    stepMessages: steps.map(() => null),
     error: null,
     done: false,
     skipped: false,
@@ -60,7 +60,7 @@ function EntityColumn({ entity, state }) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {EXPORT_STEPS.map((label, i) => {
+          {activeSteps.map((label, i) => {
             const status = state.stepStatus[i]
             const msg = state.stepMessages[i]
             return (
@@ -98,18 +98,22 @@ function EntityColumn({ entity, state }) {
 }
 
 export default function GeneraTuttiModal({ onClose }) {
+  const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
+  const activeSteps = legacyMode ? EXPORT_STEPS : EXPORT_STEPS_NEW
+
   const [phase, setPhase] = useState("scanning")   // scanning | preflight | running | done
   const [scanError, setScanError] = useState(null)
   const [writeZeros, setWriteZeros] = useState(false)
   const [deletedFiles, setDeletedFiles] = useState([])
   const [entityStates, setEntityStates] = useState(() => ({
-    IT01: makeEntityState(),
-    IT02: makeEntityState(),
-    IT03: makeEntityState(),
+    IT01: makeEntityState(activeSteps),
+    IT02: makeEntityState(activeSteps),
+    IT03: makeEntityState(activeSteps),
   }))
 
   const rootHandleRef = useRef(null)
   const commercialHandleRef = useRef(null)
+  const ftchubStorageHandleRef = useRef(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const todayFormatted = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -140,6 +144,15 @@ export default function GeneraTuttiModal({ onClose }) {
         try {
           const perm2 = await commercialHandle.requestPermission({ mode: "readwrite" })
           if (perm2 === "granted") commercialHandleRef.current = commercialHandle
+        } catch { /* silently skip */ }
+      }
+
+      // Try FTC HUB storage folder
+      const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
+      if (ftchubStorageHandle) {
+        try {
+          const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
+          if (perm3 === "granted") ftchubStorageHandleRef.current = ftchubStorageHandle
         } catch { /* silently skip */ }
       }
 
@@ -228,6 +241,7 @@ export default function GeneraTuttiModal({ onClose }) {
 
     const rootHandle = rootHandleRef.current
     const commercialHandle = commercialHandleRef.current
+    const ftchubStorageHandle = ftchubStorageHandleRef.current
 
     const makeOnStep = (entity) => (stepIndex, status, message = null) => {
       setEntityStates(prev => {
@@ -252,7 +266,9 @@ export default function GeneraTuttiModal({ onClose }) {
             stockDate,
             rootHandle,
             commercialHandle,
+            ftchubStorageHandle,
             writeZeros,
+            legacyMode,
             onStep: makeOnStep(entity),
           })
           setEntityStates(prev => ({
