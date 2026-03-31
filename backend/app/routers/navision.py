@@ -117,6 +117,12 @@ async def update_config(
         raise HTTPException(status_code=404, detail="Configurazione non trovata")
     if data.server_host is not None:
         cfg.server_host = data.server_host
+    if data.gateway_host is not None:
+        cfg.gateway_host = data.gateway_host
+    if data.rdp_app_name is not None:
+        cfg.rdp_app_name = data.rdp_app_name
+    if data.rdp_app_cmdline is not None:
+        cfg.rdp_app_cmdline = data.rdp_app_cmdline
     if data.nav_username is not None:
         cfg.nav_username = data.nav_username
     if data.nav_password is not None:

@@ -15,8 +15,10 @@ di amministratore richiesto.
 """
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import time
 import winreg
 
@@ -61,35 +63,95 @@ def count_mstsc() -> int:
     return r.stdout.lower().count("mstsc.exe")
 
 
-def open_rdp(server: str, username: str, password: str) -> dict:
+def _build_rdp(server: str, username: str, gateway: str,
+               app_name: str, app_cmdline: str, label: str) -> str:
+    """Genera il contenuto di un file .rdp per RemoteApp con gateway."""
+    is_remoteapp = bool(app_name)
+    lines = [
+        "redirectclipboard:i:1",
+        "redirectprinters:i:1",
+        "redirectcomports:i:0",
+        "redirectsmartcards:i:1",
+        "devicestoredirect:s:*",
+        "drivestoredirect:s:*",
+        "redirectdrives:i:1",
+        "session bpp:i:32",
+        "prompt for credentials on client:i:0",
+        "span monitors:i:1",
+        "use multimon:i:1",
+        f"remoteapplicationmode:i:{1 if is_remoteapp else 0}",
+        "server port:i:3389",
+        "allow font smoothing:i:1",
+        "promptcredentialonce:i:1",
+        "videoplaybackmode:i:1",
+        "audiocapturemode:i:1",
+        f"full address:s:{server}",
+        f"alternate full address:s:{server}",
+        f"username:s:{username}",
+    ]
+    if gateway:
+        lines += [
+            "gatewayusagemethod:i:2",
+            "gatewayprofileusagemethod:i:1",
+            "gatewaycredentialssource:i:0",
+            f"gatewayhostname:s:{gateway}",
+            "use redirection server name:i:1",
+            "loadbalanceinfo:s:tsv://MS Terminal Services Plugin.1.Remote_Apps_125",
+        ]
+    if is_remoteapp:
+        lines += [
+            f"alternate shell:s:||{app_name}",
+            f"remoteapplicationprogram:s:||{app_name}",
+            f"remoteapplicationname:s:{label or app_name}",
+            f"remoteapplicationcmdline:s:{app_cmdline or ''}",
+            f"workspace id:s:{server}",
+        ]
+    return "\r\n".join(lines) + "\r\n"
+
+
+def open_rdp(server: str, username: str, password: str,
+             gateway: str = "", app_name: str = "",
+             app_cmdline: str = "", label: str = "") -> dict:
     if not server or not username or not password:
         return {"ok": False, "error": "Parametri mancanti (server, username, password)"}
 
-    # 1. Salva credenziali nel Credential Manager Windows
+    cred_target = f"TERMSRV/{gateway or server}"
+
+    # 1. Salva credenziali per gateway (o server diretto)
     try:
         subprocess.run(
-            ["cmdkey", f"/add:{server}", f"/user:{username}", f"/pass:{password}"],
+            ["cmdkey", f"/add:{cred_target}", f"/user:{username}", f"/pass:{password}"],
             capture_output=True, check=True,
         )
     except subprocess.CalledProcessError as e:
         return {"ok": False, "error": f"cmdkey /add fallito: {e}"}
 
-    # 2. Apri mstsc
-    n_before = count_mstsc()
+    tmp_path = None
     try:
-        subprocess.Popen(["mstsc", f"/v:{server}"])
+        # 2. Scrivi file .rdp temporaneo
+        rdp_content = _build_rdp(server, username, gateway, app_name, app_cmdline, label)
+        fd, tmp_path = tempfile.mkstemp(suffix=".rdp", prefix="ftchub_nav_")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(rdp_content)
+
+        # 3. Lancia mstsc con il file temporaneo
+        n_before = count_mstsc()
+        subprocess.Popen(["mstsc", tmp_path])
+
+        for _ in range(15):
+            time.sleep(0.2)
+            if count_mstsc() > n_before:
+                break
+
     except FileNotFoundError:
-        subprocess.run(["cmdkey", f"/delete:{server}"], capture_output=True)
         return {"ok": False, "error": "mstsc.exe non trovato"}
-
-    # Attendi che il processo sia partito (max 3 secondi)
-    for _ in range(15):
-        time.sleep(0.2)
-        if count_mstsc() > n_before:
-            break
-
-    # 3. Rimuovi subito le credenziali dal Credential Manager
-    subprocess.run(["cmdkey", f"/delete:{server}"], capture_output=True)
+    finally:
+        subprocess.run(["cmdkey", f"/delete:{cred_target}"], capture_output=True)
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
     return {"ok": True, "sessions": count_mstsc()}
 
@@ -143,6 +205,10 @@ class Handler(BaseHTTPRequestHandler):
                 server=body.get("server", ""),
                 username=body.get("username", ""),
                 password=body.get("password", ""),
+                gateway=body.get("gateway", ""),
+                app_name=body.get("app_name", ""),
+                app_cmdline=body.get("app_cmdline", ""),
+                label=body.get("label", ""),
             )
             self._send(result)
         elif self.path == "/kill-nav":

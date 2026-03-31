@@ -77,6 +77,9 @@ function ConfigModal({ config, onClose, onSaved }) {
     department: config?.department ?? "IT",
     nav_env: config?.nav_env ?? "IT01_CLASSIC",
     server_host: config?.server_host ?? "",
+    gateway_host: config?.gateway_host ?? "",
+    rdp_app_name: config?.rdp_app_name ?? "",
+    rdp_app_cmdline: config?.rdp_app_cmdline ?? "",
     nav_username: config?.nav_username ?? "",
     nav_password: "",
     display_label: config?.display_label ?? "",
@@ -136,6 +139,28 @@ function ConfigModal({ config, onClose, onSaved }) {
             <input id="cfg-server" value={form.server_host} onChange={e => set("server_host", e.target.value)}
               placeholder="es. R46-BR1.R46.LOCAL" className={inputCls} />
           </div>
+          <div>
+            <label htmlFor="cfg-gateway" className="block text-xs font-semibold text-gray-600 mb-1">
+              Gateway RDP <span className="text-gray-400 font-normal">(opzionale)</span>
+            </label>
+            <input id="cfg-gateway" value={form.gateway_host} onChange={e => set("gateway_host", e.target.value)}
+              placeholder="es. r46-rdgw.elvabaltic.lv" className={inputCls} />
+          </div>
+          <div>
+            <label htmlFor="cfg-appname" className="block text-xs font-semibold text-gray-600 mb-1">
+              RemoteApp name <span className="text-gray-400 font-normal">(opzionale — lascia vuoto per desktop completo)</span>
+            </label>
+            <input id="cfg-appname" value={form.rdp_app_name} onChange={e => set("rdp_app_name", e.target.value)}
+              placeholder="es. finsql (29)" className={inputCls} />
+          </div>
+          {form.rdp_app_name && (
+            <div>
+              <label htmlFor="cfg-appcmd" className="block text-xs font-semibold text-gray-600 mb-1">RemoteApp cmdline</label>
+              <textarea id="cfg-appcmd" value={form.rdp_app_cmdline} onChange={e => set("rdp_app_cmdline", e.target.value)}
+                rows={3} placeholder="es. servername=R46-SQL-01.r46.local,database=P2920-TIGER_IT,..."
+                className={inputCls + " resize-none font-mono text-xs"} />
+            </div>
+          )}
           <div>
             <label htmlFor="cfg-user" className="block text-xs font-semibold text-gray-600 mb-1">Username</label>
             <input id="cfg-user" value={form.nav_username} onChange={e => set("nav_username", e.target.value)}
@@ -230,7 +255,15 @@ export default function NavisionPage() {
       const r = await fetch(AGENT + "/open-rdp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ server: params.server_host, username: params.nav_username, password: params.nav_password }),
+        body: JSON.stringify({
+          server:     params.server_host,
+          username:   params.nav_username,
+          password:   params.nav_password,
+          gateway:    params.gateway_host    || "",
+          app_name:   params.rdp_app_name    || "",
+          app_cmdline: params.rdp_app_cmdline || "",
+          label:      cfg.display_label      || "",
+        }),
       })
       const d = await r.json()
       if (d.ok) {
