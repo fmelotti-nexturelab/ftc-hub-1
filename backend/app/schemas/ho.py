@@ -56,6 +56,42 @@ class SalesParseResponse(BaseModel):
     it03: Optional[SalesPreview] = None
 
 
+class NavRdpConfigCreate(BaseModel):
+    department: str
+    nav_env: str
+    server_host: str
+    nav_username: str
+    nav_password: str
+    display_label: Optional[str] = None
+
+
+class NavRdpConfigUpdate(BaseModel):
+    server_host: Optional[str] = None
+    nav_username: Optional[str] = None
+    nav_password: Optional[str] = None
+    display_label: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class NavRdpConfigResponse(BaseModel):
+    id: UUID
+    department: str
+    nav_env: str
+    server_host: str
+    nav_username: str
+    display_label: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NavRdpParamsResponse(BaseModel):
+    server_host: str
+    nav_username: str
+    nav_password: str
+
+
 class NavCredentialCreate(BaseModel):
     nav_env: str
     nav_username: str

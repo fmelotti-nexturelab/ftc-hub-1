@@ -1,65 +1,133 @@
+"""
+FTC HUB — NAV Agent
+Piccolo server HTTP locale (localhost:9999) che lancia sessioni RDP
+verso Navision ricevendo le credenziali dal frontend di FTC HUB.
+
+Flusso per ogni sessione:
+  1. cmdkey /add:SERVER /user:USERNAME /pass:PASSWORD  → salva nel Credential Manager
+  2. mstsc.exe /v:SERVER                               → apre RDP senza prompt
+  3. cmdkey /delete:SERVER                             → pulisce subito
+
+Compatibile con Windows 10/11. Richiede mstsc.exe nel PATH (sempre presente).
+"""
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json, subprocess, os, time
+import json
+import subprocess
+import time
 
-RDP_BASE = r"C:\Users\fmelo\OneDrive - Zebra A S\01 - NAVISION"
-RDP_FILES = {
-    "it01_classic": os.path.join(RDP_BASE, "NAV IT01.rdp"),
-    "it02_classic": os.path.join(RDP_BASE, "NAV IT02.rdp"),
-    "it02_new":     os.path.join(RDP_BASE, "NEW NAV IT02.rdp"),
-    "it03_classic": os.path.join(RDP_BASE, "NAV IT03.rdp"),
-    "it03_new":     os.path.join(RDP_BASE, "NEW NAV IT03.rdp"),
-}
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://localhost",
+    "https://hub.nexturelab.com",
+    "https://HO-SERVICES",
+    "https://10.74.0.110",
+]
 
-def count_mstsc():
-    r = subprocess.run(["tasklist", "/FI", "IMAGENAME eq mstsc.exe", "/NH"], capture_output=True, text=True)
+
+def count_mstsc() -> int:
+    r = subprocess.run(
+        ["tasklist", "/FI", "IMAGENAME eq mstsc.exe", "/NH"],
+        capture_output=True, text=True,
+    )
     return r.stdout.lower().count("mstsc.exe")
 
-def open_rdp(key):
-    path = RDP_FILES.get(key)
-    if not path: return {"ok": False, "error": f"Chiave sconosciuta: {key}"}
-    if not os.path.isfile(path): return {"ok": False, "error": f"File non trovato: {path}"}
-    n = count_mstsc()
-    subprocess.Popen(["mstsc", path])
+
+def open_rdp(server: str, username: str, password: str) -> dict:
+    if not server or not username or not password:
+        return {"ok": False, "error": "Parametri mancanti (server, username, password)"}
+
+    # 1. Salva credenziali nel Credential Manager Windows
+    try:
+        subprocess.run(
+            ["cmdkey", f"/add:{server}", f"/user:{username}", f"/pass:{password}"],
+            capture_output=True, check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        return {"ok": False, "error": f"cmdkey /add fallito: {e}"}
+
+    # 2. Apri mstsc
+    n_before = count_mstsc()
+    try:
+        subprocess.Popen(["mstsc", f"/v:{server}"])
+    except FileNotFoundError:
+        subprocess.run(["cmdkey", f"/delete:{server}"], capture_output=True)
+        return {"ok": False, "error": "mstsc.exe non trovato"}
+
+    # Attendi che il processo sia partito (max 3 secondi)
     for _ in range(15):
         time.sleep(0.2)
-        if count_mstsc() > n: break
+        if count_mstsc() > n_before:
+            break
+
+    # 3. Rimuovi subito le credenziali dal Credential Manager
+    subprocess.run(["cmdkey", f"/delete:{server}"], capture_output=True)
+
     return {"ok": True, "sessions": count_mstsc()}
 
-def kill_nav():
+
+def kill_nav() -> dict:
     killed = []
     for proc in ["mstsc.exe", "wksprt.exe"]:
         r = subprocess.run(["taskkill", "/F", "/IM", proc], capture_output=True, text=True)
-        if r.returncode == 0: killed.append(proc)
+        if r.returncode == 0:
+            killed.append(proc)
     return {"ok": True, "killed": killed}
 
+
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, fmt, *args): pass
+    def log_message(self, fmt, *args):
+        pass  # silenzia i log HTTP
+
+    def _origin(self):
+        return self.headers.get("Origin", "")
+
     def _send(self, data, status=200):
         body = json.dumps(data).encode()
+        origin = self._origin()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "http://localhost:3000")
+        if origin in ALLOWED_ORIGINS:
+            self.send_header("Access-Control-Allow-Origin", origin)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-    def do_OPTIONS(self): self._send({})
+
+    def do_OPTIONS(self):
+        self._send({})
+
     def do_GET(self):
-        if self.path == "/ping": self._send({"ok": True, "agent": "nav_agent"})
-        elif self.path == "/status": self._send({"ok": True, "sessions": count_mstsc()})
-        else: self._send({"ok": False, "error": "Not found"}, 404)
+        if self.path == "/ping":
+            self._send({"ok": True, "agent": "ftchub-nav-agent", "version": "2.0"})
+        elif self.path == "/status":
+            self._send({"ok": True, "sessions": count_mstsc()})
+        else:
+            self._send({"ok": False, "error": "Not found"}, 404)
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length)) if length else {}
-        if self.path == "/open-rdp": self._send(open_rdp(body.get("key", "")))
-        elif self.path == "/kill-nav": self._send(kill_nav())
-        else: self._send({"ok": False, "error": "Not found"}, 404)
+
+        if self.path == "/open-rdp":
+            result = open_rdp(
+                server=body.get("server", ""),
+                username=body.get("username", ""),
+                password=body.get("password", ""),
+            )
+            self._send(result)
+        elif self.path == "/kill-nav":
+            self._send(kill_nav())
+        else:
+            self._send({"ok": False, "error": "Not found"}, 404)
+
 
 if __name__ == "__main__":
     port = 9999
-    print(f"[NAV Agent] in ascolto su http://localhost:{port}")
-    for k, v in RDP_FILES.items():
-        stato = "OK" if os.path.isfile(v) else "MANCANTE"
-        print(f"  {k:15} [{stato}]")
-    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    print(f"[FTC HUB - NAV Agent v2.0] in ascolto su http://localhost:{port}")
+    print("Premi Ctrl+C per fermare.\n")
+    try:
+        HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    except KeyboardInterrupt:
+        print("\n[NAV Agent] Fermato.")
