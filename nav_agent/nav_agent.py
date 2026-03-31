@@ -9,11 +9,39 @@ Flusso per ogni sessione:
   3. cmdkey /delete:SERVER                             → pulisce subito
 
 Compatibile con Windows 10/11. Richiede mstsc.exe nel PATH (sempre presente).
+All'avvio si registra automaticamente nella chiave di avvio di Windows
+(HKCU\Software\Microsoft\Windows\CurrentVersion\Run) — nessun privilegio
+di amministratore richiesto.
 """
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import subprocess
+import sys
 import time
+import winreg
+
+REG_KEY   = r"Software\Microsoft\Windows\CurrentVersion\Run"
+REG_NAME  = "FTCHubNavAgent"
+
+
+def register_autostart() -> None:
+    """Aggiunge l'exe alla chiave di avvio automatico di Windows (HKCU).
+    Non richiede privilegi di amministratore. Operazione silenziosa."""
+    exe_path = sys.executable
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_KEY, 0, winreg.KEY_READ) as key:
+            current, _ = winreg.QueryValueEx(key, REG_NAME)
+            if current == exe_path:
+                return  # già registrato con il percorso corretto
+    except FileNotFoundError:
+        pass  # chiave non esiste ancora → la creiamo sotto
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, REG_KEY, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, REG_NAME, 0, winreg.REG_SZ, exe_path)
+    except OSError:
+        pass  # fallisce silenziosamente — non blocca l'avvio
+
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -124,6 +152,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    register_autostart()
     port = 9999
     print(f"[FTC HUB - NAV Agent v2.0] in ascolto su http://localhost:{port}")
     print("Premi Ctrl+C per fermare.\n")
