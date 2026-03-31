@@ -1,0 +1,733 @@
+PS C:\projects\ftc_hub> docker compose exec backend pytest tests/test_auth_login.py -v
+time="2026-03-20T12:01:41+01:00" level=warning msg="project has been loaded without an explicit name from a symlink. Using name \"ftc_hub\""
+time="2026-03-20T12:01:41+01:00" level=warning msg="C:\\projects\\ftc_hub\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+============================================================================================================ test session starts ============================================================================================================
+platform linux -- Python 3.12.13, pytest-9.0.2, pluggy-1.6.0 -- /usr/local/bin/python3.12
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pytest.ini
+plugins: asyncio-1.3.0, anyio-4.12.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 11 items
+
+tests/test_auth_login.py::test_login_success[superuser] PASSED                                                                                                                                                                        [  9%]
+tests/test_auth_login.py::test_login_success[store] FAILED                                                                                                                                                                            [ 18%]
+tests/test_auth_login.py::test_login_success[dm] PASSED                                                                                                                                                                               [ 27%]
+tests/test_auth_login.py::test_login_wrong_password FAILED                                                                                                                                                                            [ 36%]
+tests/test_auth_login.py::test_login_unknown_user PASSED                                                                                                                                                                              [ 45%]
+tests/test_auth_login.py::test_login_empty_fields[both_empty] FAILED                                                                                                                                                                  [ 54%]
+tests/test_auth_login.py::test_login_empty_fields[password_empty] PASSED                                                                                                                                                              [ 63%]
+tests/test_auth_login.py::test_login_empty_fields[username_empty] FAILED                                                                                                                                                              [ 72%]
+tests/test_auth_login.py::test_login_empty_fields[no_fields] PASSED                                                                                                                                                                   [ 81%]
+tests/test_auth_login.py::test_login_empty_fields[missing_password] PASSED                                                                                                                                                            [ 90%]
+tests/test_auth_login.py::test_login_empty_fields[missing_username] PASSED                                                                                                                                                            [100%]
+
+================================================================================================================= FAILURES ==================================================================================================================
+_________________________________________________________________________________________________________ test_login_success[store] _________________________________________________________________________________________________________
+
+async_client = <httpx.AsyncClient object at 0x7235fd85ef60>, username = 'IT01001', password = '111', expected_role = 'STORE', expected_user_type = 'STORE'
+
+    @pytest.mark.parametrize(
+        "username, password, expected_role, expected_user_type",
+        [
+            pytest.param("admin", "Admin@2024!", "ADMIN", "SUPERUSER", id="superuser"),
+            pytest.param("IT01001", "111", "STORE", "STORE", id="store"),
+            pytest.param("gaesan", "333", "DM", "DM", id="dm"),
+        ],
+    )
+    async def test_login_success(async_client, username, password, expected_role, expected_user_type):
+        async with async_client as client:
+>           resp = await client.post(LOGIN_URL, json={"username": username, "password": password})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_auth_login.py:65:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1905: in post
+    return await self.request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1585: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1674: in send
+    response = await self._send_handling_auth(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1702: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1739: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1776: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_transports/asgi.py:157: in handle_async_request
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/fastapi/applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:187: in __call__
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py:85: in __call__
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:715: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:735: in app
+    await route.handle(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:288: in handle
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:73: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:301: in app
+    raw_response = await run_endpoint_function(
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:212: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/routers/auth.py:21: in login
+    result = await db.execute(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:461: in execute
+    result = await greenlet_spawn(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2362: in execute
+    return self._execute_internal(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2237: in _execute_internal
+    conn = self._connection_for_bind(bind)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2106: in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:2: in _connection_for_bind
+    ???
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1189: in _connection_for_bind
+    conn = bind.connect()
+           ^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3278: in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:146: in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3302: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:449: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1362: in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1300: in _checkout
+    result = pool._dialect._do_ping_w_event(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py:716: in _do_ping_w_event
+    return self.do_ping(dbapi_connection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:1154: in do_ping
+    dbapi_connection.ping()
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:805: in ping
+    self._handle_exception(error)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:786: in _handle_exception
+    raise error
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:803: in ping
+    _ = self.await_(self._async_ping())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:812: in _async_ping
+    await tr.start()
+/usr/local/lib/python3.12/site-packages/asyncpg/transaction.py:146: in start
+    await self._connection.execute(query)
+/usr/local/lib/python3.12/site-packages/asyncpg/connection.py:350: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   RuntimeError: Task <Task pending name='Task-5' coro=<test_login_success() running at /app/tests/test_auth_login.py:65> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending cb=[Protocol._on_waiter_completed()]> attached to a different loop
+
+asyncpg/protocol/protocol.pyx:374: RuntimeError
+------------------------------------------------------------------------------------------------------------- Captured log call -------------------------------------------------------------------------------------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x7235fd2c24e0>>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1121, in do_terminate
+    dbapi_connection.terminate()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 899, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 626, in close
+  File "asyncpg/protocol/protocol.pyx", line 659, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1611, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 455, in create_task
+    self._check_closed()
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+_________________________________________________________________________________________________________ test_login_wrong_password _________________________________________________________________________________________________________
+
+async_client = <httpx.AsyncClient object at 0x7235fc0e7aa0>
+
+    async def test_login_wrong_password(async_client):
+        async with async_client as client:
+>           resp = await client.post(LOGIN_URL, json={"username": "admin", "password": "WrongPassword!"})
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_auth_login.py:74:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1905: in post
+    return await self.request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1585: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1674: in send
+    response = await self._send_handling_auth(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1702: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1739: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1776: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_transports/asgi.py:157: in handle_async_request
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/fastapi/applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:187: in __call__
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py:85: in __call__
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:715: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:735: in app
+    await route.handle(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:288: in handle
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:73: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:301: in app
+    raw_response = await run_endpoint_function(
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:212: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/routers/auth.py:21: in login
+    result = await db.execute(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:461: in execute
+    result = await greenlet_spawn(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2362: in execute
+    return self._execute_internal(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2237: in _execute_internal
+    conn = self._connection_for_bind(bind)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2106: in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:2: in _connection_for_bind
+    ???
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1189: in _connection_for_bind
+    conn = bind.connect()
+           ^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3278: in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:146: in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3302: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:449: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1362: in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1300: in _checkout
+    result = pool._dialect._do_ping_w_event(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py:716: in _do_ping_w_event
+    return self.do_ping(dbapi_connection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:1154: in do_ping
+    dbapi_connection.ping()
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:805: in ping
+    self._handle_exception(error)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:786: in _handle_exception
+    raise error
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:803: in ping
+    _ = self.await_(self._async_ping())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:812: in _async_ping
+    await tr.start()
+/usr/local/lib/python3.12/site-packages/asyncpg/transaction.py:146: in start
+    await self._connection.execute(query)
+/usr/local/lib/python3.12/site-packages/asyncpg/connection.py:350: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   RuntimeError: Task <Task pending name='Task-15' coro=<test_login_wrong_password() running at /app/tests/test_auth_login.py:74> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending cb=[Protocol._on_waiter_completed()]> attached to a different loop
+
+asyncpg/protocol/protocol.pyx:374: RuntimeError
+------------------------------------------------------------------------------------------------------------- Captured log call -------------------------------------------------------------------------------------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x7235fca6c5f0>>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1121, in do_terminate
+    dbapi_connection.terminate()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 899, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 626, in close
+  File "asyncpg/protocol/protocol.pyx", line 659, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1611, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 455, in create_task
+    self._check_closed()
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+____________________________________________________________________________________________________ test_login_empty_fields[both_empty] ____________________________________________________________________________________________________
+
+async_client = <httpx.AsyncClient object at 0x7235fc1778c0>, payload = {'password': '', 'username': ''}
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param({"username": "", "password": ""}, id="both_empty"),
+            pytest.param({"username": "admin", "password": ""}, id="password_empty"),
+            pytest.param({"username": "", "password": "Admin@2024!"}, id="username_empty"),
+            pytest.param({}, id="no_fields"),
+            pytest.param({"username": "admin"}, id="missing_password"),
+            pytest.param({"password": "Admin@2024!"}, id="missing_username"),
+        ],
+    )
+    async def test_login_empty_fields(async_client, payload):
+        async with async_client as client:
+>           resp = await client.post(LOGIN_URL, json=payload)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_auth_login.py:107:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1905: in post
+    return await self.request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1585: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1674: in send
+    response = await self._send_handling_auth(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1702: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1739: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1776: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_transports/asgi.py:157: in handle_async_request
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/fastapi/applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:187: in __call__
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py:85: in __call__
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:715: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:735: in app
+    await route.handle(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:288: in handle
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:73: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:301: in app
+    raw_response = await run_endpoint_function(
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:212: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/routers/auth.py:21: in login
+    result = await db.execute(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:461: in execute
+    result = await greenlet_spawn(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2362: in execute
+    return self._execute_internal(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2237: in _execute_internal
+    conn = self._connection_for_bind(bind)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2106: in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:2: in _connection_for_bind
+    ???
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1189: in _connection_for_bind
+    conn = bind.connect()
+           ^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3278: in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:146: in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3302: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:449: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1362: in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1300: in _checkout
+    result = pool._dialect._do_ping_w_event(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py:716: in _do_ping_w_event
+    return self.do_ping(dbapi_connection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:1154: in do_ping
+    dbapi_connection.ping()
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:805: in ping
+    self._handle_exception(error)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:786: in _handle_exception
+    raise error
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:803: in ping
+    _ = self.await_(self._async_ping())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:812: in _async_ping
+    await tr.start()
+/usr/local/lib/python3.12/site-packages/asyncpg/transaction.py:146: in start
+    await self._connection.execute(query)
+/usr/local/lib/python3.12/site-packages/asyncpg/connection.py:350: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   RuntimeError: Task <Task pending name='Task-25' coro=<test_login_empty_fields() running at /app/tests/test_auth_login.py:107> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending cb=[Protocol._on_waiter_completed()]> attached to a different loop
+
+asyncpg/protocol/protocol.pyx:374: RuntimeError
+------------------------------------------------------------------------------------------------------------- Captured log call -------------------------------------------------------------------------------------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x7235fca6f200>>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1121, in do_terminate
+    dbapi_connection.terminate()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 899, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 626, in close
+  File "asyncpg/protocol/protocol.pyx", line 659, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1611, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 455, in create_task
+    self._check_closed()
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+__________________________________________________________________________________________________ test_login_empty_fields[username_empty] __________________________________________________________________________________________________
+
+async_client = <httpx.AsyncClient object at 0x7235fd372cc0>, payload = {'password': 'Admin@2024!', 'username': ''}
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            pytest.param({"username": "", "password": ""}, id="both_empty"),
+            pytest.param({"username": "admin", "password": ""}, id="password_empty"),
+            pytest.param({"username": "", "password": "Admin@2024!"}, id="username_empty"),
+            pytest.param({}, id="no_fields"),
+            pytest.param({"username": "admin"}, id="missing_password"),
+            pytest.param({"password": "Admin@2024!"}, id="missing_username"),
+        ],
+    )
+    async def test_login_empty_fields(async_client, payload):
+        async with async_client as client:
+>           resp = await client.post(LOGIN_URL, json=payload)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_auth_login.py:107:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1905: in post
+    return await self.request(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1585: in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1674: in send
+    response = await self._send_handling_auth(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1702: in _send_handling_auth
+    response = await self._send_handling_redirects(
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1739: in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_client.py:1776: in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/httpx/_transports/asgi.py:157: in handle_async_request
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/fastapi/applications.py:1054: in __call__
+    await super().__call__(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/applications.py:113: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:187: in __call__
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py:165: in __call__
+    await self.app(scope, receive, _send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/cors.py:85: in __call__
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py:62: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:715: in __call__
+    await self.middleware_stack(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:735: in app
+    await route.handle(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:288: in handle
+    await self.app(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:76: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:62: in wrapped_app
+    raise exc
+/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py:51: in wrapped_app
+    await app(scope, receive, sender)
+/usr/local/lib/python3.12/site-packages/starlette/routing.py:73: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:301: in app
+    raw_response = await run_endpoint_function(
+/usr/local/lib/python3.12/site-packages/fastapi/routing.py:212: in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app/routers/auth.py:21: in login
+    result = await db.execute(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:461: in execute
+    result = await greenlet_spawn(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2362: in execute
+    return self._execute_internal(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2237: in _execute_internal
+    conn = self._connection_for_bind(bind)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2106: in _connection_for_bind
+    return trans._connection_for_bind(engine, execution_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:2: in _connection_for_bind
+    ???
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/state_changes.py:139: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/orm/session.py:1189: in _connection_for_bind
+    conn = bind.connect()
+           ^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3278: in connect
+    return self._connection_cls(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:146: in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3302: in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:449: in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1362: in _checkout
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:146: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1300: in _checkout
+    result = pool._dialect._do_ping_w_event(
+/usr/local/lib/python3.12/site-packages/sqlalchemy/engine/default.py:716: in _do_ping_w_event
+    return self.do_ping(dbapi_connection)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:1154: in do_ping
+    dbapi_connection.ping()
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:805: in ping
+    self._handle_exception(error)
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:786: in _handle_exception
+    raise error
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:803: in ping
+    _ = self.await_(self._async_ping())
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:812: in _async_ping
+    await tr.start()
+/usr/local/lib/python3.12/site-packages/asyncpg/transaction.py:146: in start
+    await self._connection.execute(query)
+/usr/local/lib/python3.12/site-packages/asyncpg/connection.py:350: in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+>   ???
+E   RuntimeError: Task <Task pending name='Task-35' coro=<test_login_empty_fields() running at /app/tests/test_auth_login.py:107> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending cb=[Protocol._on_waiter_completed()]> attached to a different loop
+
+asyncpg/protocol/protocol.pyx:374: RuntimeError
+------------------------------------------------------------------------------------------------------------- Captured log call -------------------------------------------------------------------------------------------------------------
+ERROR    sqlalchemy.pool.impl.AsyncAdaptedQueuePool:base.py:378 Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x7235fd3aed50>>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/pool/base.py", line 374, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1121, in do_terminate
+    dbapi_connection.terminate()
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 899, in terminate
+    self.await_(self._connection.close(timeout=2))
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1467, in close
+    await self._protocol.close(timeout)
+  File "asyncpg/protocol/protocol.pyx", line 626, in close
+  File "asyncpg/protocol/protocol.pyx", line 659, in asyncpg.protocol.protocol.BaseProtocol._request_cancel
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1611, in _cancel_current_command
+    self._cancellations.add(self._loop.create_task(self._cancel(waiter)))
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 455, in create_task
+    self._check_closed()
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+============================================================================================================= warnings summary ==============================================================================================================
+../usr/local/lib/python3.12/site-packages/passlib/utils/__init__.py:854
+  /usr/local/lib/python3.12/site-packages/passlib/utils/__init__.py:854: DeprecationWarning: 'crypt' is deprecated and slated for removal in Python 3.13
+    from crypt import crypt as _crypt
+
+tests/test_auth_login.py::test_login_success[store]
+tests/test_auth_login.py::test_login_wrong_password
+tests/test_auth_login.py::test_login_empty_fields[both_empty]
+tests/test_auth_login.py::test_login_empty_fields[username_empty]
+  /usr/local/lib/python3.12/site-packages/_pytest/stash.py:108: RuntimeWarning: coroutine 'Connection._cancel' was never awaited
+    del self._storage[key]
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================================================================================================== short test summary info ==========================================================================================================
+FAILED tests/test_auth_login.py::test_login_success[store] - RuntimeError: Task <Task pending name='Task-5' coro=<test_login_success() running at /app/tests/test_auth_login.py:65> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending...
+FAILED tests/test_auth_login.py::test_login_wrong_password - RuntimeError: Task <Task pending name='Task-15' coro=<test_login_wrong_password() running at /app/tests/test_auth_login.py:74> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future...
+FAILED tests/test_auth_login.py::test_login_empty_fields[both_empty] - RuntimeError: Task <Task pending name='Task-25' coro=<test_login_empty_fields() running at /app/tests/test_auth_login.py:107> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future ...
+FAILED tests/test_auth_login.py::test_login_empty_fields[username_empty] - RuntimeError: Task <Task pending name='Task-35' coro=<test_login_empty_fields() running at /app/tests/test_auth_login.py:107> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future ...
+================================================================================================== 4 failed, 7 passed, 5 warnings in 5.54s ==================================================================================================
+PS

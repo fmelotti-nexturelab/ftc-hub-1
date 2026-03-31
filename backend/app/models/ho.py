@@ -42,25 +42,6 @@ class SalesSession(Base):
     
 
 
-class NavRdpConfig(Base):
-    __tablename__ = "nav_rdp_configs"
-    __table_args__ = {"schema": "ho"}
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    department = Column(String(50), nullable=False)
-    nav_env = Column(String(20), nullable=False)
-    server_host = Column(String(200), nullable=False)
-    gateway_host = Column(String(200), nullable=True)
-    rdp_app_name = Column(String(100), nullable=True)
-    rdp_app_cmdline = Column(Text, nullable=True)
-    nav_username = Column(String(150), nullable=False)
-    nav_password_enc = Column(Text, nullable=False)
-    display_label = Column(String(100), nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
-
 
 class NavCredential(Base):
     __tablename__ = "nav_credentials"
