@@ -32,7 +32,7 @@ function StepIcon({ status }) {
   return <div className="w-3 h-3 rounded-full border border-gray-200 shrink-0 mt-0.5" />
 }
 
-function EntityColumn({ entity, state }) {
+function EntityColumn({ entity, state, activeSteps }) {
   const hasWarnings = state.stepStatus.some(s => s === "warning")
 
   return (
@@ -407,7 +407,7 @@ export default function GeneraTuttiModal({ onClose }) {
             <div className="space-y-4">
               <div className="flex gap-4">
                 {ENTITIES.map(entity => (
-                  <EntityColumn key={entity} entity={entity} state={entityStates[entity]} />
+                  <EntityColumn key={entity} entity={entity} state={entityStates[entity]} activeSteps={activeSteps} />
                 ))}
               </div>
 
