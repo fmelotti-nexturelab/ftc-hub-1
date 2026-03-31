@@ -351,8 +351,13 @@ async def export_session(
 @router.get("/stocksplit", dependencies=[Depends(_PERM)])
 async def stocksplit(
     stock_date: str,
+    qty_filter: str = "positive",   # "all" | "positive" | "negative"
+    include_adm: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
+    if qty_filter not in ("all", "positive", "negative"):
+        raise HTTPException(status_code=400, detail="qty_filter deve essere 'all', 'positive' o 'negative'")
+
     try:
         parsed_date = date.fromisoformat(stock_date)
     except ValueError:
@@ -376,21 +381,42 @@ async def stocksplit(
     if missing:
         raise HTTPException(status_code=422, detail={"missing": missing})
 
-    stmt = (
+    # ── Righe store ────────────────────────────────────────────────────────────
+    store_stmt = (
         select(StockStoreData.store_code, StockItem.item_no, StockStoreData.quantity)
         .join(StockItem, StockItem.id == StockStoreData.item_id)
         .where(StockItem.session_id.in_(session_ids))
-        .where(StockStoreData.quantity > 0)
-        .order_by(StockStoreData.store_code.asc(), StockItem.item_no.asc())
     )
-    rows_result = await db.execute(stmt)
+    if qty_filter == "positive":
+        store_stmt = store_stmt.where(StockStoreData.quantity > 0)
+    elif qty_filter == "negative":
+        store_stmt = store_stmt.where(StockStoreData.quantity < 0)
+    store_stmt = store_stmt.order_by(StockStoreData.store_code.asc(), StockItem.item_no.asc())
+
+    rows_result = await db.execute(store_stmt)
     rows = rows_result.fetchall()
 
     lines = ["STORE;Item No;QTY\n"]
     for row in rows:
         lines.append(f"{row.store_code};{row.item_no};{row.quantity}\n")
-    content = "".join(lines).encode("utf-8")
 
+    # ── Righe ADM ─────────────────────────────────────────────────────────────
+    if include_adm:
+        adm_stmt = (
+            select(StockItem.item_no, StockItem.adm_stock)
+            .where(StockItem.session_id.in_(session_ids))
+        )
+        if qty_filter == "positive":
+            adm_stmt = adm_stmt.where(StockItem.adm_stock > 0)
+        elif qty_filter == "negative":
+            adm_stmt = adm_stmt.where(StockItem.adm_stock < 0)
+        adm_stmt = adm_stmt.order_by(StockItem.item_no.asc())
+
+        adm_result = await db.execute(adm_stmt)
+        for row in adm_result.fetchall():
+            lines.append(f"ADM;{row.item_no};{row.adm_stock}\n")
+
+    content = "".join(lines).encode("utf-8")
     date_str = stock_date.replace("-", "")
     filename = f"{date_str} STOCK SPLIT.csv"
 

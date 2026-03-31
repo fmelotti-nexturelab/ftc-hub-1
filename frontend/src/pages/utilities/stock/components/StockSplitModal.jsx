@@ -10,11 +10,19 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+const QTY_FILTERS = [
+  { value: "all",      label: "Tutti" },
+  { value: "positive", label: "solo >0" },
+  { value: "negative", label: "solo <0" },
+]
+
 export default function StockSplitModal({ onClose }) {
   const today = new Date()
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
   const [stockDate, setStockDate] = useState(todayStr)
+  const [qtyFilter, setQtyFilter] = useState("positive")
+  const [includeAdm, setIncludeAdm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(null)
   const [error, setError] = useState(null)
@@ -50,7 +58,7 @@ export default function StockSplitModal({ onClose }) {
     setSuccess(null)
     setProgress({ pct: 0, loaded: 0, total: 0 })
     try {
-      const response = await stockApi.stockSplit(stockDate, (evt) => {
+      const response = await stockApi.stockSplit(stockDate, qtyFilter, includeAdm, (evt) => {
         const loaded = evt.loaded ?? 0
         const total = evt.total ?? 0
         setProgress({ pct: total > 0 ? Math.round((loaded / total) * 100) : null, loaded, total })
@@ -117,6 +125,37 @@ export default function StockSplitModal({ onClose }) {
         </div>
 
         <div className="px-6 pb-5 space-y-3">
+          {/* Filtro quantità */}
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtro quantità</span>
+            <div className="flex gap-2">
+              {QTY_FILTERS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setQtyFilter(value)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                    qtyFilter === value
+                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-[#2563eb] hover:text-[#2563eb]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Toggle includi ADM */}
+            <button
+              onClick={() => setIncludeAdm(v => !v)}
+              className={`w-full py-1.5 rounded-lg text-xs font-semibold border transition ${
+                includeAdm
+                  ? "bg-amber-500 text-white border-amber-500"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-amber-400 hover:text-amber-500"
+              }`}
+            >
+              {includeAdm ? "✓ " : ""}includi ADM
+            </button>
+          </div>
+
           <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
             <span className="text-xs text-gray-400 shrink-0">Data selezionata:</span>
             <span className="text-xs font-semibold text-gray-800 capitalize">{displayDate}</span>

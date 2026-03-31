@@ -23,8 +23,12 @@ export const stockApi = {
       params: { format: "xlsx", store_code: storeCode || undefined },
       responseType: "blob",
     }),
-  stockSplit: (stockDate, onDownloadProgress) =>
-    apiClient.get("/api/stock/stocksplit", { params: { stock_date: stockDate }, responseType: "blob", onDownloadProgress }),
+  stockSplit: (stockDate, qtyFilter, includeAdm, onDownloadProgress) =>
+    apiClient.get("/api/stock/stocksplit", {
+      params: { stock_date: stockDate, qty_filter: qtyFilter, include_adm: includeAdm },
+      responseType: "blob",
+      onDownloadProgress,
+    }),
   admExtract: (stockDate, onDownloadProgress) =>
     apiClient.get("/api/stock/adm-extract", { params: { stock_date: stockDate }, responseType: "blob", onDownloadProgress }),
   deleteSession: (sessionId) => apiClient.delete(`/api/stock/sessions/${sessionId}`),
