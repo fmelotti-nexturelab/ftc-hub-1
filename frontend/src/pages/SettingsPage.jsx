@@ -1,4 +1,5 @@
-import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle } from "lucide-react"
+import { useState } from "react"
+import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle, Check, Search } from "lucide-react"
 import { useStockFolder } from "@/hooks/useStockFolder"
 import { useFolderConnect } from "@/hooks/useFolderConnect"
 import { useAuthStore } from "@/store/authStore"
@@ -114,8 +115,76 @@ function StockFolderSettings() {
   )
 }
 
+function NavisionFolderSetting() {
+  const [folder, setFolder] = useState(() => localStorage.getItem("navision_rdp_folder") || "")
+  const [saved, setSaved]   = useState(false)
+
+  function save() {
+    const trimmed = folder.trim()
+    setFolder(trimmed)
+    localStorage.setItem("navision_rdp_folder", trimmed)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2500)
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor="nav-rdp-folder" className="block text-sm font-semibold text-gray-700">
+        Cartella file RDP
+      </label>
+      <div className="flex gap-2">
+        <div className="flex-1 flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-[#2563eb] focus-within:border-transparent">
+          <input
+            id="nav-rdp-folder"
+            type="text"
+            value={folder}
+            onChange={(e) => { setFolder(e.target.value); setSaved(false) }}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            placeholder="es. C:\Users\nomeutente\OneDrive - Zebra A S\01 - NAVISION"
+            className="flex-1 text-sm font-mono px-3 py-1.5 outline-none bg-white"
+          />
+          {"showDirectoryPicker" in window && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const handle = await window.showDirectoryPicker({ mode: "read" })
+                  setFolder(handle.name)
+                  setSaved(false)
+                } catch (e) {
+                  if (e.name !== "AbortError") console.error(e)
+                }
+              }}
+              title="Sfoglia cartelle"
+              aria-label="Sfoglia cartelle"
+              className="px-2.5 border-l border-gray-300 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-50 transition"
+            >
+              <FolderOpen size={15} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={save}
+          aria-label="Salva cartella RDP"
+          className={`flex items-center gap-1.5 text-sm px-4 py-1.5 font-semibold rounded-lg transition ${
+            saved ? "bg-green-500 text-white" : "bg-[#1e3a5f] hover:bg-[#2563eb] text-white"
+          }`}
+        >
+          {saved && <Check size={13} aria-hidden="true" />}
+          {saved ? "Salvato" : "Salva"}
+        </button>
+      </div>
+      <p className="text-[11px] text-gray-400 leading-relaxed">
+        Percorso completo della cartella con i file .rdp — es:{" "}
+        <span className="font-mono">C:\Users\nomeutente\OneDrive - Zebra A S\01 - NAVISION</span>
+      </p>
+    </div>
+  )
+}
+
+
 export default function SettingsPage() {
-  const { user } = useAuthStore()
+  const { user, canView } = useAuthStore()
 
   return (
     <div className="space-y-5">
@@ -128,6 +197,13 @@ export default function SettingsPage() {
           <p className="text-xs text-gray-400 mt-0.5">Configurazione applicazione</p>
         </div>
       </div>
+
+      {canView("navision") && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <h2 className="text-sm font-bold text-gray-700 mb-4">Navision</h2>
+          <NavisionFolderSetting />
+        </div>
+      )}
 
       {STOCK_DEPTS.includes(user?.department) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">

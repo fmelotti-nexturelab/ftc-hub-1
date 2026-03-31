@@ -1,24 +1,19 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 from typing import List
 
 from app.database import get_db
 from app.models.auth import User
-from app.models.ho import ExcludedStore, NavCredential
+from app.models.ho import ExcludedStore
 from app.schemas.ho import (
     ExcludedStoreCreate,
     ExcludedStoreResponse,
     SalesDataInput,
     SalesParseResponse,
-    NavCredentialCreate,
-    NavCredentialUpdate,
-    NavCredentialResponse,
-    NavOpenRequest,
 )
 from app.services.ho.sales import parse_tsv_nav
 from app.core.dependencies import require_ho, require_permission
-from app.core.security import encrypt_password, decrypt_password
 
 router = APIRouter(prefix="/api/ho/sales", tags=["HO - Sales"])
 
@@ -98,121 +93,3 @@ async def parse_sales_data(
         it03=parse_tsv_nav(data.raw_tsv_it03, "IT03", excluded) if data.raw_tsv_it03 else None,
     )
 
-# ── NAV Credentials ────────────────────────────────────────────────────────────
-
-@router.get(
-    "/nav-credentials",
-    response_model=List[NavCredentialResponse],
-    dependencies=[Depends(require_permission("nav.credentials.view"))],
-)
-async def get_nav_credentials(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
-):
-    result = await db.execute(
-        select(NavCredential).where(NavCredential.user_id == current_user.id)
-    )
-    return [NavCredentialResponse.model_validate(c) for c in result.scalars().all()]
-
-
-@router.post(
-    "/nav-credentials",
-    response_model=NavCredentialResponse,
-    dependencies=[Depends(require_permission("nav.credentials.manage"))],
-)
-async def upsert_nav_credential(
-    data: NavCredentialCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
-):
-    result = await db.execute(
-        select(NavCredential).where(
-            NavCredential.user_id == current_user.id,
-            NavCredential.nav_env == data.nav_env.upper(),
-        )
-    )
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        existing.nav_username = data.nav_username
-        existing.nav_password_enc = encrypt_password(data.nav_password)
-        await db.commit()
-        await db.refresh(existing)
-        return NavCredentialResponse.model_validate(existing)
-    else:
-        cred = NavCredential(
-            user_id=current_user.id,
-            nav_env=data.nav_env.upper(),
-            nav_username=data.nav_username,
-            nav_password_enc=encrypt_password(data.nav_password),
-        )
-        db.add(cred)
-        await db.commit()
-        await db.refresh(cred)
-        return NavCredentialResponse.model_validate(cred)
-
-
-@router.put(
-    "/nav-credentials/{nav_env}",
-    response_model=NavCredentialResponse,
-    dependencies=[Depends(require_permission("nav.credentials.manage"))],
-)
-async def update_nav_password(
-    nav_env: str,
-    data: NavCredentialUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
-):
-    result = await db.execute(
-        select(NavCredential).where(
-            NavCredential.user_id == current_user.id,
-            NavCredential.nav_env == nav_env.upper(),
-        )
-    )
-    cred = result.scalar_one_or_none()
-    if not cred:
-        raise HTTPException(status_code=404, detail="Credenziale non trovata")
-
-    cred.nav_password_enc = encrypt_password(data.nav_password)
-    await db.commit()
-    await db.refresh(cred)
-    return NavCredentialResponse.model_validate(cred)
-
-
-@router.post(
-    "/nav-open",
-    dependencies=[Depends(require_permission("nav.credentials.manage"))],
-)
-async def nav_open(
-    data: NavOpenRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_ho),
-):
-    result = await db.execute(
-        select(NavCredential).where(
-            NavCredential.user_id == current_user.id,
-            NavCredential.nav_env == data.nav_env.upper(),
-        )
-    )
-    cred = result.scalar_one_or_none()
-    if not cred:
-        raise HTTPException(status_code=404, detail=f"Credenziali NAV {data.nav_env} non configurate")
-
-    import httpx
-    pwd = decrypt_password(cred.nav_password_enc)
-
-    try:
-        async with httpx.AsyncClient() as client:
-            r = await client.post(
-                "http://host.docker.internal:9999/open-rdp",
-                json={
-                    "key": data.rdp_key,
-                    "username": cred.nav_username,
-                    "password": pwd,
-                    "server": "R46-BR1.R46.LOCAL",
-                },
-                timeout=10.0,
-            )
-            return r.json()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Agent non raggiungibile: {str(e)}")

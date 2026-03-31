@@ -57,25 +57,41 @@ class SalesParseResponse(BaseModel):
 
 
 
+class NavAgentConfigItem(BaseModel):
+    config_key: str
+    config_value: str
+    description: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NavAgentConfigResponse(BaseModel):
+    items: List[NavAgentConfigItem]
+
+
+class NavAgentConfigUpdate(BaseModel):
+    updates: Dict[str, str]
+
+
 class NavCredentialCreate(BaseModel):
+    department: str
     nav_env: str
     nav_username: str
     nav_password: str
+    display_order: int = 0
 
 
-class NavCredentialUpdate(BaseModel):
+class NavCredentialUpdatePassword(BaseModel):
     nav_password: str
 
 
 class NavCredentialResponse(BaseModel):
     id: UUID
+    department: str
     nav_env: str
     nav_username: str
+    nav_password: str  # decrypted, shown to user
+    display_order: int
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class NavOpenRequest(BaseModel):
-    nav_env: str
-    rdp_key: str

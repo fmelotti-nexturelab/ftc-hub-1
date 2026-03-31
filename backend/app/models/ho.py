@@ -43,17 +43,33 @@ class SalesSession(Base):
 
 
 
+class NavAgentConfig(Base):
+    __tablename__ = "nav_agent_config"
+    __table_args__ = {"schema": "ho"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    config_key = Column(String(100), nullable=False, unique=True)
+    config_value = Column(Text, nullable=False)
+    description = Column(String(255))
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class NavCredential(Base):
     __tablename__ = "nav_credentials"
     __table_args__ = (
-        UniqueConstraint("user_id", "nav_env", name="uq_nav_cred_user_env"),
+        UniqueConstraint("department", "nav_env", "nav_username", name="uq_nav_cred_dept_env_user"),
         {"schema": "ho"},
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), nullable=False)
+    department = Column(String(50), nullable=False)
     nav_env = Column(String(10), nullable=False)
     nav_username = Column(String(100), nullable=False)
     nav_password_enc = Column(Text, nullable=False)
+    display_order = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)

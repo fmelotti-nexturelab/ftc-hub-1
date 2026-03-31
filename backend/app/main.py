@@ -17,6 +17,7 @@ from app.models import file_archive  # noqa: F401
 from app.routers import auth as auth_router
 from app.routers import test_rbac
 from app.routers.ho import sales as sales_router
+from app.routers.ho import nav_agent as nav_agent_router
 from app.routers.admin import rbac as admin_rbac_router
 from app.routers.admin import users as admin_users_router
 from app.routers.admin import modules as admin_modules_router
@@ -74,6 +75,7 @@ app.add_middleware(
 # ROUTERS
 app.include_router(auth_router.router)
 app.include_router(sales_router.router)
+app.include_router(nav_agent_router.router)
 app.include_router(test_rbac.router)
 app.include_router(admin_rbac_router.router)
 app.include_router(admin_users_router.router)

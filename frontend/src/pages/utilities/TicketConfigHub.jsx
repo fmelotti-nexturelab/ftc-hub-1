@@ -18,7 +18,7 @@ export default function TicketConfigHub() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Configurazione Ticket</h1>
         <button
-          onClick={() => navigate("/utilities")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-2 border border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 font-semibold py-2 px-4 rounded-xl transition text-sm"
         >
           <LogOut size={15} aria-hidden="true" />

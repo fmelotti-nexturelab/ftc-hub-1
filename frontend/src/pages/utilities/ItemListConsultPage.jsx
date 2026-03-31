@@ -348,7 +348,7 @@ export default function ItemListConsultPage() {
           <p className="text-xs text-gray-400 mt-0.5">Anagrafe articoli importata dal Convertitore</p>
         </div>
         <button
-          onClick={() => navigate("/utilities/consulta-database")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
           <LogOut size={15} aria-hidden="true" />

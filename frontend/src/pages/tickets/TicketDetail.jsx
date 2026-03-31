@@ -39,7 +39,7 @@ export default function TicketDetail() {
   const qc = useQueryClient()
 
   useEffect(() => {
-    const handler = (e) => { if (e.key === "Escape") navigate("/tickets") }
+    const handler = (e) => { if (e.key === "Escape") navigate(-1) }
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [navigate])
@@ -213,7 +213,7 @@ export default function TicketDetail() {
           <h1 className="text-base font-bold text-gray-800 truncate">{ticket.title}</h1>
         </div>
         <button
-          onClick={() => navigate("/tickets")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition shrink-0"
         >
           <LogOut size={15} aria-hidden="true" />

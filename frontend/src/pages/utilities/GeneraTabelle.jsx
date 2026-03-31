@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2 } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2, ArrowLeftRight, ClipboardCheck, Ban } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { utilitiesApi } from "@/api/utilities"
 
@@ -19,7 +19,10 @@ const GROUPS = [
       { path: "/ho/sales/it02",     icon: BarChart3, color: "bg-emerald-500", label: "Sales Data IT02",  desc: "Importa e visualizza le vendite IT02" },
       { path: "/ho/sales/it03",     icon: BarChart3, color: "bg-violet-500",  label: "Sales Data IT03",  desc: "Importa e visualizza le vendite IT03" },
       { path: "/ho/sales/report",   icon: BarChart3, color: "bg-[#1e3a5f]",   label: "Report Vendite",   desc: "Report aggregato per entity" },
-      { path: "/ho/sales/excluded", icon: BarChart3, color: "bg-gray-500",    label: "Negozi Esclusi",   desc: "Gestione negozi esclusi dai calcoli" },
+      { path: "/ho/sales/movimenti/it01", icon: ArrowLeftRight, color: "bg-blue-500",    label: "Movimenti NAV IT01", desc: "Importa i movimenti estratti da NAV di IT01", soon: true },
+      { path: "/ho/sales/movimenti/it02", icon: ArrowLeftRight, color: "bg-emerald-500", label: "Movimenti NAV IT02", desc: "Importa i movimenti estratti da NAV di IT02", soon: true },
+      { path: "/ho/sales/movimenti/it03", icon: ArrowLeftRight, color: "bg-violet-500",  label: "Movimenti NAV IT03", desc: "Importa i movimenti estratti da NAV di IT03", soon: true },
+      { path: "/ho/sales/movimenti/check", icon: ClipboardCheck, color: "bg-orange-500", label: "Check Movimentazione", desc: "Riconciliazione per check effettiva movimentazione in NAV", soon: true },
     ],
   },
   {
@@ -66,7 +69,8 @@ const GROUPS = [
 
 export default function GeneraTabelle() {
   const navigate = useNavigate()
-  const [activeGroup, setActiveGroup] = useState(null)
+  const [searchParams] = useSearchParams()
+  const [activeGroup, setActiveGroup] = useState(() => searchParams.get("group") || null)
   const [legacyMode, setLegacyMode] = useState(
     () => localStorage.getItem("ftchub_legacy_mode") !== "false"
   )
@@ -131,7 +135,7 @@ export default function GeneraTabelle() {
           </button>
         ) : (
           <button
-            onClick={() => navigate("/utilities")}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
             <LogOut size={15} aria-hidden="true" />
@@ -148,6 +152,15 @@ export default function GeneraTabelle() {
           </button>
           <ChevronRight size={12} />
           <span className="text-gray-600 font-medium">{group.label}</span>
+          {group.id === "sales" && (
+            <button
+              onClick={() => navigate("/ho/sales/excluded")}
+              className="ml-3 flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+            >
+              <Ban size={12} aria-hidden="true" />
+              Negozi Esclusi
+            </button>
+          )}
         </div>
       )}
 
