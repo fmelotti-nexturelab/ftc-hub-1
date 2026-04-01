@@ -157,6 +157,7 @@ export default function TicketList() {
     queryKey: ["tickets", params, viewMode],
     queryFn: () => ticketsApi.list(params).then(r => r.data),
     enabled: !isStore || !storicoMode,
+    refetchInterval: 30_000,
   })
 
   const { data: storicoRaw = [], isLoading: storicoLoading } = useQuery({
@@ -323,7 +324,7 @@ export default function TicketList() {
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold text-xs">
                   <th scope="col" className="px-4 py-3 text-left">#</th>
                   <th scope="col" className="px-4 py-3 text-left">Titolo</th>
-                  <th scope="col" className="px-4 py-3 text-left">Categoria</th>
+                  <th scope="col" className="px-4 py-3 text-left">Ambito</th>
                   <th scope="col" className="px-4 py-3 text-left">Priorità</th>
                   <th scope="col" className="px-4 py-3 text-left">Stato</th>
                   <th scope="col" className="px-4 py-3 text-left">Data</th>
@@ -342,7 +343,7 @@ export default function TicketList() {
                       #{String(t.ticket_number).padStart(4, "0")}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">{t.title}</td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
                     <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
                     <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
                     <td className="px-4 py-3 text-xs text-gray-400">
@@ -514,9 +515,8 @@ export default function TicketList() {
                 <th scope="col" className="px-4 py-3 text-left">#</th>
                 <th scope="col" className="px-4 py-3 text-left">Titolo</th>
                 <th scope="col" className="px-4 py-3 text-left">Negozio / Richiedente</th>
-                <th scope="col" className="px-4 py-3 text-left">Categoria</th>
-                <th scope="col" className="px-4 py-3 text-left">Sottocategoria</th>
                 {canSeeTeam && <th scope="col" className="px-4 py-3 text-left">Team</th>}
+                <th scope="col" className="px-4 py-3 text-left">Ambito</th>
                 <th scope="col" className="px-4 py-3 text-left">Priorità</th>
                 <th scope="col" className="px-4 py-3 text-left">Stato</th>
                 {canSeeTeam && <th scope="col" className="px-4 py-3 text-left">Assegnato a</th>}
@@ -551,8 +551,6 @@ export default function TicketList() {
                       : <span className="font-mono font-semibold text-gray-700">{t.requester_name || "—"}</span>
                     }
                   </td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{t.category_name ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
                   {canSeeTeam && (
                     <td className="px-4 py-3 text-xs">
                       {t.team_name ? (
@@ -562,6 +560,7 @@ export default function TicketList() {
                       ) : "—"}
                     </td>
                   )}
+                  <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
                   <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
                   <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
                   {canSeeTeam && <td className="px-4 py-3 text-xs text-gray-500">{t.assignee_name ?? "—"}</td>}

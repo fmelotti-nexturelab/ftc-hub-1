@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
+import { ticketsApi } from "@/api/tickets"
 import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -17,6 +18,61 @@ function DiagStatusIcon({ status }) {
   if (status === "ok") return <CheckCircle size={12} className="text-green-400 shrink-0" />
   if (status === "warning") return <AlertTriangle size={12} className="text-amber-400 shrink-0" />
   return <XCircle size={12} className="text-red-400 shrink-0" />
+}
+
+function TicketSidebarLink({ user }) {
+  const isStore = ["STORE", "STOREMANAGER"].includes(user?.department)
+
+  // Ticket aperti del team (non-store only)
+  const { data: teamTickets } = useQuery({
+    queryKey: ["sidebar-tickets-team"],
+    queryFn: () => ticketsApi.list({ my_team: true }).then(r => r.data),
+    refetchInterval: 30_000,
+    enabled: !isStore,
+  })
+
+  // Ticket non chiusi assegnati a me
+  const { data: myTickets } = useQuery({
+    queryKey: ["sidebar-tickets-mine"],
+    queryFn: () => ticketsApi.list({ assigned_to_id: user?.id }).then(r => r.data),
+    refetchInterval: 30_000,
+    enabled: !!user?.id,
+  })
+
+  const teamCount = (teamTickets ?? []).filter(t => t.status !== "closed").length
+  const myCount = (myTickets ?? []).filter(t => t.status !== "closed").length
+
+  return (
+    <NavLink
+      to="/tickets"
+      end
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+        ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+      }
+    >
+      <Ticket size={17} aria-hidden="true" />
+      <span className="flex-1">Ticket</span>
+      <div className="flex items-center gap-1.5">
+        {teamCount > 0 && (
+          <div className="flex flex-col items-center">
+            <span className="bg-amber-500 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1">
+              {teamCount}
+            </span>
+            <span className="text-[8px] text-white/40 mt-0.5">team</span>
+          </div>
+        )}
+        {myCount > 0 && (
+          <div className="flex flex-col items-center">
+            <span className="bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1">
+              {myCount}
+            </span>
+            <span className="text-[8px] text-white/40 mt-0.5">miei</span>
+          </div>
+        )}
+      </div>
+    </NavLink>
+  )
 }
 
 function SidebarDiagnostics({ user }) {
@@ -152,17 +208,7 @@ export default function Sidebar() {
             <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
               SUPPORTO
             </div>
-            <NavLink
-              to="/tickets"
-              end
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
-                ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
-              }
-            >
-              <Ticket size={17} />
-              <span>Ticket</span>
-            </NavLink>
+            <TicketSidebarLink user={user} />
           </div>
         )}
       </nav>
