@@ -57,8 +57,8 @@ class UpdateUserModulePermissionRequest(BaseModel):
 
 def _require_admin(current_user: User = Depends(get_current_user)) -> User:
     department = getattr(current_user, "department", None)
-    if department not in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
-        raise HTTPException(403, "Accesso riservato ad ADMIN o SUPERUSER")
+    if department not in (UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT):
+        raise HTTPException(403, "Accesso riservato ad ADMIN, SUPERUSER o IT")
     return current_user
 
 

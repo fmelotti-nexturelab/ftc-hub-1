@@ -17,7 +17,7 @@ async def my_access(
 ):
     """Restituisce i permessi effettivi dell'utente corrente per i moduli utility."""
     department = getattr(current_user, "department", None)
-    is_admin = department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN)
+    is_admin = department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT)
 
     result = {}
     for module_code in UTILITY_MODULES:

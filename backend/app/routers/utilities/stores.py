@@ -17,7 +17,7 @@ async def _require_utilities_view(
 ) -> User:
     """Verifica accesso al modulo utilities_stores senza check di scope geografico."""
     department = getattr(current_user, "department", None)
-    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
+    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT):
         return current_user
     if not await _user_can_access_module(db, current_user, "utilities_stores", need_manage=False):
         raise HTTPException(403, "Accesso alle utilities non consentito")
@@ -30,7 +30,7 @@ async def _require_utilities_manage(
 ) -> User:
     """Verifica accesso in gestione al modulo utilities_stores."""
     department = getattr(current_user, "department", None)
-    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN):
+    if department in (UserDepartment.SUPERUSER, UserDepartment.ADMIN, UserDepartment.IT):
         return current_user
     if not await _user_can_access_module(db, current_user, "utilities_stores", need_manage=True):
         raise HTTPException(403, "Gestione utilities non consentita")

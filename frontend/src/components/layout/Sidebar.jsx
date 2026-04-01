@@ -76,7 +76,7 @@ function TicketSidebarLink({ user }) {
 }
 
 function SidebarDiagnostics({ user }) {
-  const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
+  const isPrivileged = ["SUPERUSER", "ADMIN", "IT"].includes(user?.department)
   const [open, setOpen] = useState(false)
 
   const { data, isFetching, refetch } = useQuery({

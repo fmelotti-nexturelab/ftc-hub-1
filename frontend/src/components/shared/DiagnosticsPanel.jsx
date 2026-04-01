@@ -25,7 +25,7 @@ function statusLabel(status) {
 export default function DiagnosticsPanel() {
   const { user } = useAuthStore()
   const [open, setOpen] = useState(false)
-  const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
+  const isPrivileged = ["SUPERUSER", "ADMIN", "IT"].includes(user?.department)
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["diagnostics"],
@@ -87,7 +87,7 @@ export default function DiagnosticsPanel() {
 // Componente separato solo per il dot — usato inline nella sidebar header
 export function DiagnosticsDot() {
   const { user } = useAuthStore()
-  const isPrivileged = ["SUPERUSER", "ADMIN"].includes(user?.department)
+  const isPrivileged = ["SUPERUSER", "ADMIN", "IT"].includes(user?.department)
 
   const { data } = useQuery({
     queryKey: ["diagnostics"],
