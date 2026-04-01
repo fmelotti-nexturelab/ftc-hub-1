@@ -33,6 +33,7 @@ class TicketAssignUpdate(BaseModel):
 
 class TicketForwardUpdate(BaseModel):
     team_id: int
+    assigned_to: Optional[UUID] = None
 
 
 class TicketBulkAction(BaseModel):

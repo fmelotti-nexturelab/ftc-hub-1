@@ -14,7 +14,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.auth import User, UserDepartment
 from app.models.tickets import Ticket, TicketAttachment
-from app.models.ticket_config import TicketTeamModel, TicketCategoryModel, TicketSubcategoryModel
+from app.models.ticket_config import TicketTeamModel, TicketTeamMemberModel, TicketCategoryModel, TicketSubcategoryModel
 from app.models.stores import Store
 from app.models.rbac_scope import UserAssignment
 from app.schemas.tickets import (
@@ -360,6 +360,31 @@ async def assign_ticket(
     return await ticket_service.assign_ticket(db, ticket_id, data)
 
 
+# ── Membri di un team (per selezione assegnatario in forward) ─────────────────
+
+@router.get(
+    "/teams/{team_id}/members",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def list_team_members_for_forward(
+    team_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista membri di un team (id, username, full_name) per la modale di inoltro."""
+    result = await db.execute(
+        select(TicketTeamMemberModel).where(TicketTeamMemberModel.team_id == team_id)
+    )
+    members = result.scalars().all()
+    user_ids = [m.user_id for m in members]
+    if not user_ids:
+        return []
+    users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+    return [
+        {"id": str(u.id), "username": u.username, "full_name": u.full_name}
+        for u in users_res.scalars().all()
+    ]
+
+
 # ── Inoltra ticket ────────────────────────────────────────────────────────────
 
 @router.post(
@@ -372,8 +397,8 @@ async def forward_ticket(
     data: TicketForwardUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Inoltra il ticket a un team: resetta assegnatario, rimette in OPEN."""
-    return await ticket_service.forward_ticket(db, ticket_id, data.team_id)
+    """Inoltra il ticket a un team, opzionalmente assegnandolo a un membro."""
+    return await ticket_service.forward_ticket(db, ticket_id, data.team_id, data.assigned_to)
 
 
 # ── Prendi in carico ──────────────────────────────────────────────────────────

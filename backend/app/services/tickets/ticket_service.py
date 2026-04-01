@@ -749,8 +749,9 @@ async def forward_ticket(
     db: AsyncSession,
     ticket_id: UUID,
     team_id: int,
+    assigned_to: UUID | None = None,
 ) -> TicketResponse:
-    """Inoltra il ticket a un altro team: resetta assegnatario e rimette in OPEN."""
+    """Inoltra il ticket a un altro team, opzionalmente assegnandolo a un membro."""
     result = await db.execute(
         select(Ticket).where(Ticket.id == ticket_id, Ticket.is_active == True)
     )
@@ -761,7 +762,7 @@ async def forward_ticket(
         raise HTTPException(status_code=400, detail="Impossibile inoltrare un ticket chiuso")
 
     ticket.team_id = team_id
-    ticket.assigned_to = None
+    ticket.assigned_to = assigned_to
     if ticket.status == TicketStatus.IN_PROGRESS:
         ticket.status = TicketStatus.OPEN
 

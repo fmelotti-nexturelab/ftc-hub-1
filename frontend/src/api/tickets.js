@@ -35,8 +35,12 @@ export const ticketsApi = {
   // Prendi in carico
   take: (id) => apiClient.post(`/api/tickets/${id}/take`),
 
-  // Inoltra a team
-  forward: (id, team_id) => apiClient.post(`/api/tickets/${id}/forward`, { team_id }),
+  // Inoltra a team (con assegnatario opzionale)
+  forward: (id, team_id, assigned_to = null) =>
+    apiClient.post(`/api/tickets/${id}/forward`, { team_id, assigned_to }),
+
+  // Membri di un team (per modale inoltro)
+  getTeamMembers: (teamId) => apiClient.get(`/api/tickets/teams/${teamId}/members`),
 
   // Storico chiusi
   history: (params) => apiClient.get("/api/tickets/history", { params }),

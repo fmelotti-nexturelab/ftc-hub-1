@@ -51,6 +51,7 @@ export default function TicketDetail() {
 
   const [showForwardModal, setShowForwardModal] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState(null)
+  const [selectedMember, setSelectedMember] = useState(null) // null = "A tutto il team"
 
   const { data: ticket, isLoading: ticketLoading } = useQuery({
     queryKey: ["ticket", id],
@@ -106,12 +107,20 @@ export default function TicketDetail() {
   })
 
   const forwardMutation = useMutation({
-    mutationFn: (team_id) => ticketsApi.forward(id, team_id),
+    mutationFn: ({ team_id, assigned_to }) => ticketsApi.forward(id, team_id, assigned_to),
     onSuccess: () => {
       invalidate()
       setShowForwardModal(false)
       setSelectedTeam(null)
+      setSelectedMember(null)
     },
+  })
+
+  // Membri del team selezionato (per assegnazione diretta)
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["team-members-forward", selectedTeam],
+    queryFn: () => ticketsApi.getTeamMembers(selectedTeam).then(r => r.data),
+    enabled: !!selectedTeam,
   })
 
   const { data: teams = [] } = useQuery({
@@ -165,32 +174,72 @@ export default function TicketDetail() {
               </div>
             </div>
           </div>
-          <div className="p-5">
-            <div className="grid grid-cols-2 gap-2">
-              {teams.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTeam(t.id === selectedTeam ? null : t.id)}
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold border-2 transition ${
-                    selectedTeam === t.id
-                      ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
-                  }`}
-                >
-                  {t.name}
-                </button>
-              ))}
+          <div className="p-5 space-y-4">
+            {/* Step 1: Seleziona team */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Team</p>
+              <div className="grid grid-cols-2 gap-2">
+                {teams.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setSelectedTeam(t.id === selectedTeam ? null : t.id); setSelectedMember(null) }}
+                    className={`px-4 py-3 rounded-xl text-sm font-semibold border-2 transition ${
+                      selectedTeam === t.id
+                        ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                        : "bg-white text-gray-700 border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Step 2: Seleziona membro (appare dopo selezione team) */}
+            {selectedTeam && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Assegna a</p>
+                <div className="space-y-1.5">
+                  <button
+                    onClick={() => setSelectedMember(null)}
+                    className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition ${
+                      selectedMember === null
+                        ? "bg-amber-50 text-amber-700 border-amber-300"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-amber-300"
+                    }`}
+                  >
+                    A tutto il team
+                    <span className="text-xs text-gray-400 ml-2">— nessun assegnatario</span>
+                  </button>
+                  {teamMembers.map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedMember(m.id)}
+                      className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition ${
+                        selectedMember === m.id
+                          ? "bg-[#1e3a5f] text-white border-[#1e3a5f]"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-[#1e3a5f] hover:text-[#1e3a5f]"
+                      }`}
+                    >
+                      {m.full_name || m.username}
+                    </button>
+                  ))}
+                  {teamMembers.length === 0 && (
+                    <p className="text-xs text-gray-400 py-2">Nessun membro configurato per questo team</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <div className="p-5 border-t border-gray-100 flex gap-2">
             <button
-              onClick={() => { setShowForwardModal(false); setSelectedTeam(null) }}
+              onClick={() => { setShowForwardModal(false); setSelectedTeam(null); setSelectedMember(null) }}
               className="flex-1 border border-gray-300 text-gray-600 font-semibold py-2.5 rounded-xl hover:bg-gray-50 transition text-sm"
             >
               Annulla
             </button>
             <button
-              onClick={() => forwardMutation.mutate(selectedTeam)}
+              onClick={() => forwardMutation.mutate({ team_id: selectedTeam, assigned_to: selectedMember })}
               disabled={!selectedTeam || forwardMutation.isPending}
               className="flex-1 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2.5 rounded-xl shadow transition text-sm disabled:opacity-40"
             >
