@@ -1,5 +1,5 @@
 @echo off
-cd /d C:\Projects\FTC_HUB
+cd /d C:\windows\system32\ftc-hub
 
 echo ============================================
 echo   FTC HUB - Deploy da Git
