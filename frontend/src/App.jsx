@@ -4,6 +4,7 @@ import ProtectedRoute from "@/routes/ProtectedRoute"
 import RoleRoute from "@/routes/RoleRoute"
 import Login from "@/pages/Login"
 import Unauthorized from "@/pages/Unauthorized"
+import Home from "@/pages/Home"
 import Shell from "@/components/layout/Shell"
 import HODashboard from "@/pages/ho/HODashboard"
 import SalesIT01 from "@/pages/ho/sales/SalesIT01"
@@ -56,7 +57,7 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<RoleRedirect />} />
+        <Route index element={<Home />} />
         <Route path="ho" element={<HODashboard />} />
         <Route path="ho/sales/it01" element={<SalesIT01 />} />
         <Route path="ho/sales/it02" element={<SalesIT02 />} />
