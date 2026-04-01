@@ -116,8 +116,9 @@ function StockFolderSettings() {
 }
 
 function NavisionFolderSetting() {
-  const [folder, setFolder] = useState(() => localStorage.getItem("navision_rdp_folder") || "")
-  const [saved, setSaved]   = useState(false)
+  const [folder, setFolder]     = useState(() => localStorage.getItem("navision_rdp_folder") || "")
+  const [saved, setSaved]       = useState(false)
+  const [browsing, setBrowsing] = useState(false)
 
   function save() {
     const trimmed = folder.trim()
@@ -125,6 +126,27 @@ function NavisionFolderSetting() {
     localStorage.setItem("navision_rdp_folder", trimmed)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
+  }
+
+  async function browseViaAgent() {
+    setBrowsing(true)
+    try {
+      const res = await fetch("http://localhost:9999/browse-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      })
+      const data = await res.json()
+      if (data.ok && data.path) {
+        setFolder(data.path)
+        setSaved(false)
+      }
+    } catch {
+      // Agent non attivo — fallback: avvisa l'utente
+      alert("Agente NAV non attivo. Scrivi il percorso manualmente oppure avvia installa_agente.bat.")
+    } finally {
+      setBrowsing(false)
+    }
   }
 
   return (
@@ -140,28 +162,19 @@ function NavisionFolderSetting() {
             value={folder}
             onChange={(e) => { setFolder(e.target.value); setSaved(false) }}
             onKeyDown={(e) => e.key === "Enter" && save()}
-            placeholder="es. C:\Users\nomeutente\OneDrive - Zebra A S\01 - NAVISION"
+            placeholder="es. C:\Users\nomeutente\Desktop"
             className="flex-1 text-sm font-mono px-3 py-1.5 outline-none bg-white"
           />
-          {"showDirectoryPicker" in window && (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const handle = await window.showDirectoryPicker({ mode: "read" })
-                  setFolder(handle.name)
-                  setSaved(false)
-                } catch (e) {
-                  if (e.name !== "AbortError") console.error(e)
-                }
-              }}
-              title="Sfoglia cartelle"
-              aria-label="Sfoglia cartelle"
-              className="px-2.5 border-l border-gray-300 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-50 transition"
-            >
-              <FolderOpen size={15} aria-hidden="true" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={browseViaAgent}
+            disabled={browsing}
+            title="Sfoglia cartelle (via agente NAV)"
+            aria-label="Sfoglia cartelle"
+            className="px-2.5 border-l border-gray-300 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-50 transition disabled:opacity-40"
+          >
+            <FolderOpen size={15} aria-hidden="true" />
+          </button>
         </div>
         <button
           onClick={save}

@@ -42,6 +42,21 @@ export const navisionApi = {
       .then((r) => r.data)
   },
 
+  // Download agent installer
+  downloadAgentInstaller: async () => {
+    const response = await apiClient.get("/api/ho/navision/agent-installer", {
+      responseType: "blob",
+    })
+    const url = URL.createObjectURL(response.data)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "ftchub_nav_agent.zip"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
+
   // Config (solo IT/ADMIN)
   getConfig: () =>
     apiClient.get("/api/ho/navision/config").then((r) => r.data),

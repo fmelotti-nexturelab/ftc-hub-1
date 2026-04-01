@@ -1,8 +1,10 @@
+import io
 import os
+import zipfile
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -24,6 +26,9 @@ router = APIRouter(prefix="/api/ho/navision", tags=["HO - Navision"])
 
 RDP_FILES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "rdp_files")
 RDP_FILES_DIR = os.path.normpath(RDP_FILES_DIR)
+
+AGENT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "navision_agent")
+AGENT_DIR = os.path.normpath(AGENT_DIR)
 
 VALID_RDP_KEYS = {
     "it01_classic": "NAV IT01 Classic",
@@ -81,6 +86,37 @@ async def update_config(
     )
     items = [NavAgentConfigItem.model_validate(r) for r in result.scalars().all()]
     return NavAgentConfigResponse(items=items)
+
+
+# ── Agent installer download ─────────────────────────────────────────────────
+
+@router.get(
+    "/agent-installer",
+    dependencies=[Depends(require_permission("navision"))],
+)
+async def download_agent_installer():
+    """Scarica il pacchetto installer dell'agente NAV come zip."""
+    files_to_include = [
+        ("ftchub_nav_agent.ps1", "ftchub_nav_agent.ps1"),
+        ("installa_agente.bat", "installa_agente.bat"),
+    ]
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for src_name, arc_name in files_to_include:
+            src_path = os.path.join(AGENT_DIR, src_name)
+            if os.path.isfile(src_path):
+                zf.write(src_path, arc_name)
+
+    if buf.tell() == 0:
+        raise HTTPException(status_code=404, detail="File agente non trovati")
+
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=ftchub_nav_agent.zip"},
+    )
 
 
 # ── RDP file download ─────────────────────────────────────────────────────────

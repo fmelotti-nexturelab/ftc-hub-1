@@ -31,7 +31,8 @@ public class WinApi {
 
     public static void ForceForeground(IntPtr hWnd) {
         IntPtr fg = GetForegroundWindow();
-        uint fgThread = GetWindowThreadProcessId(fg, out _);
+        uint pid = 0;
+        uint fgThread = GetWindowThreadProcessId(fg, out pid);
         uint curThread = GetCurrentThreadId();
         if (fgThread != curThread) {
             AttachThreadInput(curThread, fgThread, true);
@@ -224,11 +225,50 @@ while ($listener.IsListening) {
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
 
+    } elseif ($req.HttpMethod -eq "POST" -and $req.Url.LocalPath -eq "/browse-folder") {
+        # Apre un FolderBrowserDialog nativo Windows (nessuna restrizione su Desktop ecc.)
+        try {
+            $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+            $dlg.Description = "Seleziona la cartella contenente i file .rdp"
+            $dlg.RootFolder  = [System.Environment+SpecialFolder]::Desktop
+            $dlg.ShowNewFolderButton = $false
+
+            $result = $dlg.ShowDialog()
+            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                $selected = $dlg.SelectedPath
+                Write-Host "[OK] Cartella selezionata: $selected" -ForegroundColor Cyan
+                $body = "{`"ok`":true,`"path`":`"$($selected -replace '\\','\\')`"}"
+                $res.StatusCode = 200
+            } else {
+                Write-Host "[INFO] Selezione cartella annullata" -ForegroundColor Gray
+                $body = '{"ok":false,"cancelled":true}'
+                $res.StatusCode = 200
+            }
+        } catch {
+            Write-Host "[ERR] FolderBrowser: $_" -ForegroundColor Red
+            $body = "{`"error`":`"$($_.Exception.Message)`"}"
+            $res.StatusCode = 500
+        }
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+        $res.OutputStream.Write($bytes, 0, $bytes.Length)
+
     } elseif ($req.HttpMethod -eq "GET" -and $req.Url.LocalPath -eq "/ping") {
         # Health check — usato dal browser per capire se l'agent è attivo
         $bytes = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
         $res.StatusCode = 200
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
+
+    } elseif ($req.HttpMethod -eq "POST" -and $req.Url.LocalPath -eq "/shutdown") {
+        # Arresta l'agente in modo pulito
+        Write-Host "[INFO] Shutdown richiesto dal browser — arresto in corso…" -ForegroundColor Yellow
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"message":"agent stopped"}')
+        $res.StatusCode = 200
+        $res.OutputStream.Write($bytes, 0, $bytes.Length)
+        $res.Close()
+        $listener.Stop()
+        $listener.Close()
+        Write-Host "[OK] Agente arrestato." -ForegroundColor Green
+        exit 0
 
     } else {
         $res.StatusCode = 404
