@@ -12,10 +12,10 @@ git reset --hard origin/main
 git clean -fd
 echo.
 
-echo [2/5] Rebuild container (no cache)...
-docker compose down
-docker compose build --no-cache backend frontend
-docker compose up -d
+echo [2/5] Rebuild container (no cache, produzione 4 worker)...
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache backend frontend
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 echo.
 
 echo [3/5] Attesa avvio database...
@@ -30,7 +30,7 @@ echo.
 
 echo [4/5] Migrazione Alembic...
 timeout /t 5 /nobreak >nul
-docker compose exec backend alembic upgrade head
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend alembic upgrade head
 echo.
 
 echo [5/5] Verifica health...

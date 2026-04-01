@@ -34,6 +34,7 @@ import StockUnifiedPage from "@/pages/utilities/stock/StockUnifiedPage"
 import StockNavPage from "@/pages/utilities/StockNavPage"
 import ItemListPage from "@/pages/utilities/ItemListPage"
 import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
+import CodiceOperatore from "@/pages/ho/CodiceOperatore"
 
 
 function RoleRedirect() {
@@ -65,6 +66,7 @@ export default function App() {
         <Route path="ho/sales/report" element={<SalesReport />} />
         <Route path="ho/sales/excluded" element={<ExcludedStores />} />
         <Route path="utilities/navision" element={<NavisionPage />} />
+        <Route path="ho/codice-operatore" element={<CodiceOperatore />} />
         <Route path="admin" element={<RoleRoute roles={["ADMIN", "IT"]}><AdminUsers /></RoleRoute>} />
         <Route path="admin/support" element={<RoleRoute roles={["ADMIN", "IT"]}><SupportLookup /></RoleRoute>} />
         <Route path="admin/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfig /></RoleRoute>} />

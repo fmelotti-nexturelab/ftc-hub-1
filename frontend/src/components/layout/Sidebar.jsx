@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
 import { ticketsApi } from "@/api/tickets"
-import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe } from "lucide-react"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
@@ -202,6 +202,23 @@ export default function Sidebar() {
             </NavLink>
           )}
         </div>
+
+        {canView("codici_operatore") && (
+          <NavLink
+            to="/ho/codice-operatore"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+            }
+          >
+            <UserCheck size={17} aria-hidden="true" />
+            <div className="flex flex-col leading-tight">
+              <span>Cod.Operatore</span>
+              {user?.department === "HR" && <span className="text-[10px] text-white/40">Richiesta</span>}
+              {["IT", "ADMIN", "SUPERUSER"].includes(user?.department) && <span className="text-[10px] text-white/40">Gestione</span>}
+            </div>
+          </NavLink>
+        )}
 
         {canView("tickets") && (
           <div className="mt-4">
