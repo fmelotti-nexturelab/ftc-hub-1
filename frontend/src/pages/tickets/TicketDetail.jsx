@@ -81,6 +81,8 @@ export default function TicketDetail() {
     qc.invalidateQueries({ queryKey: ["ticket", id] })
     qc.invalidateQueries({ queryKey: ["ticket-comments", id] })
     qc.invalidateQueries({ queryKey: ["tickets"] })
+    qc.invalidateQueries({ queryKey: ["sidebar-tickets-team"] })
+    qc.invalidateQueries({ queryKey: ["sidebar-tickets-mine"] })
   }
 
   const onError = (err) => {
