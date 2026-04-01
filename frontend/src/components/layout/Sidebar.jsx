@@ -260,6 +260,16 @@ export default function Sidebar() {
           <LogOut size={16} />
           <span>Logout</span>
         </button>
+        <div className="text-center -mt-1">
+          <a href="https://www.nexturelab.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition">
+            <span className="text-[10px] tracking-[0.15em] font-light italic text-white/50">
+              nexturelab.com
+            </span>
+            <span className="text-[7px] tracking-[0.1em] text-white/30 block -mt-0.5 leading-none">
+              be the different
+            </span>
+          </a>
+        </div>
       </div>
     </aside>
   )
