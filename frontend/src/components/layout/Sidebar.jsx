@@ -40,7 +40,7 @@ function TicketSidebarLink({ user }) {
   })
 
   const teamCount = (teamTickets ?? []).filter(t => t.status !== "closed").length
-  const myCount = (myTickets ?? []).filter(t => t.status !== "closed").length
+  const myCount = (myTickets ?? []).filter(t => t.status !== "closed" && t.assigned_to === user?.id).length
 
   return (
     <NavLink
