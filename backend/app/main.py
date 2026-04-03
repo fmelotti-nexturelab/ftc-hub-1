@@ -14,6 +14,7 @@ from app.models import stock  # noqa: F401
 from app.models import items  # noqa: F401
 from app.models import file_archive  # noqa: F401
 from app.models import operator_code  # noqa: F401
+from app.models import app_settings  # noqa: F401
 
 from app.routers import auth as auth_router
 from app.routers import test_rbac
@@ -36,6 +37,7 @@ from app.routers import stock as stock_router
 from app.routers import archive as archive_router
 from app.routers.items import it01 as items_it01_router
 from app.routers import operator_code as operator_code_router
+from app.routers import app_settings as app_settings_router
 
 
 @asynccontextmanager
@@ -96,6 +98,7 @@ app.include_router(stock_router.router)
 app.include_router(archive_router.router)
 app.include_router(items_it01_router.router)
 app.include_router(operator_code_router.router)
+app.include_router(app_settings_router.router)
 
 
 @app.get("/api/health")
