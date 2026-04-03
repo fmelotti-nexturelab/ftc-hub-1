@@ -59,5 +59,9 @@ class ItemMasterIT01(Base):
     gm_pct = Column(Numeric(8, 4), nullable=True)
     description1 = Column(String(500), nullable=True)
     description2 = Column(String(500), nullable=True)
+    modulo = Column(String(100), nullable=True)
+    model_store_portale = Column(String(100), nullable=True)
+    modulo_numerico = Column(Numeric(12, 4), nullable=True)
+    model_store_portale_num = Column(Numeric(12, 4), nullable=True)
 
     session = relationship("ItemImportSession", back_populates="items")

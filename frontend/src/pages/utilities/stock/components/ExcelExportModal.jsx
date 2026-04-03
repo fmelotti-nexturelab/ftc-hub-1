@@ -193,21 +193,13 @@ export default function ExcelExportModal({ entity, stockDate, onClose }) {
       const wbBytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true, bookSST: true }))
       setStep(1, "done")
 
-      // ── Step 2: salva in FTC HUB Storage ────────────────────────────────
+      // ── Step 2: salva in FTC HUB Storage via backend ─────────────────
       setStep(2, "running")
-      const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
-      if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni")
-      const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
-      if (perm3 !== "granted") throw new Error("Permesso negato sulla cartella FTC HUB Storage")
       if (!yyyy) throw new Error("Data non valida")
-      const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
-      const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
-      let dir = ftchubStorageHandle
-      for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
-        dir = await dir.getDirectoryHandle(part, { create: true })
-      }
-      const fh = await dir.getFileHandle(ftchubFileName, { create: true })
-      const w = await fh.createWritable(); await w.write(wbBytes); await w.close()
+      const ftchubFileName = `${datePart}_${entity}_StockNAV.xlsx`
+      const filePath = `01_StockNAV/${yyyy}/${ftchubFileName}`
+      const blob = new Blob([wbBytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      await stockApi.saveFileToStorage(blob, filePath)
       setStep(2, "done")
 
       // ── Step 3: carica nel DB + registra ────────────────────────────────
@@ -455,23 +447,15 @@ export default function ExcelExportModal({ entity, stockDate, onClose }) {
         setStep(8, "warning", e.message)
       }
 
-      // ── Step 9: archivio FTC HUB Storage ──────────────────────────────────
+      // ── Step 9: archivio FTC HUB Storage (via backend) ────────────────────
       setStep(9, "running")
       try {
-        const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
-        if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni e collega la cartella")
-        const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
-        if (perm3 !== "granted") throw new Error("Permesso negato sulla cartella FTC HUB Storage — riconnettila nelle Impostazioni")
-        const [yyyy, mm, dd] = datePart.length === 8
-          ? [datePart.slice(0, 4), datePart.slice(4, 6), datePart.slice(6, 8)]
-          : ["", "", ""]
+        const yyyy = datePart.length === 8 ? datePart.slice(0, 4) : ""
         if (!yyyy) throw new Error("Data non valida per il salvataggio in FTC HUB Storage")
-        const ftchubFileName = `stock_${entity}_${datePart}.xlsx`
-        let dir = ftchubStorageHandle
-        for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
-          dir = await dir.getDirectoryHandle(part, { create: true })
-        }
-        await writeToFolder(dir, ftchubFileName, archiveBytesXlsx)
+        const ftchubFileName = `${datePart}_${entity}_StockNAV.xlsx`
+        const filePath = `01_StockNAV/${yyyy}/${ftchubFileName}`
+        const blob = new Blob([archiveBytesXlsx], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+        await stockApi.saveFileToStorage(blob, filePath)
         setStep(9, "done")
       } catch (e) {
         setStep(9, "warning", e.message)

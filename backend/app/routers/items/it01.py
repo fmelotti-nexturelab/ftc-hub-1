@@ -1,10 +1,18 @@
+import logging
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
 from app.database import get_db
 from app.models.auth import User
 from app.services.items.it01 import get_items_it01, get_sessions_it01, import_items_it01
+from app.services.items.file_generator import generate_itemlist_files
+from app.services.app_settings_service import get_storage_path
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/items/it01", tags=["Items - IT01"])
 
@@ -41,6 +49,33 @@ async def upload_items(
         "is_current": session.is_current,
         "imported_at": session.imported_at.isoformat(),
     }
+
+
+
+@router.post("/sessions/{session_id}/generate-files", dependencies=[Depends(_PERM_IMPORT)])
+async def generate_files(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await generate_itemlist_files(session_id=session_id, db=db)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
+
+
+@router.get("/download-tbl", dependencies=[Depends(_PERM_VIEW)])
+async def download_tbl_xlsm(db: AsyncSession = Depends(get_db)):
+    """Scarica il file tbl_ItemM.xlsm generato — usato dal frontend per legacy save."""
+    storage_path = await get_storage_path(db)
+    tbl_path = Path(storage_path) / "02_ItemList" / "tbl_ItemM.xlsm"
+    if not tbl_path.exists():
+        raise HTTPException(status_code=404, detail="File tbl_ItemM.xlsm non trovato")
+    return FileResponse(
+        path=str(tbl_path),
+        filename="tbl_ItemM.xlsm",
+        media_type="application/vnd.ms-excel.sheet.macroEnabled.12",
+    )
 
 
 @router.get("/sessions", dependencies=[Depends(_PERM_VIEW)])

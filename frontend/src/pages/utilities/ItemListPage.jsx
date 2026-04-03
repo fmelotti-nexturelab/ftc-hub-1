@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   List, LogOut, FolderOpen, Upload, Loader2,
-  CheckCircle, AlertCircle, Clock, FileSpreadsheet,
+  CheckCircle, AlertCircle, Clock, FileSpreadsheet, TriangleAlert,
 } from "lucide-react"
 import * as XLSX from "xlsx/dist/xlsx.full.min.js"
 import { getFolderHandle } from "@/utils/folderStorage"
@@ -18,6 +18,12 @@ const TABS = [
   { id: "SCRAP_INV",    label: "SCRAP INV",          soon: true  },
   { id: "SCRAP_WD",     label: "SCRAP WD",           soon: true  },
   { id: "PICK",         label: "ITEM for PICK",      soon: true  },
+]
+
+const IMPORT_STEPS = [
+  "Caricamento file nel database...",
+  "Generazione file di archivio (tbl_ItemM, ItemM, ItemListPortale)...",
+  "Salvataggio nelle cartelle legacy (Stores + Commercial)...",
 ]
 
 function formatDate(iso) {
@@ -36,10 +42,15 @@ export default function ItemListPage() {
   const [fileObj, setFileObj] = useState(null)
   const [fileInfo, setFileInfo] = useState(null)
   const [reading, setReading] = useState(false)
-  const [importing, setImporting] = useState(false)
   const [readError, setReadError] = useState(null)
+
+  // Step progress
+  const [importing, setImporting] = useState(false)
+  const [stepStatus, setStepStatus] = useState(IMPORT_STEPS.map(() => "pending"))
+  const [stepMessages, setStepMessages] = useState(IMPORT_STEPS.map(() => null))
   const [importError, setImportError] = useState(null)
-  const [importSuccess, setImportSuccess] = useState(null)
+  const [importDone, setImportDone] = useState(false)
+  const [importResult, setImportResult] = useState(null)
 
   const { data: sessions = [], isLoading: loadingSessions } = useQuery({
     queryKey: ["items-sessions", "IT01"],
@@ -47,12 +58,20 @@ export default function ItemListPage() {
     staleTime: 30_000,
   })
 
+  function setStep(i, status, message = null) {
+    setStepStatus(s => s.map((v, idx) => idx === i ? status : v))
+    if (message) setStepMessages(s => s.map((v, idx) => idx === i ? message : v))
+  }
+
   function resetFile() {
     setFileObj(null)
     setFileInfo(null)
     setReadError(null)
     setImportError(null)
-    setImportSuccess(null)
+    setImportDone(false)
+    setImportResult(null)
+    setStepStatus(IMPORT_STEPS.map(() => "pending"))
+    setStepMessages(IMPORT_STEPS.map(() => null))
   }
 
   async function handleLeggiConverter() {
@@ -60,8 +79,11 @@ export default function ItemListPage() {
     setReadError(null)
     setFileObj(null)
     setFileInfo(null)
-    setImportSuccess(null)
+    setImportDone(false)
+    setImportResult(null)
     setImportError(null)
+    setStepStatus(IMPORT_STEPS.map(() => "pending"))
+    setStepMessages(IMPORT_STEPS.map(() => null))
     try {
       const commercialHandle = await getFolderHandle("stock_folder_commercial")
       if (!commercialHandle)
@@ -95,20 +117,102 @@ export default function ItemListPage() {
     if (!fileObj) return
     setImporting(true)
     setImportError(null)
-    setImportSuccess(null)
+    setImportDone(false)
+    setImportResult(null)
+    setStepStatus(IMPORT_STEPS.map(() => "pending"))
+    setStepMessages(IMPORT_STEPS.map(() => null))
+
     try {
+      // ── Step 0: Upload e import DB ─────────────────────────────────────────
+      setStep(0, "running")
       const { data } = await itemsApi.uploadIT01(fileObj)
-      setImportSuccess({ row_count: data.row_count })
+      setStep(0, "done", `${data.row_count.toLocaleString("it-IT")} articoli importati`)
+
+      // ── Step 1: Generazione file archivio ──────────────────────────────────
+      setStep(1, "running")
+      try {
+        const { data: genResult } = await itemsApi.generateFilesIT01(data.session_id)
+        setStep(1, "done", `4 file generati (portale: ${genResult.portale_count.toLocaleString("it-IT")} articoli filtrati)`)
+      } catch (genErr) {
+        const genMsg = genErr.response?.data?.detail || genErr.message || "Errore generazione file"
+        setStep(1, "warning", genMsg)
+      }
+
+      // ── Step 2: Legacy save (se attivo) ───────────────────────────────────
+      const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
+      if (legacyMode) {
+        setStep(2, "running")
+        try {
+          const { data: tblBytes } = await itemsApi.downloadTblIT01()
+          const tblData = new Uint8Array(tblBytes)
+
+          const storesHandle = await getFolderHandle("stock_folder")
+          if (storesHandle) {
+            const perm = await storesHandle.requestPermission({ mode: "readwrite" })
+            if (perm === "granted") {
+              // 97 - Service / 01 - Tables / tbl_ItemM.xlsm
+              try {
+                const serviceDir = await storesHandle.getDirectoryHandle("97 - Service")
+                const tablesDir = await serviceDir.getDirectoryHandle("01 - Tables")
+                const fh = await tablesDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
+                const w = await fh.createWritable()
+                await w.write(tblData)
+                await w.close()
+
+                // Tables_for_FTP / tbl_ItemM.xlsm
+                try {
+                  const ftpDir = await tablesDir.getDirectoryHandle("Tables_for_FTP")
+                  const fh2 = await ftpDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
+                  const w2 = await fh2.createWritable()
+                  await w2.write(tblData)
+                  await w2.close()
+                } catch { /* Tables_for_FTP non trovata — ignora */ }
+              } catch (e) {
+                setStep(2, "warning", "Stores: " + (e.message || "cartella non trovata"))
+              }
+            }
+          }
+
+          const commercialHandle = await getFolderHandle("stock_folder_commercial")
+          if (commercialHandle) {
+            const perm = await commercialHandle.requestPermission({ mode: "readwrite" })
+            if (perm === "granted") {
+              try {
+                const sharedDir = await commercialHandle.getDirectoryHandle("28 - Italy Shared Folder")
+                const fh = await sharedDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
+                const w = await fh.createWritable()
+                await w.write(tblData)
+                await w.close()
+              } catch (e) {
+                setStep(2, "warning", "Commercial: " + (e.message || "cartella non trovata"))
+              }
+            }
+          }
+
+          setStep(2, "done", "Copiato in Stores e Commercial")
+        } catch (e) {
+          setStep(2, "warning", e.message || "Errore salvataggio legacy")
+        }
+      } else {
+        setStep(2, "done", "Legacy mode disattivato — skip")
+      }
+
+      setImportResult({ row_count: data.row_count })
       setFileObj(null)
       setFileInfo(null)
+      setImportDone(true)
       queryClient.invalidateQueries({ queryKey: ["items-sessions", "IT01"] })
+
     } catch (e) {
       const msg = e.response?.data?.detail || e.message || "Errore durante l'importazione."
       setImportError(msg)
+      setStepStatus(prev => prev.map(s => s === "running" ? "warning" : s))
     } finally {
       setImporting(false)
     }
   }
+
+  const showSteps = importing || importDone
 
   return (
     <div className="space-y-5">
@@ -160,7 +264,7 @@ export default function ItemListPage() {
               <p className="text-xs text-gray-400 mt-0.5">
                 Leggi il file{" "}
                 <span className="font-mono text-gray-500">New Converter Item List.xlsx</span>{" "}
-                dalla cartella Commercial e caricalo nel database.
+                dalla cartella Commercial, caricalo nel database e genera i file di archivio.
                 La cartella deve essere collegata nelle Impostazioni.
               </p>
             </div>
@@ -172,7 +276,7 @@ export default function ItemListPage() {
               </div>
             )}
 
-            {fileInfo && !importing && !importSuccess && (
+            {fileInfo && !importing && !importDone && (
               <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                 <FileSpreadsheet size={18} className="text-blue-500 shrink-0" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
@@ -184,17 +288,74 @@ export default function ItemListPage() {
               </div>
             )}
 
-            {importSuccess && (
-              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-3 py-2.5">
-                <CheckCircle size={14} className="shrink-0" aria-hidden="true" />
-                {importSuccess.row_count.toLocaleString("it-IT")} articoli importati con successo.
-              </div>
-            )}
+            {/* ── Scheda avanzamento (stile Stock) ── */}
+            {showSteps && (
+              <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                {/* Header con badge entity */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">IT01</span>
+                  <span className="text-xs text-gray-400">Importazione e generazione file</span>
+                </div>
 
-            {importError && (
-              <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2.5">
-                <AlertCircle size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
-                <span>{importError}</span>
+                {/* Errore globale */}
+                {importError && (
+                  <div className="flex items-start gap-2 text-xs text-red-600 py-1">
+                    <AlertCircle size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{importError}</span>
+                  </div>
+                )}
+
+                {/* Step list */}
+                <div className="space-y-1.5">
+                  {IMPORT_STEPS.map((label, i) => {
+                    const status = stepStatus[i]
+                    const msg = stepMessages[i]
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="shrink-0 mt-0.5">
+                          {status === "done" ? (
+                            <CheckCircle size={13} className="text-green-500" aria-hidden="true" />
+                          ) : status === "warning" ? (
+                            <TriangleAlert size={13} className="text-amber-500" aria-hidden="true" />
+                          ) : status === "running" ? (
+                            <Loader2 size={13} className="text-blue-500 animate-spin" aria-hidden="true" />
+                          ) : (
+                            <div className="w-3 h-3 rounded-full border border-gray-200" aria-hidden="true" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`text-[11px] leading-snug block ${
+                            status === "running" ? "text-blue-600 font-medium"
+                            : status === "done" ? "text-gray-700"
+                            : status === "warning" ? "text-amber-600"
+                            : "text-gray-400"
+                          }`}>
+                            {label}
+                          </span>
+                          {msg && (
+                            <span className={`text-[10px] leading-tight block mt-0.5 break-words ${
+                              status === "warning" ? "text-amber-500" : "text-gray-400"
+                            }`}>
+                              {msg}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Completion summary */}
+                  {importDone && (
+                    <div className={`mt-2 flex items-center gap-1.5 text-xs font-semibold ${
+                      stepStatus.some(s => s === "warning") ? "text-amber-600" : "text-green-600"
+                    }`}>
+                      {stepStatus.some(s => s === "warning")
+                        ? <TriangleAlert size={12} aria-hidden="true" />
+                        : <CheckCircle size={12} aria-hidden="true" />}
+                      {stepStatus.some(s => s === "warning") ? "Completato con avvisi" : "Completato"}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -210,7 +371,7 @@ export default function ItemListPage() {
                 {fileInfo ? "Rileggi Converter" : "Leggi da Convertitore"}
               </button>
 
-              {fileInfo && (
+              {fileInfo && !importDone && (
                 <>
                   <button
                     onClick={handleImporta}
@@ -220,7 +381,7 @@ export default function ItemListPage() {
                     {importing
                       ? <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                       : <Upload size={15} aria-hidden="true" />}
-                    {importing ? "Importazione..." : "Importa nel database"}
+                    {importing ? "Elaborazione..." : "Importa nel database e genera file di archivio"}
                   </button>
                   <button
                     onClick={resetFile}
@@ -230,6 +391,15 @@ export default function ItemListPage() {
                     Annulla
                   </button>
                 </>
+              )}
+
+              {importDone && (
+                <button
+                  onClick={resetFile}
+                  className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
+                >
+                  Nuova importazione
+                </button>
               )}
             </div>
           </div>

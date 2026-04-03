@@ -99,7 +99,7 @@ async function writeToFolder(dirHandle, name, bytes) {
  * 2. Salvataggio FTC HUB Storage  → YYYYMMDD_STOCK_IT01_NAV.xlsx
  * 3. Caricamento nel DB + registrazione file_archive
  */
-async function runStockExportNew({ entity, csvFileHandle, stockDate, ftchubStorageHandle, onStep }) {
+async function runStockExportNew({ entity, csvFileHandle, stockDate, onStep }) {
   const datePart = stockDate.replace(/-/g, "")
   const [yyyy, mm, dd] = stockDate.split("-")
 
@@ -153,16 +153,12 @@ async function runStockExportNew({ entity, csvFileHandle, stockDate, ftchubStora
   const wbBytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsx", compression: true, bookSST: true }))
   onStep(1, "done")
 
-  // ── Step 2: salva in FTC HUB Storage ──────────────────────────────────────
+  // ── Step 2: salva in FTC HUB Storage via backend ──────────────────────────
   onStep(2, "running")
-  const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
-  const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
-  if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni")
-  let dir = ftchubStorageHandle
-  for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
-    dir = await dir.getDirectoryHandle(part, { create: true })
-  }
-  await writeToFolder(dir, ftchubFileName, wbBytes)
+  const ftchubFileName = `${datePart}_${entity}_StockNAV.xlsx`
+  const filePath = `01_StockNAV/${yyyy}/${ftchubFileName}`
+  const blob = new Blob([wbBytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+  await stockApi.saveFileToStorage(blob, filePath)
   onStep(2, "done")
 
   // ── Step 3: carica nel DB + registra in file_archive ──────────────────────
@@ -188,13 +184,12 @@ export async function runStockExport({
   stockDate,
   rootHandle,
   commercialHandle,
-  ftchubStorageHandle,
   writeZeros,
   legacyMode = true,
   onStep,
 }) {
   if (!legacyMode) {
-    return await runStockExportNew({ entity, csvFileHandle, stockDate, ftchubStorageHandle, onStep })
+    return await runStockExportNew({ entity, csvFileHandle, stockDate, onStep })
   }
 
   // ── Step 0: leggi CSV ──────────────────────────────────────────────────────
@@ -358,18 +353,14 @@ export async function runStockExport({
     onStep(8, "done")
   } catch (e) { onStep(8, "warning", e.message) }
 
-  // ── Step 9: archivio FTC HUB Storage ──────────────────────────────────────
+  // ── Step 9: archivio FTC HUB Storage (via backend) ─────────────────────────
   onStep(9, "running")
   try {
-    if (!ftchubStorageHandle) throw new Error("Cartella FTC HUB Storage non collegata — vai in Impostazioni e collega la cartella")
-    const [yyyy, mm, dd] = stockDate.split("-")
-    const ftchubFileName = `${datePart}_STOCK_${entity}_NAV.xlsx`
-    const filePath = `stock_nav/${entity}/${yyyy}/${mm}/${dd}/${ftchubFileName}`
-    let dir = ftchubStorageHandle
-    for (const part of ["stock_nav", entity, yyyy, mm, dd]) {
-      dir = await dir.getDirectoryHandle(part, { create: true })
-    }
-    await writeToFolder(dir, ftchubFileName, archiveBytesXlsx)
+    const [yyyy] = stockDate.split("-")
+    const ftchubFileName = `${datePart}_${entity}_StockNAV.xlsx`
+    const filePath = `01_StockNAV/${yyyy}/${ftchubFileName}`
+    const blob = new Blob([archiveBytesXlsx], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    await stockApi.saveFileToStorage(blob, filePath)
     try {
       await stockApi.registerArchive({ file_type: "STOCK_NAV", entity, file_date: stockDate, file_path: filePath })
     } catch { /* non blocca se la registrazione fallisce */ }

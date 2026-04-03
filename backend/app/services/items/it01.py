@@ -32,15 +32,20 @@ COLUMN_MAP = {
     "GM% escl. Trasporto":          "gm_pct",
     "Descrizione1":                 "description1",
     "Descrizione2":                 "description2",
+    "Modulo":                       "modulo",
+    "Model store per portale":      "model_store_portale",
+    "MODULO NUMERICO":              "modulo_numerico",
+    "MODEL STORE PORTALE NUMERICO": "model_store_portale_num",
 }
 
 BIGINT_FIELDS = {"barcode", "barcode_ext"}
 INT_FIELDS = {"units_per_pack"}
-DECIMAL_FIELDS = {"last_cost", "unit_price", "net_weight", "vat_pct", "gm_pct"}
+DECIMAL_FIELDS = {"last_cost", "unit_price", "net_weight", "vat_pct", "gm_pct", "modulo_numerico", "model_store_portale_num"}
 STRING_FIELDS = {
     "item_no", "description", "description_local", "warehouse",
     "item_cat", "vat_code", "model_store", "batteries",
     "first_rp", "category", "description1", "description2",
+    "modulo", "model_store_portale",
 }
 
 

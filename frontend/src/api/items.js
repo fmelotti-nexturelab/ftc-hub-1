@@ -16,4 +16,10 @@ export const itemsApi = {
 
   exportItemsIT01: (sessionId, params = {}) =>
     apiClient.get(`/api/items/it01/sessions/${sessionId}/export`, { params }),
+
+  generateFilesIT01: (sessionId) =>
+    apiClient.post(`/api/items/it01/sessions/${sessionId}/generate-files`),
+
+  downloadTblIT01: () =>
+    apiClient.get("/api/items/it01/download-tbl", { responseType: "arraybuffer" }),
 }
