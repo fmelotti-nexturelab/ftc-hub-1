@@ -392,26 +392,59 @@ export default function NavisionPage() {
     const cleanFolder = rdpFolder.trim().replace(/^["']|["']$/g, "").replace(/[/\\]+$/, "")
     const fullPath    = `${cleanFolder}\\${filename}`
 
-    addLog(`Invio percorso: ${fullPath}`)
+    // Cerca la credenziale per questo ambiente
+    const creds = Array.isArray(credentials) ? credentials : []
+    const cred = creds.find((c) => c.nav_env === env)
 
-    try {
-      const res = await fetch(`${AGENT_URL}/open`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: fullPath }),
-      })
+    if (cred?.nav_username && cred?.nav_password) {
+      // Auto-login: invia credenziali all'agente
+      addLog(`Auto-login ${label} (${cred.nav_username})...`)
+      try {
+        const res = await fetch(`${AGENT_URL}/open-auto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: fullPath,
+            username: cred.nav_username,
+            password: cred.nav_password,
+          }),
+        })
 
-      if (res.ok) {
-        setFolderWarning(false)
-        setAgentOk(true)
-        addLog(`Avvio ${label}…`)
-        setTimeout(() => agentSnap(), 1500)
-      } else {
-        addLog(`File non trovato — percorso inviato: ${fullPath}`)
+        if (res.ok) {
+          setFolderWarning(false)
+          setAgentOk(true)
+          addLog(`Avvio ${label} con auto-login...`)
+          setTimeout(() => agentSnap(), 1500)
+        } else {
+          const data = await res.json().catch(() => ({}))
+          addLog(data.error || `Errore avvio ${label}`)
+        }
+      } catch {
+        setAgentOk(false)
+        addLog("Agente NAV non raggiungibile — esegui installa_agente.bat")
       }
-    } catch {
-      setAgentOk(false)
-      addLog("Agente NAV non raggiungibile — esegui installa_agente.bat")
+    } else {
+      // Fallback: apertura senza credenziali (chiede password)
+      addLog(`Invio percorso: ${fullPath}`)
+      try {
+        const res = await fetch(`${AGENT_URL}/open`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: fullPath }),
+        })
+
+        if (res.ok) {
+          setFolderWarning(false)
+          setAgentOk(true)
+          addLog(`Avvio ${label}...`)
+          setTimeout(() => agentSnap(), 1500)
+        } else {
+          addLog(`File non trovato — percorso inviato: ${fullPath}`)
+        }
+      } catch {
+        setAgentOk(false)
+        addLog("Agente NAV non raggiungibile — esegui installa_agente.bat")
+      }
     }
   }
 

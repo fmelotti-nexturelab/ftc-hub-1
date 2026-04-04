@@ -48,6 +48,57 @@ public class WinApi {
 }
 "@
 
+# Win32 API per Credential Manager (CredWrite/CredDelete)
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class CredManager {
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct CREDENTIAL {
+        public uint Flags;
+        public uint Type;
+        public string TargetName;
+        public string Comment;
+        public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+        public uint CredentialBlobSize;
+        public IntPtr CredentialBlob;
+        public uint Persist;
+        public uint AttributeCount;
+        public IntPtr Attributes;
+        public string TargetAlias;
+        public string UserName;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CredWrite(ref CREDENTIAL cred, uint flags);
+
+    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CredDelete(string target, uint type, uint flags);
+
+    private const uint CRED_TYPE_DOMAIN_PASSWORD = 2;
+    private const uint CRED_PERSIST_LOCAL_MACHINE = 2;
+
+    public static bool SaveDomainCred(string target, string user, string pass) {
+        byte[] bytePass = System.Text.Encoding.Unicode.GetBytes(pass);
+        CREDENTIAL cred = new CREDENTIAL();
+        cred.Type = CRED_TYPE_DOMAIN_PASSWORD;
+        cred.TargetName = target;
+        cred.UserName = user;
+        cred.CredentialBlobSize = (uint)bytePass.Length;
+        cred.CredentialBlob = Marshal.AllocHGlobal(bytePass.Length);
+        Marshal.Copy(bytePass, 0, cred.CredentialBlob, bytePass.Length);
+        cred.Persist = CRED_PERSIST_LOCAL_MACHINE;
+        bool ok = CredWrite(ref cred, 0);
+        Marshal.FreeHGlobal(cred.CredentialBlob);
+        return ok;
+    }
+
+    public static bool DeleteDomainCred(string target) {
+        return CredDelete(target, CRED_TYPE_DOMAIN_PASSWORD, 0);
+    }
+}
+"@
+
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$PORT/")
 $listener.Start()
@@ -98,6 +149,108 @@ while ($listener.IsListening) {
             $res.StatusCode = 500
         }
 
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+        $res.OutputStream.Write($bytes, 0, $bytes.Length)
+
+    } elseif ($req.HttpMethod -eq "POST" -and $req.Url.LocalPath -eq "/open-auto") {
+        # Apre RDP con auto-login: salva credenziali con cmdkey, lancia mstsc, poi pulisce
+        try {
+            $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+            $rawBody = $reader.ReadToEnd()
+            $data = $rawBody | ConvertFrom-Json
+            $rdpPath  = $data.path
+            $username = $data.username
+            $password = $data.password
+
+            $ext = [System.IO.Path]::GetExtension($rdpPath).ToLower()
+
+            if (-not $rdpPath -or $ext -ne ".rdp" -or -not (Test-Path $rdpPath)) {
+                Write-Host "[ERR] File non trovato: $rdpPath" -ForegroundColor Yellow
+                $body = '{"error":"file .rdp non trovato"}'
+                $res.StatusCode = 404
+            } elseif (-not $username -or -not $password) {
+                Write-Host "[ERR] Username o password mancanti" -ForegroundColor Yellow
+                $body = '{"error":"username o password mancanti"}'
+                $res.StatusCode = 400
+            } else {
+                # Leggi gateway e server dal .rdp originale
+                $rdpContent = Get-Content $rdpPath -Raw
+                $gateway = ""
+                $server  = ""
+                if ($rdpContent -match 'gatewayhostname:s:(.+)') { $gateway = $Matches[1].Trim() }
+                if ($rdpContent -match 'full address:s:(.+)')    { $server  = $Matches[1].Trim() }
+
+                # Cripta la password con DPAPI (formato che mstsc accetta nel .rdp)
+                Add-Type -AssemblyName System.Security -ErrorAction SilentlyContinue
+                $pwBytes = [System.Text.Encoding]::Unicode.GetBytes($password)
+                $encrypted = [System.Security.Cryptography.ProtectedData]::Protect(
+                    $pwBytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser
+                )
+                $hexPw = [BitConverter]::ToString($encrypted) -replace '-',''
+
+                # Salva credenziali DOMAIN_PASSWORD via Win32 CredWrite (funziona con CredSSP/NLA)
+                if ($gateway) {
+                    [CredManager]::SaveDomainCred("TERMSRV/$gateway", $username, $password) | Out-Null
+                    Write-Host "[OK] CredWrite gateway: TERMSRV/$gateway" -ForegroundColor DarkGray
+                }
+                if ($server) {
+                    [CredManager]::SaveDomainCred("TERMSRV/$server", $username, $password) | Out-Null
+                    Write-Host "[OK] CredWrite server: TERMSRV/$server" -ForegroundColor DarkGray
+                }
+
+                # Crea copia temporanea del .rdp con credenziali embedded
+                $tempRdp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "ftchub_autologin.rdp")
+                $lines = Get-Content $rdpPath
+                $newLines = @()
+                foreach ($line in $lines) {
+                    if ($line -match '^signature:s:' -or $line -match '^signscope:s:') {
+                        continue
+                    } elseif ($line -match '^prompt for credentials on client:') {
+                        $newLines += "prompt for credentials on client:i:0"
+                    } elseif ($line -match '^promptcredentialonce:') {
+                        $newLines += "promptcredentialonce:i:1"
+                    } elseif ($line -match '^gatewaycredentialssource:') {
+                        $newLines += "gatewaycredentialssource:i:0"
+                    } elseif ($line -match '^enablecredsspsupport:' -or $line -match '^authentication level:') {
+                        continue
+                    } elseif ($line -match '^username:' -or $line -match '^password 51:') {
+                        continue
+                    } else {
+                        $newLines += $line
+                    }
+                }
+                $newLines += "username:s:$username"
+                $newLines += "password 51:b:$hexPw"
+                $newLines += "enablecredsspsupport:i:0"
+                $newLines += "authentication level:i:0"
+                # Salva in Unicode (UTF-16LE) come richiesto da mstsc
+                $newLines | Set-Content $tempRdp -Encoding Unicode
+
+                # Copia la password negli appunti per incolla rapido
+                Set-Clipboard -Value $password
+                Write-Host "[OK] Password copiata negli appunti" -ForegroundColor DarkGray
+
+                # Lancia mstsc con il file temporaneo
+                Start-Process "mstsc.exe" -ArgumentList "`"$tempRdp`""
+                Write-Host "[OK] RDP auto-login avviato: $rdpPath (user: $username)" -ForegroundColor Cyan
+
+                # Pulizia in background dopo 30 secondi
+                Start-Job -ScriptBlock {
+                    param($gw, $srv, $tmpFile)
+                    Start-Sleep -Seconds 30
+                    if ($gw) { [CredManager]::DeleteDomainCred("TERMSRV/$gw") | Out-Null }
+                    if ($srv) { [CredManager]::DeleteDomainCred("TERMSRV/$srv") | Out-Null }
+                    if (Test-Path $tmpFile) { Remove-Item $tmpFile -Force }
+                } -ArgumentList $gateway, $server, $tempRdp | Out-Null
+
+                $body = '{"ok":true}'
+                $res.StatusCode = 200
+            }
+        } catch {
+            Write-Host "[ERR] open-auto: $_" -ForegroundColor Red
+            $body = "{`"error`":`"$($_.Exception.Message)`"}"
+            $res.StatusCode = 500
+        }
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
 
@@ -253,14 +406,14 @@ while ($listener.IsListening) {
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
 
     } elseif ($req.HttpMethod -eq "GET" -and $req.Url.LocalPath -eq "/ping") {
-        # Health check — usato dal browser per capire se l'agent è attivo
+        # Health check - usato dal browser per capire se l'agent e' attivo
         $bytes = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
         $res.StatusCode = 200
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
 
     } elseif ($req.HttpMethod -eq "POST" -and $req.Url.LocalPath -eq "/shutdown") {
         # Arresta l'agente in modo pulito
-        Write-Host "[INFO] Shutdown richiesto dal browser — arresto in corso…" -ForegroundColor Yellow
+        Write-Host "[INFO] Shutdown richiesto dal browser - arresto in corso..." -ForegroundColor Yellow
         $bytes = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"message":"agent stopped"}')
         $res.StatusCode = 200
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
