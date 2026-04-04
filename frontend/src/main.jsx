@@ -6,10 +6,13 @@ import { TooltipProvider } from "@radix-ui/react-tooltip"
 import App from "./App"
 import "./index.css"
 
-// Registrazione Service Worker per PWA
+// Disinstalla il vecchio Service Worker e pulisce le cache
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {})
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((reg) => reg.unregister())
+  })
+  caches.keys().then((keys) => {
+    keys.forEach((k) => caches.delete(k))
   })
 }
 

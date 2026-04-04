@@ -1,7 +1,6 @@
 ﻿import { Outlet } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
-import PwaUpdateBanner from "@/components/shared/PwaUpdateBanner"
 import { useStockAutoImport } from "@/hooks/useStockAutoImport"
 import { CheckCircle } from "lucide-react"
 
@@ -26,7 +25,6 @@ export default function Shell() {
           <Outlet />
         </main>
       </div>
-      <PwaUpdateBanner />
       {toast && <ImportToast message={toast} />}
     </div>
   )
