@@ -47,7 +47,7 @@ services:
     volumes:
       - ./backend:/app
       - attachments_data:/data/attachments
-      - ./data:/mnt/f/FTC_HUB_Archivio
+      - ${STORAGE_MOUNT:-./data}:/mnt/f/FTC_HUB_Archivio
     ports:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
