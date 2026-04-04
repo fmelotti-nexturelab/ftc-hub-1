@@ -35,6 +35,7 @@ import StockNavPage from "@/pages/utilities/StockNavPage"
 import ItemListPage from "@/pages/utilities/ItemListPage"
 import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
 import CodiceOperatore from "@/pages/ho/CodiceOperatore"
+import CheckPrezziPage from "@/pages/utilities/CheckPrezziPage"
 
 
 function RoleRedirect() {
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="utilities/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfigHub /></RoleRoute>} />
         <Route path="utilities/genera-tabelle/stock" element={<StockUnifiedPage />} />
         <Route path="utilities/genera-tabelle/item-list" element={<ItemListPage />} />
+        <Route path="utilities/genera-tabelle/check-prezzi" element={<CheckPrezziPage />} />
         <Route path="utilities/consulta-database/stock-nav" element={<StockNavPage />} />
         <Route path="utilities/consulta-database/item-list" element={<ItemListConsultPage />} />
         <Route path="tickets" element={<TicketList />} />

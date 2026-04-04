@@ -5,7 +5,7 @@ import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
 // Genera Tabelle è un contenitore: visibile se almeno una delle sue sotto-utility è abilitata
-const GENERA_CODES = ["utilities_stock_nav", "items_view"]
+const GENERA_CODES = ["utilities_stock_nav", "items_view", "check_prezzi"]
 
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2, ArrowLeftRight, ClipboardCheck, Ban } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2, ArrowLeftRight, ClipboardCheck, Ban, DollarSign } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { utilitiesApi } from "@/api/utilities"
 
@@ -43,6 +43,16 @@ const GROUPS = [
     label: "Anagrafe Articoli",
     desc: "Genera tbl_ItemM da ITEM LIST NAV",
     directPath: "/utilities/genera-tabelle/item-list",
+    items: [],
+  },
+  {
+    id: "check-prezzi",
+    moduleCode: "check_prezzi",
+    icon: DollarSign,
+    color: "bg-green-500",
+    label: "Check Prezzi",
+    desc: "Verifica cambi prezzi su anagrafe e listini NAV",
+    directPath: "/utilities/genera-tabelle/check-prezzi",
     items: [],
   },
   {

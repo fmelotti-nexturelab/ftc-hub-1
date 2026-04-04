@@ -32,6 +32,7 @@ const UTILITY_TABLES = [
   { code: "utilities_stock_nav", name: "Stock NAV",    module: "utilities_stock_nav" },
   { code: "items_view",          name: "ItemList",     module: "items_view" },
   { code: "ordini",              name: "Ordini",       module: "ordini" },
+  { code: "check_prezzi",        name: "Check Prezzi", module: "check_prezzi" },
 ]
 
 function Toggle({ checked, onChange, disabled }) {

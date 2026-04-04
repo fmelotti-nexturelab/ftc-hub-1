@@ -1,8 +1,10 @@
-import { useState } from "react"
-import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle, Check, Search } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle, Check, Search, HardDrive, Save } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useStockFolder } from "@/hooks/useStockFolder"
 import { useFolderConnect } from "@/hooks/useFolderConnect"
 import { useAuthStore } from "@/store/authStore"
+import { appSettingsApi } from "@/api/appSettings"
 
 const STOCK_DEPTS = ["SUPERUSER", "ADMIN", "IT"]
 
@@ -196,6 +198,94 @@ function NavisionFolderSetting() {
 }
 
 
+
+function ServerStorageSetting() {
+  const queryClient = useQueryClient()
+  const [path, setPath] = useState("")
+  const [dirty, setDirty] = useState(false)
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["app-settings"],
+    queryFn: () => appSettingsApi.getAll().then(r => r.data),
+    staleTime: 60_000,
+  })
+
+  useEffect(() => {
+    if (settings?.ftchub_storage_path != null) {
+      setPath(settings.ftchub_storage_path)
+    }
+  }, [settings])
+
+  const mutation = useMutation({
+    mutationFn: (value) => appSettingsApi.update("ftchub_storage_path", value),
+    onSuccess: () => {
+      setDirty(false)
+      queryClient.invalidateQueries({ queryKey: ["app-settings"] })
+    },
+  })
+
+  function handleSave() {
+    mutation.mutate(path.trim())
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <HardDrive size={16} className="text-[#1e3a5f]" aria-hidden="true" />
+        <h2 className="text-sm font-bold text-gray-700">FTC HUB Storage — Percorso server</h2>
+      </div>
+
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        Percorso assoluto della cartella FTC HUB Storage sul server.
+        Il backend usa questo percorso per salvare i file generati (Stock, ItemList, ecc.).
+      </p>
+
+      <div className="flex gap-2">
+        <label htmlFor="ftchub-storage-path" className="sr-only">Percorso FTC HUB Storage</label>
+        <input
+          id="ftchub-storage-path"
+          type="text"
+          value={path}
+          onChange={(e) => { setPath(e.target.value); setDirty(true) }}
+          onKeyDown={(e) => e.key === "Enter" && handleSave()}
+          placeholder={isLoading ? "Caricamento..." : "es. D:\\ftchub_data  oppure  F:\\ftchub_data"}
+          disabled={isLoading}
+          className="flex-1 text-sm font-mono px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition disabled:opacity-50"
+        />
+        <button
+          onClick={handleSave}
+          disabled={!dirty || mutation.isPending}
+          className={`flex items-center gap-1.5 text-sm px-4 py-2 font-semibold rounded-lg transition ${
+            mutation.isSuccess && !dirty
+              ? "bg-green-500 text-white"
+              : "bg-[#1e3a5f] hover:bg-[#2563eb] text-white disabled:opacity-50"
+          }`}
+        >
+          {mutation.isSuccess && !dirty ? (
+            <>
+              <Check size={13} aria-hidden="true" />
+              Salvato
+            </>
+          ) : (
+            <>
+              <Save size={13} aria-hidden="true" />
+              {mutation.isPending ? "Salvataggio..." : "Salva"}
+            </>
+          )}
+        </button>
+      </div>
+
+      {mutation.isError && (
+        <div className="flex items-center gap-1.5 text-xs text-red-600">
+          <AlertCircle size={13} aria-hidden="true" />
+          {mutation.error?.response?.data?.detail || "Errore nel salvataggio"}
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 export default function SettingsPage() {
   const { user, canView } = useAuthStore()
 
@@ -228,13 +318,11 @@ export default function SettingsPage() {
             label="One Italy Commercial - Files"
             hint={`Cartella COMMERCIAL — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy Commercial - Files\\`}
           />
-          <div className="border-t border-gray-100" />
-          <FolderRow
-            folderKey="ftchub_storage"
-            label="FTC HUB Storage"
-            hint={`Cartella archivio locale FTC HUB — es: D:\\ftchub_data\\`}
-          />
         </div>
+      )}
+
+      {STOCK_DEPTS.includes(user?.department) && (
+        <ServerStorageSetting />
       )}
 
     </div>

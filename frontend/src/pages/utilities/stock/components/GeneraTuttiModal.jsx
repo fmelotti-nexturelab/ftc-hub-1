@@ -113,7 +113,6 @@ export default function GeneraTuttiModal({ onClose }) {
 
   const rootHandleRef = useRef(null)
   const commercialHandleRef = useRef(null)
-  const ftchubStorageHandleRef = useRef(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const todayFormatted = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -144,15 +143,6 @@ export default function GeneraTuttiModal({ onClose }) {
         try {
           const perm2 = await commercialHandle.requestPermission({ mode: "readwrite" })
           if (perm2 === "granted") commercialHandleRef.current = commercialHandle
-        } catch { /* silently skip */ }
-      }
-
-      // Try FTC HUB storage folder
-      const ftchubStorageHandle = await getFolderHandle("ftchub_storage")
-      if (ftchubStorageHandle) {
-        try {
-          const perm3 = await ftchubStorageHandle.requestPermission({ mode: "readwrite" })
-          if (perm3 === "granted") ftchubStorageHandleRef.current = ftchubStorageHandle
         } catch { /* silently skip */ }
       }
 
@@ -241,7 +231,6 @@ export default function GeneraTuttiModal({ onClose }) {
 
     const rootHandle = rootHandleRef.current
     const commercialHandle = commercialHandleRef.current
-    const ftchubStorageHandle = ftchubStorageHandleRef.current
 
     const makeOnStep = (entity) => (stepIndex, status, message = null) => {
       setEntityStates(prev => {
@@ -266,7 +255,6 @@ export default function GeneraTuttiModal({ onClose }) {
             stockDate,
             rootHandle,
             commercialHandle,
-            ftchubStorageHandle,
             writeZeros,
             legacyMode,
             onStep: makeOnStep(entity),

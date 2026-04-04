@@ -1,6 +1,9 @@
+import logging
 from datetime import date
+from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +11,9 @@ from app.core.dependencies import get_current_user, require_permission
 from app.database import get_db
 from app.models.auth import User
 from app.models.file_archive import FileArchive
+from app.services.app_settings_service import get_storage_path
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/archive", tags=["Archive"])
 
@@ -73,3 +79,33 @@ async def register_archive(
 
     await db.commit()
     return {"message": "Registrato"}
+
+
+@router.post("/save-file", dependencies=[Depends(_PERM)])
+async def save_file_to_storage(
+    file: UploadFile = File(...),
+    relative_path: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Salva un file nella cartella FTC HUB Storage al percorso relativo indicato.
+    Il percorso assoluto viene costruito come: ftchub_storage_path / relative_path.
+    """
+    try:
+        storage_root = await get_storage_path(db)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    # Sicurezza: impedisci path traversal
+    safe_path = Path(relative_path)
+    if ".." in safe_path.parts:
+        raise HTTPException(status_code=400, detail="Percorso non valido")
+
+    dest = Path(storage_root) / safe_path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    content = await file.read()
+    dest.write_bytes(content)
+    logger.info("Salvato file: %s (%d bytes)", dest, len(content))
+
+    return {"path": str(dest), "size": len(content)}

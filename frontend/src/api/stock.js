@@ -36,4 +36,12 @@ export const stockApi = {
   getArchiveDates: (fileType, entity) =>
     apiClient.get("/api/archive/dates", { params: { file_type: fileType, entity } }),
   registerArchive: (payload) => apiClient.post("/api/archive/register", payload),
+  saveFileToStorage: (fileBlob, relativePath) => {
+    const formData = new FormData()
+    formData.append("file", fileBlob)
+    formData.append("relative_path", relativePath)
+    return apiClient.post("/api/archive/save-file", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
 }
