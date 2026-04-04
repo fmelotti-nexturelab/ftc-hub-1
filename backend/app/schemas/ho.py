@@ -40,12 +40,17 @@ class StoreRow(BaseModel):
     has_data: bool
 
 
+class ExcludedStoreInfo(BaseModel):
+    store_code: str
+    reason: str
+
+
 class SalesPreview(BaseModel):
     source: str
     date_columns: List[str]
     rows: List[StoreRow]
     missing_stores: List[str]
-    excluded_stores: List[str]
+    excluded_stores: List[ExcludedStoreInfo]
     total_by_date: Dict
     grand_total: float
 
@@ -54,6 +59,16 @@ class SalesParseResponse(BaseModel):
     it01: Optional[SalesPreview] = None
     it02: Optional[SalesPreview] = None
     it03: Optional[SalesPreview] = None
+
+
+class SalesStoreValue(BaseModel):
+    store_code: str
+    value: float
+
+
+class SalesExportExcelRequest(BaseModel):
+    analysis_date: str  # es. "03.04.26"
+    stores: List[SalesStoreValue]
 
 
 

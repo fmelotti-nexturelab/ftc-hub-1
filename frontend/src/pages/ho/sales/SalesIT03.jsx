@@ -34,8 +34,7 @@ function YesterdayTable({ preview }) {
     )
   }
 
-  const rows = preview.rows
-    .filter((r) => r.has_data && r.dates[col] !== undefined && r.dates[col] !== 0)
+  const rows = [...preview.rows]
     .sort((a, b) => a.store_code.localeCompare(b.store_code))
 
   return (
@@ -47,24 +46,40 @@ function YesterdayTable({ preview }) {
           <span className="text-white font-bold text-sm">{fmt(rows.reduce((s, r) => s + (r.dates[col] ?? 0), 0))} &euro;</span>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th scope="col" className="text-left px-4 py-2.5 font-semibold text-gray-600">Negozio</th>
-              <th scope="col" className="text-right px-4 py-2.5 font-semibold text-gray-600">{col}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={row.store_code} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                <td className="px-4 py-2 font-mono font-semibold text-gray-800">{row.store_code}</td>
-                <td className="text-right px-4 py-2 text-gray-800 tabular-nums">{fmt(row.dates[col])}</td>
-              </tr>
+      {(() => {
+        const colCount = 5
+        const rowsPerCol = Math.ceil(rows.length / colCount)
+        const chunks = Array.from({ length: colCount }, (_, i) =>
+          rows.slice(i * rowsPerCol, (i + 1) * rowsPerCol)
+        )
+        return (
+          <div className="grid grid-cols-5 gap-2 p-2">
+            {chunks.map((chunk, ci) => (
+              <div key={ci} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-gray-100 border-b border-gray-200">
+                      <th scope="col" className="text-left px-2 py-1.5 font-semibold text-gray-500">Neg.</th>
+                      <th scope="col" className="text-right px-2 py-1.5 font-semibold text-gray-500">{col}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chunk.map((row, i) => {
+                      const noData = !row.dates[col] || row.dates[col] === 0
+                      return (
+                        <tr key={row.store_code} className={`border-b border-gray-50 ${noData ? "bg-red-50/70" : i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
+                          <td className={`px-2 py-1 font-mono font-semibold ${noData ? "text-red-400" : "text-gray-800"}`}>{row.store_code}</td>
+                          <td className={`text-right px-2 py-1 tabular-nums ${noData ? "text-red-300" : "text-gray-700"}`}>{noData ? "—" : fmt(row.dates[col])}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -157,35 +172,56 @@ export default function SalesIT03() {
                 </>
               )
             })()}
-            {preview.missing_stores.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
-                  <AlertCircle size={13} aria-hidden="true" />
-                  {preview.missing_stores.length} negozi senza dati
+            {(() => {
+              const yesterday = getYesterdayKey()
+              const col = preview.date_columns.find((d) => d === yesterday)
+              const zeroStores = col ? preview.rows
+                .filter((r) => r.has_data && (!r.dates[col] || r.dates[col] === 0))
+                .map((r) => r.store_code) : []
+              const allMissing = [...preview.missing_stores, ...zeroStores].sort()
+              if (allMissing.length === 0) return null
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+                    <AlertCircle size={13} aria-hidden="true" />
+                    {allMissing.length} negozi senza dati
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {allMissing.map((s) => (
+                      <span key={s} className="text-xs bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded font-mono">{s}</span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {preview.missing_stores.map((s) => (
-                    <span key={s} className="text-xs bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded font-mono">{s}</span>
-                  ))}
-                </div>
-              </div>
-            )}
+              )
+            })()}
             {preview.excluded_stores?.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
                   <AlertCircle size={13} aria-hidden="true" />
                   {preview.excluded_stores.length} negozi esclusi dal check
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {preview.excluded_stores.map((s) => (
-                    <span key={s} className="text-xs bg-gray-100 border border-gray-200 text-gray-500 px-2 py-0.5 rounded font-mono">{s}</span>
-                  ))}
+                <div className="flex flex-wrap gap-1.5">
+                  {preview.excluded_stores.map((s) => {
+                    const code = typeof s === "string" ? s : s.store_code
+                    const reason = typeof s === "string" ? "" : s.reason
+                    return (
+                      <span key={code} className="text-xs bg-gray-100 border border-gray-200 text-gray-500 px-2 py-0.5 rounded font-mono">
+                        {code}{reason && <span className="ml-1 font-sans text-gray-400">({reason})</span>}
+                      </span>
+                    )
+                  })}
                 </div>
               </div>
             )}
-            {preview.missing_stores.length === 0 && (
-              <p className="text-xs text-green-600 font-medium">Tutti i negozi hanno dati.</p>
-            )}
+            {(() => {
+              const yesterday = getYesterdayKey()
+              const col = preview.date_columns.find((d) => d === yesterday)
+              const hasZero = col && preview.rows.some((r) => r.has_data && (!r.dates[col] || r.dates[col] === 0))
+              if (preview.missing_stores.length === 0 && !hasZero) {
+                return <p className="text-xs text-green-600 font-medium">Tutti i negozi hanno dati.</p>
+              }
+              return null
+            })()}
           </div>
 
           <YesterdayTable preview={preview} />

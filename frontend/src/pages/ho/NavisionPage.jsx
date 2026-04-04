@@ -502,37 +502,31 @@ export default function NavisionPage() {
           </div>
         </div>
 
-        {/* Pannello installazione agente */}
+        {/* Bottone avvia agente */}
         {agentOk === false && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle size={18} className="text-red-500 mt-0.5 shrink-0" aria-hidden="true" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-700">Agente NAV non attivo</p>
-                <p className="text-xs text-red-600 mt-1">
-                  L'agente locale è necessario per aprire le sessioni Navision.
-                  Scarica il pacchetto, estrai lo zip ed esegui <strong>installa_agente.bat</strong>.
-                </p>
-                <div className="flex items-center gap-2 mt-3">
-                  <button
-                    onClick={handleDownloadAgent}
-                    className="flex items-center gap-1.5 text-xs font-semibold bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-lg shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
-                    aria-label="Scarica installer agente NAV"
-                  >
-                    <Download size={13} aria-hidden="true" />
-                    Scarica Installer
-                  </button>
-                  <button
-                    onClick={handleRetryAgent}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
-                    aria-label="Riprova connessione agente"
-                  >
-                    <Play size={13} aria-hidden="true" />
-                    Riprova
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div className="mt-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+            <AlertTriangle size={16} className="text-amber-500 shrink-0" aria-hidden="true" />
+            <span className="text-sm text-amber-700 flex-1">Agente NAV non attivo</span>
+            <button
+              onClick={() => {
+                window.location.href = "ftchub-agent://start"
+                // Ricontrolla dopo 3 secondi
+                setTimeout(() => handleRetryAgent(), 3000)
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+              aria-label="Avvia agente NAV"
+            >
+              <Play size={13} aria-hidden="true" />
+              Avvia Agente
+            </button>
+            <button
+              onClick={handleDownloadAgent}
+              className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 border border-gray-300 bg-white px-3 py-1.5 rounded-lg hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+              aria-label="Scarica installer agente NAV"
+            >
+              <Download size={13} aria-hidden="true" />
+              Installa
+            </button>
           </div>
         )}
       </div>

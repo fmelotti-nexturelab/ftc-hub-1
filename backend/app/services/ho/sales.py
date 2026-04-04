@@ -30,7 +30,7 @@ def is_date_column(header: str) -> bool:
 def parse_tsv_nav(
     raw_tsv: str,
     source: str,
-    excluded_store_codes: set,
+    excluded_store_codes: dict,
 ) -> Optional[SalesPreview]:
     if not raw_tsv or not raw_tsv.strip():
         return None
@@ -81,7 +81,7 @@ def parse_tsv_nav(
 
     store_rows: List[StoreRow] = []
     missing_stores: List[str] = []
-    excluded_in_result: List[str] = []
+    excluded_in_result: list = []
     total_by_date: Dict[str, float] = {d: 0.0 for d in date_columns}
 
     for row in rows[1:]:
@@ -99,7 +99,10 @@ def parse_tsv_nav(
             continue
 
         if store_code in excluded_store_codes:
-            excluded_in_result.append(store_code)
+            excluded_in_result.append({
+                "store_code": store_code,
+                "reason": excluded_store_codes[store_code],
+            })
             continue
 
         dates_values: Dict[str, float] = {}

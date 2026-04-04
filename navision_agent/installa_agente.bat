@@ -17,6 +17,11 @@ echo @echo off
 echo powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "%STARTUP%\ftchub_nav_agent.ps1"
 ) > "%SHORTCUT%"
 
+:: Registra protocol handler ftchub-agent:// (HKCU, non richiede admin)
+reg add "HKCU\Software\Classes\ftchub-agent" /ve /d "URL:FTC HUB Agent" /f >nul 2>&1
+reg add "HKCU\Software\Classes\ftchub-agent" /v "URL Protocol" /d "" /f >nul 2>&1
+reg add "HKCU\Software\Classes\ftchub-agent\shell\open\command" /ve /d "cmd /c \"%SHORTCUT%\"" /f >nul 2>&1
+
 :: Avvia subito senza aspettare il prossimo riavvio
 start "" /B powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "%STARTUP%\ftchub_nav_agent.ps1"
 

@@ -1,7 +1,10 @@
 import { useNavigate } from "react-router-dom"
 import { useSalesCheckStore } from "@/store/salesCheckStore"
 import { useAuthStore } from "@/store/authStore"
-import { LogOut, CheckCircle2, Clock, Mail } from "lucide-react"
+import { LogOut, CheckCircle2, Clock, Mail, Loader2, AlertCircle } from "lucide-react"
+import { useState } from "react"
+import { salesApi } from "@/api/ho/sales"
+import MailRecipients, { useMailRecipients, useRecipientEmails, MailRecipientsSummary } from "@/components/shared/MailRecipients"
 
 const fmt = (n) =>
   typeof n === "number"
@@ -58,7 +61,7 @@ function buildMailBody(yesterday, summaries, grandTotal, userName) {
     <tr style="background:#f9fafb">
       <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:12px;color:#6b7280">Entity</th>
       <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;text-align:right;font-size:12px;color:#6b7280">Totale</th>
-      <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:12px;color:#6b7280">Stato</th>
+      <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:12px;color:#6b7280">Negozi con dati mancanti</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
@@ -91,19 +94,63 @@ export default function SalesReport() {
   const grandTotal = ENTITIES.reduce((t, e) => t + (summaries[e.key]?.total ?? 0), 0)
   const userName = user?.full_name || user?.username || ""
 
+  // ── Destinatari mail (componente riusabile, salvati per servizio) ──
+  const [recipients, setRecipients] = useMailRecipients("salesReport")
+  const { toEmails, ccEmails, hasRecipients } = useRecipientEmails(recipients)
+  const [recipientWarning, setRecipientWarning] = useState(false)
+
+  const [excelStatus, setExcelStatus] = useState(null) // null | "loading" | "ok" | "error"
+  const [excelError, setExcelError] = useState("")
+
+  async function handleExportExcel() {
+    const col = yesterday
+    const stores = []
+    for (const e of ENTITIES) {
+      const preview = previews[e.key]
+      if (!preview) continue
+      for (const row of preview.rows) {
+        if (row.has_data && row.dates[col] !== undefined) {
+          stores.push({ store_code: row.store_code, value: row.dates[col] ?? 0 })
+        }
+      }
+    }
+
+    setExcelStatus("loading")
+    setExcelError("")
+    try {
+      const res = await salesApi.exportExcel({ analysis_date: col, stores })
+      setExcelStatus("ok")
+      setTimeout(() => setExcelStatus(null), 4000)
+    } catch (err) {
+      setExcelStatus("error")
+      setExcelError(err.response?.data?.detail || "Errore export Excel")
+    }
+  }
+
+  const [reminderVisible, setReminderVisible] = useState(false)
+
   async function handleSendMail() {
+    if (!hasRecipients) {
+      setRecipientWarning(true)
+      return
+    }
+    setRecipientWarning(false)
+
     const subject = `Check vendite del ${yesterday}`
     const html = buildMailBody(yesterday, summaries, grandTotal, userName)
+    const to = toEmails.join(";")
+    const cc = ccEmails.join(";")
 
     try {
       // Prova via agente locale → Outlook COM
       const res = await fetch("http://localhost:9999/mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, html }),
+        body: JSON.stringify({ subject, html, to, cc }),
       })
       if (res.ok) {
-        clear()
+        setReminderVisible(true)
+        setTimeout(() => setReminderVisible(false), 3000)
         return
       }
     } catch { /* agente non raggiungibile */ }
@@ -125,8 +172,14 @@ export default function SalesReport() {
         "text/plain": new Blob([plainText], { type: "text/plain" }),
       }),
     ])
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent("(Incolla il contenuto dalla clipboard — Ctrl+V)")}`
-    clear()
+    const mailTo = to ? `mailto:${encodeURIComponent(to)}` : "mailto:"
+    const params = []
+    if (cc) params.push(`cc=${encodeURIComponent(cc)}`)
+    params.push(`subject=${encodeURIComponent(subject)}`)
+    params.push(`body=${encodeURIComponent("(Incolla il contenuto dalla clipboard — Ctrl+V)")}`)
+    window.location.href = `${mailTo}?${params.join("&")}`
+    setReminderVisible(true)
+    setTimeout(() => setReminderVisible(false), 3000)
   }
 
   return (
@@ -158,9 +211,10 @@ export default function SalesReport() {
         </div>
       </div>
 
-      {/* Tabella riepilogativa */}
-      <div className="flex justify-center">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden w-full max-w-2xl">
+      {/* Tabella riepilogativa + Destinatari */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Tabella check vendite — 2/3 */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
             <span className="text-sm font-bold text-gray-800">Check vendite del {yesterday}</span>
             <span className="text-sm font-bold text-gray-800 tabular-nums">Totale {allLoaded ? `${fmt(grandTotal)} €` : "—"}</span>
@@ -170,7 +224,7 @@ export default function SalesReport() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th scope="col" className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600 w-16">Entity</th>
                 <th scope="col" className="text-right px-4 py-2.5 text-xs font-semibold text-gray-600 w-32">Totale</th>
-                <th scope="col" className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600">Stato</th>
+                <th scope="col" className="text-left px-4 py-2.5 text-xs font-semibold text-gray-600">Negozi con dati mancanti</th>
               </tr>
             </thead>
             <tbody>
@@ -207,19 +261,60 @@ export default function SalesReport() {
             </tbody>
           </table>
         </div>
+
+        {/* Riepilogo destinatari — 1/3 */}
+        <div className="space-y-3">
+          <MailRecipientsSummary recipients={recipients} setRecipients={setRecipients} />
+          <MailRecipients recipients={recipients} setRecipients={setRecipients} />
+        </div>
       </div>
 
-      {/* Invia mail */}
-      <div className="flex justify-center max-w-2xl mx-auto">
+      {recipientWarning && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-xs text-amber-700">
+          <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
+          Seleziona almeno un destinatario prima di inviare la mail
+        </div>
+      )}
+
+      {/* Azione unica */}
+      <div className="flex flex-col items-center gap-2 max-w-2xl mx-auto">
         <button
-          onClick={handleSendMail}
-          disabled={!allLoaded}
+          onClick={async () => {
+            await handleExportExcel()
+            await handleSendMail()
+          }}
+          disabled={!allLoaded || excelStatus === "loading"}
           className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-6 py-2.5 rounded-xl font-semibold shadow transition disabled:opacity-40 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-[#2563eb]"
         >
-          <Mail size={16} aria-hidden="true" />
-          Invia mail check vendite
+          {excelStatus === "loading" ? (
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <Mail size={16} aria-hidden="true" />
+          )}
+          Salva i dati e prepara mail
         </button>
+        {excelError && (
+          <p className="text-xs text-red-600">{excelError}</p>
+        )}
       </div>
+
+      {/* Reminder spedizione mail — fade in/out */}
+      {reminderVisible && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-[#1e3a5f] text-white text-sm font-semibold px-8 py-4 rounded-2xl shadow-2xl animate-[fadeInOut_3s_ease-in-out]">
+            Ricordati di spedire la mail!
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeInOut {
+          0% { opacity: 0; transform: scale(0.95); }
+          15% { opacity: 1; transform: scale(1); }
+          70% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.95); }
+        }
+      `}</style>
     </div>
   )
 }

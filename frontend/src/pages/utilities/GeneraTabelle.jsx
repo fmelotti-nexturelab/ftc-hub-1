@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2, ArrowLeftRight, ClipboardCheck, Ban, DollarSign } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, FileText, LogOut, Database, ChevronRight, List, Settings2, ArrowLeftRight, ClipboardCheck, Ban } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { utilitiesApi } from "@/api/utilities"
 
@@ -26,16 +26,6 @@ const GROUPS = [
     ],
   },
   {
-    id: "stock",
-    moduleCode: "utilities_stock_nav",
-    icon: Package,
-    color: "bg-amber-500",
-    label: "Stock OneItaly",
-    desc: "Stock giornaliero da Navision",
-    directPath: "/utilities/genera-tabelle/stock",
-    items: [],
-  },
-  {
     id: "item-list",
     moduleCode: "items_view",
     icon: List,
@@ -46,13 +36,13 @@ const GROUPS = [
     items: [],
   },
   {
-    id: "check-prezzi",
-    moduleCode: "check_prezzi",
-    icon: DollarSign,
-    color: "bg-green-500",
-    label: "Check Prezzi",
-    desc: "Verifica cambi prezzi su anagrafe e listini NAV",
-    directPath: "/utilities/genera-tabelle/check-prezzi",
+    id: "stock",
+    moduleCode: "utilities_stock_nav",
+    icon: Package,
+    color: "bg-amber-500",
+    label: "Stock OneItaly",
+    desc: "Stock giornaliero da Navision",
+    directPath: "/utilities/genera-tabelle/stock",
     items: [],
   },
   {
@@ -72,7 +62,7 @@ const GROUPS = [
     color: "bg-teal-500",
     label: "File FTP",
     desc: "Genera file per FTP",
-    soon: true,
+    legacyOnly: true,
     items: [],
   },
 ]
@@ -97,7 +87,9 @@ export default function GeneraTabelle() {
   })
 
   // Mostra la card se: soon (coming soon), nessun moduleCode (sempre visibile), oppure can_manage=ON
-  const visibleGroups = GROUPS.filter(({ soon, moduleCode }) => {
+  // legacyOnly: visibile sempre ma disabilitata se legacyMode è OFF
+  const visibleGroups = GROUPS.filter(({ soon, moduleCode, legacyOnly }) => {
+    if (legacyOnly) return true
     if (soon) return true
     if (!moduleCode) return true
     return access?.[moduleCode]?.can_manage === true
@@ -177,26 +169,29 @@ export default function GeneraTabelle() {
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {!group
-          ? visibleGroups.map(({ id, icon: Icon, color, label, desc, soon, directPath }) => (
-              <button
-                key={id}
-                onClick={() => !soon && (directPath ? navigate(directPath) : setActiveGroup(id))}
-                disabled={soon}
-                className={`bg-white rounded-xl border border-gray-200 p-6 text-left shadow-sm hover:shadow-md transition-all
-                  ${soon ? "opacity-50 cursor-not-allowed" : "hover:border-[#2563eb] cursor-pointer"}`}
-              >
-                <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
-                  <Icon className="text-white" size={22} aria-hidden="true" />
-                </div>
-                <div className="font-semibold text-gray-800">{label}</div>
-                <div className="text-sm text-gray-500 mt-1">{desc}</div>
-                {soon && (
-                  <span className="mt-2 inline-block text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded">
-                    Coming soon
-                  </span>
-                )}
-              </button>
-            ))
+          ? visibleGroups.map(({ id, icon: Icon, color, label, desc, soon, directPath, legacyOnly }) => {
+              const disabled = soon || (legacyOnly && !legacyMode)
+              return (
+                <button
+                  key={id}
+                  onClick={() => !disabled && (directPath ? navigate(directPath) : setActiveGroup(id))}
+                  disabled={disabled}
+                  className={`bg-white rounded-xl border border-gray-200 p-6 text-left shadow-sm hover:shadow-md transition-all
+                    ${disabled ? "opacity-40 cursor-not-allowed" : "hover:border-[#2563eb] cursor-pointer"}`}
+                >
+                  <div className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}>
+                    <Icon className="text-white" size={22} aria-hidden="true" />
+                  </div>
+                  <div className="font-semibold text-gray-800">{label}</div>
+                  <div className="text-sm text-gray-500 mt-1">{desc}</div>
+                  {soon && !legacyOnly && (
+                    <span className="mt-2 inline-block text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded">
+                      Coming soon
+                    </span>
+                  )}
+                </button>
+              )
+            })
           : group.items.map(({ path, icon: Icon, color, label, desc, soon }) => (
               <button
                 key={path}
