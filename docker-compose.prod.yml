@@ -11,3 +11,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     command: []
+    # In prod il frontend e' buildato staticamente dentro l'immagine:
+    # vuotiamo esplicitamente i volumes del base file cosi' il bind mount
+    # di dev non oscura i file compilati.
+    volumes: []

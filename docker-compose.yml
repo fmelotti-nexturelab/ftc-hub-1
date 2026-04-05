@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -60,6 +58,16 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    environment:
+      # Docker Desktop su Windows non propaga gli eventi inotify al container:
+      # forza Vite a fare polling sul filesystem per rilevare i cambiamenti.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # Hot reload: sorgenti React live dentro il container.
+      - ./frontend:/app
+      # Anonymous volume per proteggere node_modules del container dal bind mount
+      # sopra (altrimenti su Windows verrebbe oscurato dalla cartella host).
+      - /app/node_modules
     ports:
       - "3000:3000"
     command: npm run dev -- --host 0.0.0.0 --port 3000

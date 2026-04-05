@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, ForeignKey, Integer, UniqueConstraint
+﻿from sqlalchemy import Column, String, Boolean, DateTime, Enum, Text, ForeignKey, Integer, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 import uuid
@@ -73,3 +73,25 @@ class NavCredential(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
+
+
+class CheckPrezziLista(Base):
+    """
+    Lista cambi prezzi correnti ricevuti da casa madre via mail (file xlsx).
+    Una riga per ogni item; metadata del caricamento (filename, data, utente)
+    sono ridondanti su ogni riga della stessa entity per semplicita'.
+    La PUT fa delete + insert atomico per la entity, quindi non c'e' storico.
+    """
+    __tablename__ = "check_prezzi_lista"
+    __table_args__ = {"schema": "ho"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    entity = Column(String(10), nullable=False, index=True)
+    item_number = Column(String(50), nullable=False)
+    new_price = Column(Numeric(12, 4), nullable=False)
+    old_price = Column(Numeric(12, 4), nullable=True)
+    reason = Column(String(255), nullable=True)
+    status = Column(String(50), nullable=True)
+    source_filename = Column(String(255), nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    uploaded_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)

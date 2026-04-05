@@ -226,7 +226,7 @@ export default function ItemListPage() {
           <p className="text-xs text-gray-400 mt-0.5">Gestione ItemList di IT01, IT02, IT03 · ItemP (promo) · ItemBF (BlackFriday) · SCRAPlist inventario · SCRAPlist Writedown · Articoli autorizzati al trasferimento tramite PickingList</p>
         </div>
         <button
-          onClick={() => navigate("/utilities/genera-tabelle")}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
         >
           <LogOut size={15} aria-hidden="true" />

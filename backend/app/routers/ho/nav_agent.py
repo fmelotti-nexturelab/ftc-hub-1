@@ -97,6 +97,7 @@ async def update_config(
 async def download_agent_installer():
     """Scarica il pacchetto installer dell'agente NAV come zip."""
     files_to_include = [
+        ("FTCHubNavAgent.exe", "FTCHubNavAgent.exe"),
         ("ftchub_nav_agent.ps1", "ftchub_nav_agent.ps1"),
         ("installa_agente.bat", "installa_agente.bat"),
     ]

@@ -224,9 +224,11 @@ async def export_stock_xlsx(
     all_stores = json.loads(sess.store_codes_json) if sess.store_codes_json else []
 
     if store_code:
+        # Export filtrato per singolo store: NON includiamo la colonna ADM
+        # (lo stock ADM non e' rilevante quando si guarda un solo negozio).
         rows = await db.execute(
             text("""
-                SELECT si.item_no, si.description, si.description_local, si.adm_stock,
+                SELECT si.item_no, si.description, si.description_local,
                        COALESCE(sd.quantity, 0) AS quantity
                 FROM ho.stock_items si
                 LEFT JOIN ho.stock_store_data sd
@@ -239,7 +241,7 @@ async def export_stock_xlsx(
         wb = Workbook()
         ws = wb.active
         ws.title = f"Stock {sess.entity} {sess.stock_date}"
-        ws.append(["No.", "Description", "Description Local", "ADM", store_code])
+        ws.append(["No.", "Description", "Description Local", store_code])
         for r in rows:
             ws.append(list(r))
     else:

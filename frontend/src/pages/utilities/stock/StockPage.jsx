@@ -1,13 +1,24 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { LogOut, Upload, Trash2, FileSpreadsheet, Package } from "lucide-react"
+import { LogOut, Upload, Trash2, FileSpreadsheet, Package, ArrowLeft } from "lucide-react"
 import { stockApi } from "@/api/stock"
 import StockTable from "./components/StockTable"
 import StockUploadDialog from "./components/StockUploadDialog"
 import ExcelExportModal from "./components/ExcelExportModal"
 
-export default function StockPage({ entity, hideExit = false }) {
+export default function StockPage({
+  entity,
+  hideExit = false,
+  // Quando `hideActionBar` e' true, il parent (StockUnifiedPage entity-mode)
+  // controlla da solo i bottoni Carica CSV / Esporta Excel.
+  hideActionBar = false,
+  // Quando `forceTableMode` e' true, nasconde la lista sessioni e mostra solo
+  // la StockTable per `forceTableSessionId`. Usato dal bottone "Vedi stock".
+  forceTableMode = false,
+  forceTableSessionId = null,
+  onBackToList = null,
+}) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [selectedSessionId, setSelectedSessionId] = useState(null)
@@ -61,7 +72,7 @@ export default function StockPage({ entity, hideExit = false }) {
             Carica CSV
           </button>
           <button
-            onClick={() => navigate("/utilities/genera-tabelle")}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
           >
             <LogOut size={15} aria-hidden="true" />
@@ -70,8 +81,8 @@ export default function StockPage({ entity, hideExit = false }) {
         </div>
       )}
 
-      {/* Action bar — mostrata solo in modalità unificata (hideExit=true) */}
-      {hideExit && (
+      {/* Action bar — mostrata solo in modalità unificata (hideExit=true) e non esterna */}
+      {hideExit && !hideActionBar && (
         <div className="flex justify-end gap-2">
           {selectedSessionId && (
             <button
@@ -92,7 +103,26 @@ export default function StockPage({ entity, hideExit = false }) {
         </div>
       )}
 
-      {/* Sessions list */}
+      {/* Modalita' "Vedi stock": nascondo la lista e mostro solo la StockTable */}
+      {forceTableMode && forceTableSessionId && (
+        <div className="space-y-3">
+          {onBackToList && (
+            <button
+              onClick={onBackToList}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            >
+              <ArrowLeft size={13} aria-hidden="true" />
+              Torna alla lista delle estrazioni
+            </button>
+          )}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <StockTable sessionId={forceTableSessionId} />
+          </div>
+        </div>
+      )}
+
+      {/* Sessions list (nascosta in modalita' "Vedi stock") */}
+      {!forceTableMode && (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <span className="text-sm font-semibold text-gray-700">Sessioni caricate</span>
@@ -144,9 +174,10 @@ export default function StockPage({ entity, hideExit = false }) {
           </table>
         )}
       </div>
+      )}
 
-      {/* Data view */}
-      {selectedSessionId && (
+      {/* Data view (solo in modalita' lista) */}
+      {!forceTableMode && selectedSessionId && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <StockTable sessionId={selectedSessionId} />
         </div>

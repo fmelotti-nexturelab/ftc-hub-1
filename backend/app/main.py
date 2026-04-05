@@ -25,6 +25,7 @@ from app.routers.admin import users as admin_users_router
 from app.routers.admin import modules as admin_modules_router
 from app.routers.utilities import stores as utilities_stores_router
 from app.routers.utilities import access as utilities_access_router
+from app.routers.utilities import check_prezzi as utilities_check_prezzi_router
 from app.routers.tickets import tickets as tickets_router
 from app.routers.tickets import config as tickets_config_router
 from app.routers.tickets import chat as tickets_chat_router
@@ -86,6 +87,7 @@ app.include_router(admin_users_router.router)
 app.include_router(admin_modules_router.router)
 app.include_router(utilities_access_router.router)
 app.include_router(utilities_stores_router.router)
+app.include_router(utilities_check_prezzi_router.router)
 app.include_router(tickets_config_router.router)
 app.include_router(tickets_chat_router.router)
 app.include_router(tickets_router.router)

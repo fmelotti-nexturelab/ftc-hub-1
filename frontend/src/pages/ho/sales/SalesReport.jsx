@@ -189,7 +189,7 @@ export default function SalesReport() {
           <h1 className="text-xl font-bold text-gray-800">Report Vendite</h1>
           <p className="text-xs text-gray-400 mt-0.5">Riepilogo check vendite del {yesterday}</p>
         </div>
-        <button onClick={() => navigate("/utilities/genera-tabelle?group=sales")} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]">
           <LogOut size={15} aria-hidden="true" />
           Esci
         </button>
