@@ -46,6 +46,9 @@ services:
       - ./backend:/app
       - attachments_data:/data/attachments
       - ${STORAGE_MOUNT:-./data}:/mnt/f/FTC_HUB_Archivio
+      # Montato read-only: il router /api/ho/navision/agent-installer
+      # serve i file da /navision_agent leggendoli da qui
+      - ./navision_agent:/navision_agent:ro
     ports:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

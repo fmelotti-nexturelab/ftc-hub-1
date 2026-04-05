@@ -5,6 +5,8 @@ services:
       - ./backend:/app
       - attachments_data:/data/attachments
       - D:/:/mnt/f
+      # Vedi nota nel base: il router agent-installer legge da /navision_agent
+      - ./navision_agent:/navision_agent:ro
 
   frontend:
     build:
