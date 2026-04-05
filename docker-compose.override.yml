@@ -1,0 +1,29 @@
+# Docker Compose override automatico per lo sviluppo.
+#
+# Docker Compose legge automaticamente `docker-compose.override.yml` quando
+# lanci `docker compose up -d` senza flag `-f`. In produzione si usa invece:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Il flag `-f` esplicito disabilita il merge automatico dell'override, quindi
+# queste parti dev-only non finiscono in prod.
+#
+# Fix per il bug Docker Compose 2.x: l'override `volumes: []` nel prod.yml
+# non riusciva a svuotare la lista volumes ereditata dal base file, causando
+# il fallimento del mount anonimo `/app/node_modules` sul container nginx-based
+# della produzione. Spostando le parti dev-only qui il problema sparisce
+# perche' il base file non contiene piu' nulla da ereditare.
+
+services:
+  frontend:
+    environment:
+      # Docker Desktop su Windows non propaga gli eventi inotify al container:
+      # forza Vite a fare polling sul filesystem per rilevare i cambiamenti.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      # Hot reload: sorgenti React live dentro il container.
+      - ./frontend:/app
+      # Anonymous volume per proteggere node_modules del container dal bind mount
+      # sopra (altrimenti su Windows verrebbe oscurato dalla cartella host).
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 3000

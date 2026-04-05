@@ -12,8 +12,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    command: []
-    # In prod il frontend e' buildato staticamente dentro l'immagine:
-    # vuotiamo esplicitamente i volumes del base file cosi' il bind mount
-    # di dev non oscura i file compilati.
-    volumes: []
+    # In prod il frontend e' buildato staticamente (nginx statico).
+    # Le parti dev-only (command, volumes, environment) vivono in
+    # docker-compose.override.yml che NON viene letto in prod perche'
+    # qui passiamo -f espliciti che disabilitano il merge automatico.
