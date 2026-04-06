@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user, require_permission
 from app.database import get_db
 from app.models.auth import User
-from app.models.items import ItemImportSession
+from app.models.items import ItemImportSession, ItemMasterIT01
 from app.services.items.it01 import get_items_it01, get_sessions_it01, import_items_it01
 from app.services.items.file_generator import generate_itemlist_files
 from app.services.app_settings_service import get_storage_path
@@ -237,3 +237,26 @@ async def export_items(
         page_size=100_000,
     )
     return [_serialize_item_full(i) for i in result["items"]]
+
+
+@router.get("/lookup", dependencies=[Depends(_PERM_VIEW)])
+async def lookup_item(
+    item_no: str = Query(..., min_length=1),
+    db: AsyncSession = Depends(get_db),
+):
+    session_result = await db.execute(
+        select(ItemImportSession.id)
+        .where(ItemImportSession.entity == "IT01", ItemImportSession.is_current.is_(True))
+    )
+    session_id = session_result.scalar_one_or_none()
+    if not session_id:
+        return {"found": False}
+
+    item_result = await db.execute(
+        select(ItemMasterIT01.description, ItemMasterIT01.category)
+        .where(ItemMasterIT01.session_id == session_id, ItemMasterIT01.item_no == item_no.strip())
+    )
+    row = item_result.first()
+    if not row:
+        return {"found": False}
+    return {"found": True, "description": row.description or "", "category": row.category or ""}

@@ -13,6 +13,9 @@ import { loadItem } from "@/lib/checkPrezziStore"
 import { checkAgentHealth } from "@/lib/navAgent"
 import { buildXlsm, filterColumns } from "@/pages/utilities/stock/itemExportRunner"
 import EccezioniPanel from "./EccezioniPanel"
+import ScrapInvPanel from "./ScrapInvPanel"
+import ScrapWdPanel from "./ScrapWdPanel"
+import PickingPanel from "./PickingPanel"
 
 // URL SharePoint del Convertitore Item List (stabile, condiviso tra utenti).
 // Aperto in Excel desktop via protocollo ms-excel:ofe|u|<url> dal NAV agent.
@@ -27,9 +30,9 @@ const TABS = [
   { id: "PROMO",        label: "ItemPromo",          soon: false },
   { id: "BF",           label: "ItemBlackFriday",    soon: false },
   { id: "ECCEZIONI",    label: "Eccezioni",          soon: false },
-  { id: "SCRAP_INV",    label: "SCRAP INV",          soon: true  },
-  { id: "SCRAP_WD",     label: "SCRAP WD",           soon: true  },
-  { id: "PICK",         label: "ITEM for PICK",      soon: true  },
+  { id: "SCRAP_INV",    label: "SCRAP INV",          soon: false },
+  { id: "SCRAP_WD",     label: "SCRAP WD",           soon: false },
+  { id: "PICK",         label: "ITEM for PICK",      soon: false },
 ]
 
 const IMPORT_STEPS = [
@@ -691,6 +694,9 @@ export default function ItemListPage() {
       {activeEntity === "PROMO" && <ItemGenericPanel key="PROMO" label="ItemPromo" queryKey="items-promo" getApi={itemsApi.getPromo} replaceApi={itemsApi.replacePromo} legacyFile="tbl_ItemP.xlsm" />}
       {activeEntity === "BF" && <ItemGenericPanel key="BF" label="ItemBlackFriday" queryKey="items-blackfriday" getApi={itemsApi.getBlackFriday} replaceApi={itemsApi.replaceBlackFriday} legacyFile="tbl_ItemBF.xlsm" />}
       {activeEntity === "ECCEZIONI" && <EccezioniPanel />}
+      {activeEntity === "SCRAP_INV" && <ScrapInvPanel />}
+      {activeEntity === "SCRAP_WD" && <ScrapWdPanel />}
+      {activeEntity === "PICK" && <PickingPanel />}
 
       {/* Modal overlay lampeggiante durante l'apertura del Convertitore.
           Resta visibile finche' l'agent non conferma che Excel ha aperto il file

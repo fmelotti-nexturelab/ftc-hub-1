@@ -41,6 +41,9 @@ from app.routers.items import it02 as items_it02_router
 from app.routers.items import promo as items_promo_router
 from app.routers.items import blackfriday as items_bf_router
 from app.routers.items import bestseller as items_bestseller_router
+from app.routers.items import scrap_inv as items_scrap_inv_router
+from app.routers.items import scrap_wd as items_scrap_wd_router
+from app.routers.items import picking as items_picking_router
 from app.routers import operator_code as operator_code_router
 from app.routers import app_settings as app_settings_router
 
@@ -107,6 +110,9 @@ app.include_router(items_it02_router.router)
 app.include_router(items_promo_router.router)
 app.include_router(items_bf_router.router)
 app.include_router(items_bestseller_router.router)
+app.include_router(items_scrap_inv_router.router)
+app.include_router(items_scrap_wd_router.router)
+app.include_router(items_picking_router.router)
 app.include_router(operator_code_router.router)
 app.include_router(app_settings_router.router)
 

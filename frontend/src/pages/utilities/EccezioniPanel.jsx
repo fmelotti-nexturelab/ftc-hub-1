@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react"
+import { useState, useMemo, useRef, useCallback } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Download, Upload, Loader2, FileSpreadsheet, AlertCircle,
@@ -29,6 +29,8 @@ function EccTable({ items, searchVal, onSearch, onRefresh }) {
   const [editRow, setEditRow] = useState(null)
   const [newRow, setNewRow] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [lookupStatus, setLookupStatus] = useState(null) // null | "found" | "not_found"
+  const lookupTimer = useRef(null)
   const fileRef = useRef(null)
 
   const filtered = useMemo(() => {
@@ -57,8 +59,27 @@ function EccTable({ items, searchVal, onSearch, onRefresh }) {
   async function handleSaveNew() {
     if (!newRow?.zebra) return
     setSaving(true)
-    try { await itemsApi.appendEccezioni([newRow]); setNewRow(null); onRefresh() }
+    try { await itemsApi.appendEccezioni([newRow]); setNewRow(null); setLookupStatus(null); onRefresh() }
     finally { setSaving(false) }
+  }
+
+  function handleNewZebraChange(val) {
+    setNewRow(prev => ({ ...prev, zebra: val }))
+    setLookupStatus(null)
+    if (lookupTimer.current) clearTimeout(lookupTimer.current)
+    const trimmed = val.trim()
+    if (!trimmed) return
+    lookupTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await itemsApi.lookupItem(trimmed)
+        if (data.found) {
+          setNewRow(prev => ({ ...prev, descrizione: data.description, categoria: data.category }))
+          setLookupStatus("found")
+        } else {
+          setLookupStatus("not_found")
+        }
+      } catch { setLookupStatus("not_found") }
+    }, 500)
   }
 
   function handleImportList(e) {
@@ -92,7 +113,7 @@ function EccTable({ items, searchVal, onSearch, onRefresh }) {
         <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[11px] text-gray-500 border border-gray-200 rounded-lg px-2 py-1 hover:bg-gray-50 transition" aria-label="Aggiungi da lista">
           <FileUp size={12} aria-hidden="true" /> Da lista
         </button>
-        <button onClick={() => { setMode(mode === "edit" ? null : "edit"); setEditingId(null); setNewRow(mode === "edit" ? null : { ...EMPTY_ECC }) }}
+        <button onClick={() => { setMode(mode === "edit" ? null : "edit"); setEditingId(null); setNewRow(mode === "edit" ? null : { ...EMPTY_ECC }); setLookupStatus(null) }}
           className={`flex items-center gap-1 text-[11px] border rounded-lg px-2 py-1 transition ${mode === "edit" ? "bg-blue-50 text-blue-600 border-blue-200" : "text-gray-500 border-gray-200 hover:bg-gray-50"}`} aria-label="Aggiungi manuale">
           <Plus size={12} aria-hidden="true" /> Manuale
         </button>
@@ -127,6 +148,27 @@ function EccTable({ items, searchVal, onSearch, onRefresh }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {mode === "edit" && newRow && (
+                <tr className="bg-blue-50/30 border-b-2 border-blue-200">
+                  {ECC_COLUMNS.map((k, ci) => (
+                    <td key={ci} className="px-1 py-0.5">
+                      {k === "zebra" ? (
+                        <input type="text" value={newRow.zebra} onChange={e => handleNewZebraChange(e.target.value)}
+                          placeholder={ECC_HEADERS[ci]} autoFocus
+                          className={`w-full px-1 py-0.5 text-xs border rounded focus:ring-1 outline-none placeholder:text-gray-300 ${lookupStatus === "not_found" ? "border-red-400 text-red-600 focus:ring-red-400" : "border-blue-300 focus:ring-blue-400"}`} />
+                      ) : (
+                        <input type="text" value={newRow[k] ?? ""} onChange={e => setNewRow({ ...newRow, [k]: e.target.value })}
+                          placeholder={ECC_HEADERS[ci]} className="w-full px-1 py-0.5 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400 outline-none placeholder:text-gray-300" />
+                      )}
+                    </td>
+                  ))}
+                  <td className="px-1 py-0.5">
+                    <button onClick={handleSaveNew} disabled={saving || !newRow.zebra} className="text-green-600 hover:text-green-800 disabled:opacity-30" aria-label="Aggiungi">
+                      {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    </button>
+                  </td>
+                </tr>
+              )}
               {filtered.slice(0, 300).map((item) => (
                 <tr key={item.id} className={`hover:bg-blue-50/40 ${selected.has(item.id) ? "bg-red-50" : "odd:bg-white even:bg-gray-50/50"}`}>
                   {mode === "delete" && <td className="px-2 py-1"><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} aria-label={`Seleziona ${item.zebra}`} /></td>}
@@ -160,21 +202,6 @@ function EccTable({ items, searchVal, onSearch, onRefresh }) {
                   )}
                 </tr>
               ))}
-              {mode === "edit" && newRow && (
-                <tr className="bg-blue-50/30">
-                  {ECC_COLUMNS.map((k, ci) => (
-                    <td key={ci} className="px-1 py-0.5">
-                      <input type="text" value={newRow[k] ?? ""} onChange={e => setNewRow({ ...newRow, [k]: e.target.value })}
-                        placeholder={ECC_HEADERS[ci]} className="w-full px-1 py-0.5 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400 outline-none placeholder:text-gray-300" />
-                    </td>
-                  ))}
-                  <td className="px-1 py-0.5">
-                    <button onClick={handleSaveNew} disabled={saving || !newRow.zebra} className="text-green-600 hover:text-green-800 disabled:opacity-30" aria-label="Aggiungi">
-                      {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                    </button>
-                  </td>
-                </tr>
-              )}
               {filtered.length === 0 && !newRow && (
                 <tr><td colSpan={ECC_HEADERS.length + (mode ? 1 : 0)} className="px-4 py-6 text-center text-sm text-gray-400">Nessun dato.</td></tr>
               )}
@@ -194,6 +221,8 @@ function BsTable({ items, searchVal, onSearch, onRefresh }) {
   const [editVal, setEditVal] = useState("")
   const [newVal, setNewVal] = useState("")
   const [saving, setSaving] = useState(false)
+  const [lookupStatus, setLookupStatus] = useState(null)
+  const lookupTimer = useRef(null)
   const fileRef = useRef(null)
 
   const filtered = useMemo(() => {
@@ -222,8 +251,22 @@ function BsTable({ items, searchVal, onSearch, onRefresh }) {
   async function handleSaveNew() {
     if (!newVal.trim()) return
     setSaving(true)
-    try { await itemsApi.appendBestSeller([{ item_no: newVal.trim() }]); setNewVal(""); onRefresh() }
+    try { await itemsApi.appendBestSeller([{ item_no: newVal.trim() }]); setNewVal(""); setLookupStatus(null); onRefresh() }
     finally { setSaving(false) }
+  }
+
+  function handleNewItemChange(val) {
+    setNewVal(val)
+    setLookupStatus(null)
+    if (lookupTimer.current) clearTimeout(lookupTimer.current)
+    const trimmed = val.trim()
+    if (!trimmed) return
+    lookupTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await itemsApi.lookupItem(trimmed)
+        setLookupStatus(data.found ? "found" : "not_found")
+      } catch { setLookupStatus("not_found") }
+    }, 500)
   }
 
   function handleImportList(e) {
@@ -253,7 +296,7 @@ function BsTable({ items, searchVal, onSearch, onRefresh }) {
         <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 text-[11px] text-gray-500 border border-gray-200 rounded-lg px-2 py-1 hover:bg-gray-50 transition" aria-label="Aggiungi da lista">
           <FileUp size={12} aria-hidden="true" /> Da lista
         </button>
-        <button onClick={() => { setMode(mode === "edit" ? null : "edit"); setEditingId(null); setNewVal("") }}
+        <button onClick={() => { setMode(mode === "edit" ? null : "edit"); setEditingId(null); setNewVal(""); setLookupStatus(null) }}
           className={`flex items-center gap-1 text-[11px] border rounded-lg px-2 py-1 transition ${mode === "edit" ? "bg-blue-50 text-blue-600 border-blue-200" : "text-gray-500 border-gray-200 hover:bg-gray-50"}`} aria-label="Aggiungi manuale">
           <Plus size={12} aria-hidden="true" /> Manuale
         </button>
@@ -288,6 +331,20 @@ function BsTable({ items, searchVal, onSearch, onRefresh }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {mode === "edit" && (
+                <tr className="bg-blue-50/30 border-b-2 border-blue-200">
+                  <td className="px-1 py-0.5">
+                    <input type="text" value={newVal} onChange={e => handleNewItemChange(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSaveNew()}
+                      placeholder="Codice articolo" autoFocus
+                      className={`w-full px-2 py-0.5 text-xs border rounded focus:ring-1 outline-none font-mono placeholder:text-gray-300 ${lookupStatus === "not_found" ? "border-red-400 text-red-600 focus:ring-red-400" : "border-blue-300 focus:ring-blue-400"}`} />
+                  </td>
+                  <td className="px-1 py-0.5">
+                    <button onClick={handleSaveNew} disabled={saving || !newVal.trim()} className="text-green-600 hover:text-green-800 disabled:opacity-30" aria-label="Aggiungi">
+                      {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    </button>
+                  </td>
+                </tr>
+              )}
               {filtered.slice(0, 500).map((item) => (
                 <tr key={item.id} className={`hover:bg-blue-50/40 ${selected.has(item.id) ? "bg-red-50" : "odd:bg-white even:bg-gray-50/50"}`}>
                   {mode === "delete" && <td className="px-2 py-1"><input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} aria-label={`Seleziona ${item.item_no}`} /></td>}
@@ -317,19 +374,6 @@ function BsTable({ items, searchVal, onSearch, onRefresh }) {
                   )}
                 </tr>
               ))}
-              {mode === "edit" && (
-                <tr className="bg-blue-50/30">
-                  <td className="px-1 py-0.5">
-                    <input type="text" value={newVal} onChange={e => setNewVal(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSaveNew()}
-                      placeholder="Codice articolo" className="w-full px-2 py-0.5 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400 outline-none font-mono placeholder:text-gray-300" />
-                  </td>
-                  <td className="px-1 py-0.5">
-                    <button onClick={handleSaveNew} disabled={saving || !newVal.trim()} className="text-green-600 hover:text-green-800 disabled:opacity-30" aria-label="Aggiungi">
-                      {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                    </button>
-                  </td>
-                </tr>
-              )}
               {filtered.length === 0 && mode !== "edit" && (
                 <tr><td colSpan={mode ? 3 : 1} className="px-4 py-6 text-center text-sm text-gray-400">Nessun dato.</td></tr>
               )}

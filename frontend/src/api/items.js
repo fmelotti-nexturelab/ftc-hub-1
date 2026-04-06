@@ -42,4 +42,24 @@ export const itemsApi = {
   appendBestSeller: (rows) => apiClient.post("/api/items/eccezioni/bestseller", { rows }),
   updateBestSeller: (id, data) => apiClient.patch(`/api/items/eccezioni/bestseller/${id}`, data),
   deleteBestSeller: (ids) => apiClient.delete("/api/items/eccezioni/bestseller", { data: { ids } }),
+
+  lookupItem: (item_no) => apiClient.get("/api/items/it01/lookup", { params: { item_no } }),
+
+  getScrapInv: () => apiClient.get("/api/items/scrap-inv"),
+  replaceScrapInv: (rows) => apiClient.put("/api/items/scrap-inv", { rows }),
+  appendScrapInv: (rows) => apiClient.post("/api/items/scrap-inv", { rows }),
+  updateScrapInv: (id, data) => apiClient.patch(`/api/items/scrap-inv/${id}`, data),
+  deleteScrapInv: (ids) => apiClient.delete("/api/items/scrap-inv", { data: { ids } }),
+
+  getScrapWd: () => apiClient.get("/api/items/scrap-wd"),
+  replaceScrapWd: (rows) => apiClient.put("/api/items/scrap-wd", { rows }),
+  appendScrapWd: (rows) => apiClient.post("/api/items/scrap-wd", { rows }),
+  updateScrapWd: (id, data) => apiClient.patch(`/api/items/scrap-wd/${id}`, data),
+  deleteScrapWd: (ids) => apiClient.delete("/api/items/scrap-wd", { data: { ids } }),
+
+  getPicking: () => apiClient.get("/api/items/picking"),
+  replacePicking: (rows) => apiClient.put("/api/items/picking", { rows }),
+  appendPicking: (rows) => apiClient.post("/api/items/picking", { rows }),
+  updatePicking: (id, data) => apiClient.patch(`/api/items/picking/${id}`, data),
+  deletePicking: (ids) => apiClient.delete("/api/items/picking", { data: { ids } }),
 }

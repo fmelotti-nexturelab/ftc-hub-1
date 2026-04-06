@@ -183,15 +183,15 @@ class ScrapInv(Base):
     """Articoli blacklist SCRAP INV (inventario)."""
     __tablename__ = "scrap_inv"
     __table_args__ = (
-        Index("ix_scrap_inv_item_no", "item_no"),
+        Index("ix_scrap_inv_zebra", "zebra"),
         {"schema": "ho"},
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    item_no = Column(String(50), nullable=False)
+    zebra = Column(String(50), nullable=False)
     scrap = Column(String(255), nullable=True)
-    description = Column(String(500), nullable=True)
-    category = Column(String(100), nullable=True)
+    descrizione = Column(String(500), nullable=True)
+    categoria = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -200,15 +200,15 @@ class ScrapWd(Base):
     """Articoli blacklist SCRAP WD (Writedown)."""
     __tablename__ = "scrap_wd"
     __table_args__ = (
-        Index("ix_scrap_wd_item_no", "item_no"),
+        Index("ix_scrap_wd_zebra", "zebra"),
         {"schema": "ho"},
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    item_no = Column(String(50), nullable=False)
+    zebra = Column(String(50), nullable=False)
     bloccato = Column(String(255), nullable=True)
-    description = Column(String(500), nullable=True)
-    category = Column(String(100), nullable=True)
+    descrizione = Column(String(500), nullable=True)
+    categoria = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
