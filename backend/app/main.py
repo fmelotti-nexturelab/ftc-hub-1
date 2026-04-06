@@ -37,6 +37,10 @@ from app.routers.admin import ticket_performance as admin_ticket_performance_rou
 from app.routers import stock as stock_router
 from app.routers import archive as archive_router
 from app.routers.items import it01 as items_it01_router
+from app.routers.items import it02 as items_it02_router
+from app.routers.items import promo as items_promo_router
+from app.routers.items import blackfriday as items_bf_router
+from app.routers.items import bestseller as items_bestseller_router
 from app.routers import operator_code as operator_code_router
 from app.routers import app_settings as app_settings_router
 
@@ -99,6 +103,10 @@ app.include_router(admin_ticket_performance_router.router)
 app.include_router(stock_router.router)
 app.include_router(archive_router.router)
 app.include_router(items_it01_router.router)
+app.include_router(items_it02_router.router)
+app.include_router(items_promo_router.router)
+app.include_router(items_bf_router.router)
+app.include_router(items_bestseller_router.router)
 app.include_router(operator_code_router.router)
 app.include_router(app_settings_router.router)
 

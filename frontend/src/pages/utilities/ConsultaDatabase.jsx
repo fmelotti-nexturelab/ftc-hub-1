@@ -25,7 +25,7 @@ const CARDS = [
     icon: List,
     color: "bg-teal-500",
     label: "ItemList",
-    desc: "Consulta l'anagrafe articoli IT01",
+    desc: "Consulta tutte le tabelle relative all'ItemList",
     moduleCode: "items_view",
   },
 ]

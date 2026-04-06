@@ -103,7 +103,7 @@ async function writeToFolder(dirHandle, name, bytes) {
  * Le colonne non presenti in KEEP_COLUMNS vengono scartate.
  * Le colonne in KEEP_COLUMNS non trovate nell'input vengono ignorate silenziosamente.
  */
-function filterColumns(headers, dataRows) {
+export function filterColumns(headers, dataRows) {
   const srcIdx = KEEP_COLUMNS.map(name => headers.indexOf(name)).filter(i => i !== -1)
   const keptHeaders = srcIdx.map(i => headers[i])
   const keptRows = dataRows.map(row => srcIdx.map(i => row[i] ?? ""))
@@ -114,7 +114,7 @@ function filterColumns(headers, dataRows) {
  * Costruisce il foglio "ITEMS" e il foglio "data" per tbl_ItemM.xlsm.
  * Logica condivisa tra runItemExport e runItemDebug.
  */
-function buildXlsm(headers, dataRows, colCount, batchId, today) {
+export function buildXlsm(headers, dataRows, colCount, batchId, today) {
   // ── Foglio ITEMS ────────────────────────────────────────────────────────────
   const itemsSheet = {}
 

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 FULL_HEADERS = [
     "Nr.", "Descrizione", "Description in Local Language", "Magazzino",
     "Ultimo costo diretto", "Prezzo unitario", "Codice categoria articolo",
-    "Peso netto", "Barcode", "Cat. reg. art./serv. IVA", "Unita per collo",
+    "Peso netto", "Barcode", "Cat. reg. art./serv. IVA", "Unit\u00e0 per collo",
     "MODEL STORE", "Batterie", "First RP", "Category", "Barcode ext.",
     "IVA", "GM% escl. Trasporto", "Descrizione1", "Descrizione2",
     None,  # colonna vuota (col U)
@@ -69,14 +69,41 @@ def _item_to_row(item, field_map):
 
 
 
+# Formattazione colonne per ItemList IT01 archivio (0-based)
+# D=3, G=6, K=10, Q=16, X=23, Y=24 → intero
+# E=4, N=13 → decimale 2 cifre
+# R=17 → float (nessuna forzatura decimali)
+_IT01_INT_COLS = {0, 3, 6, 10, 16, 23, 24}
+_IT01_DEC2_COLS = {4, 13}
+_IT01_FLOAT_COLS = {17}
+
+
+def _to_int_safe(val):
+    if val is None:
+        return None
+    try:
+        return int(float(val))
+    except (ValueError, TypeError):
+        return val
+
+
 def _write_xlsx(path: Path, sheet_name: str, headers: list, rows: list[list]):
-    """Scrive un file .xlsx semplice."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = sheet_name
+    """Scrive un file .xlsx con formattazione colonne IT01."""
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet(sheet_name)
     ws.append(headers)
     for row in rows:
-        ws.append(row)
+        converted = []
+        for col_idx, val in enumerate(row):
+            if col_idx in _IT01_INT_COLS:
+                converted.append(_to_int_safe(val))
+            elif col_idx in _IT01_DEC2_COLS:
+                converted.append(round(float(val), 2) if val is not None else None)
+            elif col_idx in _IT01_FLOAT_COLS:
+                converted.append(float(val) if val is not None else None)
+            else:
+                converted.append(val)
+        ws.append(converted)
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(path))
     wb.close()
@@ -92,55 +119,59 @@ _TBL_NUM_COLS = [0, 3, 4, 5, 6, 7, 10, 13, 16, 17]  # A, D, E, F, G, H, K, N, Q,
 _TBL_DECIMAL_COLS = {4, 5, 7, 17}  # E(last_cost), F(unit_price), H(net_weight), R(gm_pct)
 
 
-def _write_tbl_xlsm(path: Path, batch_id: str, rows: list[list]):
+def _write_tbl_xlsm(path: Path, batch_id: str, headers: list, rows: list[list]):
     """
-    Genera tbl_ItemM.xlsm a partire dal template.
+    Genera tbl_ItemM.xlsm con xlsxwriter (supporto nativo .xlsm).
 
-    - Foglio "data": B1=data (dd/mm/yyyy), C1=ora (hh:mm), B5=batch_id
-    - Foglio "ITEMS": cancella da riga 3, scrive dati da riga 3,
-      converte colonne A,D,E,F,G,H,K,N,Q,R in numero, B1=batch_id
+    - Foglio "ITEMS": B1=batch_id, riga 2=header, dalla riga 3=dati (col A-V)
+    - Foglio "data": B1=data oggi, C1=ora (hh:mm), B2="week XX", B5=batch_id
     """
-    template_path = TEMPLATES_DIR / "tbl_ItemM_template.xlsm"
-    if not template_path.exists():
-        raise ValueError("Template tbl_ItemM non trovato: " + str(template_path))
+    import xlsxwriter
+    from zoneinfo import ZoneInfo
 
-    wb = load_workbook(str(template_path), keep_vba=True)
-
-    # ── Foglio "data" ─────────────────────────────────────────────────────────
-    ws_data = wb["data"]
-    now = datetime.now()
-    ws_data["B1"] = now.strftime("%d/%m/%Y")
-    ws_data["C1"] = now.strftime("%H:%M")
-    ws_data["B5"] = batch_id
-
-    # ── Foglio "ITEMS" ────────────────────────────────────────────────────────
-    ws = wb["ITEMS"]
-
-    # Cancella contenuto da riga 3 a fine file
-    if ws.max_row >= 3:
-        ws.delete_rows(3, ws.max_row - 2)
-
-    # B1 = batch_id
-    ws.cell(row=1, column=2, value=batch_id)
-
-    # Scrivi dati a partire da riga 3
-    for row_idx, row in enumerate(rows, start=3):
-        for col_idx, val in enumerate(row):
-            cell = ws.cell(row=row_idx, column=col_idx + 1)
-            # Converti in numero le colonne specifiche
-            if col_idx in _TBL_NUM_COLS and val is not None:
-                try:
-                    cell.value = float(str(val))
-                    cell.number_format = "0.00" if col_idx in _TBL_DECIMAL_COLS else "0"
-                except (ValueError, TypeError):
-                    cell.value = val
-            else:
-                cell.value = val
+    now = datetime.now(ZoneInfo("Europe/Rome"))
+    max_col = 22  # Colonne A-V
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(str(path))
+
+    wb = xlsxwriter.Workbook(str(path))
+
+    # ── Foglio "ITEMS" ────────────────────────────────────────────────────────
+    ws = wb.add_worksheet("ITEMS")
+
+    # Riga 0 (Excel riga 1): B1 = batch_id
+    ws.write(0, 1, batch_id)
+
+    # Riga 1 (Excel riga 2): header (colonne A-V)
+    for col_idx, val in enumerate(headers[:max_col]):
+        ws.write(1, col_idx, val)
+
+    # Dalla riga 2 (Excel riga 3): dati (colonne A-V)
+    for row_idx, row in enumerate(rows):
+        for col_idx in range(min(max_col, len(row))):
+            val = row[col_idx]
+            excel_row = row_idx + 2  # offset: riga 0=batch, riga 1=header
+            if col_idx in _TBL_NUM_COLS and val is not None:
+                try:
+                    ws.write_number(excel_row, col_idx, float(str(val)))
+                except (ValueError, TypeError):
+                    ws.write(excel_row, col_idx, val)
+            else:
+                ws.write(excel_row, col_idx, val)
+
+    # ── Foglio "data" ─────────────────────────────────────────────────────────
+    ws_data = wb.add_worksheet("data")
+    date_fmt = wb.add_format({"num_format": "dd-mm-yyyy"})
+    ws_data.write_string(0, 0, "data ultima modifica")                # A1
+    ws_data.write_string(1, 0, "messaggio")                           # A2
+    ws_data.write_string(4, 0, "matricola")                           # A5
+    ws_data.write_datetime(0, 1, now.replace(tzinfo=None), date_fmt)  # B1 = data
+    ws_data.write_string(0, 2, now.strftime("%H:%M"))                 # C1 = ora
+    ws_data.write_string(1, 1, f"week {now.isocalendar()[1]}")        # B2 = week
+    ws_data.write_string(4, 1, batch_id)                              # B5 = batch_id
+
     wb.close()
-    logger.info("Scritto %s (%d righe, da template)", path, len(rows))
+    logger.info("Scritto %s (%d righe)", path, len(rows))
 
 
 # Indici colonne nel full row (0-based, corrispondono a A=0, B=1, ... Y=24)
@@ -307,7 +338,7 @@ async def generate_itemlist_files(
 
     # 1. tbl_ItemM.xlsm (da template)
     tbl_path = base / "02_ItemList" / "tbl_ItemM.xlsm"
-    _write_tbl_xlsm(tbl_path, session.batch_id, full_rows)
+    _write_tbl_xlsm(tbl_path, session.batch_id, FULL_HEADERS, full_rows)
 
     # 2. yyyymmdd_IT01_ItemList.xlsx (archivio)
     itemm_name = f"{date_str}_IT01_ItemList.xlsx"

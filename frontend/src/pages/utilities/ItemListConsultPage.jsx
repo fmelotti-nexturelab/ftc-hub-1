@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import {
   List, LogOut, Search, X, ChevronUp, ChevronDown,
   ChevronLeft, ChevronRight, Loader2, Package, CalendarDays, Download, FilterX,
@@ -8,6 +8,7 @@ import { useQuery, useInfiniteQuery } from "@tanstack/react-query"
 import * as XLSX from "xlsx/dist/xlsx.full.min.js"
 import { itemsApi } from "@/api/items"
 import { StockCalendar } from "./stock/components/StockCalendar"
+import { ItemListTable } from "./ItemListPage"
 
 const PAGE_SIZE = 50
 
@@ -167,7 +168,7 @@ async function downloadXlsx(sessionId, params, filename) {
   ]
   const ws = XLSX.utils.aoa_to_sheet(aoa)
   const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, "ItemList IT01")
+  XLSX.utils.book_append_sheet(wb, ws, "ItemList")
   XLSX.writeFile(wb, filename)
 }
 
@@ -200,6 +201,10 @@ function SmallFilterInput({ id, label, placeholder, value, onChange }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function ItemListConsultPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const entity = location.pathname.endsWith("/it03") ? "IT03"
+    : location.pathname.endsWith("/it02") ? "IT02"
+    : "IT01"
 
   const [search, setSearch]           = useState("")
   const [filterStore, setFilterStore] = useState("")
@@ -243,9 +248,10 @@ export default function ItemListConsultPage() {
 
   // Sessions
   const { data: sessions = [], isLoading: loadingSessions } = useQuery({
-    queryKey: ["items-sessions", "IT01"],
+    queryKey: ["items-sessions", entity],
     queryFn: () => itemsApi.getSessionsIT01().then(r => r.data),
     staleTime: 30_000,
+    enabled: entity === "IT01",
   })
 
   const sessionsByDate = {}
@@ -285,7 +291,7 @@ export default function ItemListConsultPage() {
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery({
-    queryKey: ["items-consult-it01", sessionId, dSearch, dFilterStore, dFilterCat, sort],
+    queryKey: ["items-consult", entity, sessionId, dSearch, dFilterStore, dFilterCat, sort],
     queryFn: ({ pageParam }) => itemsApi.getItemsIT01(sessionId, {
       ...queryParams,
       page: pageParam,
@@ -321,7 +327,7 @@ export default function ItemListConsultPage() {
     setExporting(true)
     try {
       const dateStr = activeDate?.replace(/-/g, "") ?? "export"
-      await downloadXlsx(sessionId, queryParams, `ItemList IT01 ${dateStr}.xlsx`)
+      await downloadXlsx(sessionId, queryParams, `ItemList ${entity} ${dateStr}.xlsx`)
     } finally {
       setExporting(false)
     }
@@ -344,8 +350,8 @@ export default function ItemListConsultPage() {
           <List size={18} className="text-teal-600" aria-hidden="true" />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Consulta ItemList IT01</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Anagrafe articoli importata dal Convertitore</p>
+          <h1 className="text-xl font-bold text-gray-800">Consulta ItemList {entity}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Anagrafe articoli {entity}</p>
         </div>
         <button
           onClick={() => navigate(-1)}
@@ -356,8 +362,8 @@ export default function ItemListConsultPage() {
         </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 shrink-0">
+      {/* Toolbar (solo IT01) */}
+      {entity === "IT01" && <div className="flex flex-wrap items-center gap-2 shrink-0">
         {/* Date picker */}
         {loadingSessions ? (
           <div className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-400">
@@ -460,14 +466,14 @@ export default function ItemListConsultPage() {
               {exporting
                 ? <Loader2 size={13} className="animate-spin" aria-hidden="true" />
                 : <Download size={13} aria-hidden="true" />}
-              Estrai Vista
+              Download ItemList
             </button>
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* Table */}
-      {!sessionId ? (
+      {/* Table (solo IT01) */}
+      {entity === "IT01" && (!sessionId ? (
         <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
           Nessuna importazione disponibile.
         </div>
@@ -573,9 +579,16 @@ export default function ItemListConsultPage() {
             </div>
           )}
         </div>
-      )}
+      ))}
 
       {tooltip && <ProductImageTooltip itemNo={tooltip.itemNo} x={tooltip.x} y={tooltip.y} />}
+
+      {/* IT02/IT03: dati da IndexedDB */}
+      {entity !== "IT01" && (
+        <div className="flex-1 min-h-0 overflow-auto">
+          <ItemListTable entity={entity} />
+        </div>
+      )}
     </div>
   )
 }

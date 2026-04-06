@@ -1,13 +1,16 @@
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
 from app.database import get_db
 from app.models.auth import User
+from app.models.items import ItemImportSession
 from app.services.items.it01 import get_items_it01, get_sessions_it01, import_items_it01
 from app.services.items.file_generator import generate_itemlist_files
 from app.services.app_settings_service import get_storage_path
@@ -74,8 +77,47 @@ async def download_tbl_xlsm(db: AsyncSession = Depends(get_db)):
     return FileResponse(
         path=str(tbl_path),
         filename="tbl_ItemM.xlsm",
-        media_type="application/vnd.ms-excel.sheet.macroEnabled.12",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+
+
+@router.get("/tbl-info", dependencies=[Depends(_PERM_VIEW)])
+async def tbl_info(db: AsyncSession = Depends(get_db)):
+    """Metadati del file tbl_ItemM.xlsm + info su chi l'ha generato."""
+    storage_path = await get_storage_path(db)
+    tbl_path = Path(storage_path) / "02_ItemList" / "tbl_ItemM.xlsm"
+    if not tbl_path.exists():
+        return {"exists": False}
+
+    stat = tbl_path.stat()
+    created_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+
+    # La sessione corrente IT01 è quella che ha generato il file
+    result = await db.execute(
+        select(ItemImportSession)
+        .where(ItemImportSession.entity == "IT01", ItemImportSession.is_current.is_(True))
+    )
+    session = result.scalar_one_or_none()
+
+    created_by = None
+    row_count = None
+    if session:
+        row_count = session.row_count
+        if session.imported_by:
+            user_result = await db.execute(
+                select(User).where(User.id == session.imported_by)
+            )
+            user = user_result.scalar_one_or_none()
+            if user:
+                created_by = f"{user.first_name} {user.last_name}".strip() or user.email
+
+    return {
+        "exists": True,
+        "filename": "tbl_ItemM.xlsm",
+        "created_at": created_at,
+        "row_count": row_count,
+        "created_by": created_by,
+    }
 
 
 @router.get("/sessions", dependencies=[Depends(_PERM_VIEW)])

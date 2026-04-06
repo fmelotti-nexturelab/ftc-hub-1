@@ -22,4 +22,24 @@ export const itemsApi = {
 
   downloadTblIT01: () =>
     apiClient.get("/api/items/it01/download-tbl", { responseType: "arraybuffer" }),
+
+  getTblInfoIT01: () => apiClient.get("/api/items/it01/tbl-info"),
+
+  generateItemList: (entity, rows) =>
+    apiClient.post(`/api/items/${entity}/generate`, { rows }, { responseType: "arraybuffer" }),
+
+  getPromo: () => apiClient.get("/api/items/promo"),
+  replacePromo: (rows) => apiClient.put("/api/items/promo", { rows }),
+
+  getBlackFriday: () => apiClient.get("/api/items/blackfriday"),
+  replaceBlackFriday: (rows) => apiClient.put("/api/items/blackfriday", { rows }),
+
+  getEccezioni: () => apiClient.get("/api/items/eccezioni"),
+  replaceEccezioni: (eccezioni, bestseller) => apiClient.put("/api/items/eccezioni", { eccezioni, bestseller }),
+  appendEccezioni: (rows) => apiClient.post("/api/items/eccezioni/eccezioni", { rows }),
+  updateEccezione: (id, data) => apiClient.patch(`/api/items/eccezioni/eccezioni/${id}`, data),
+  deleteEccezioni: (ids) => apiClient.delete("/api/items/eccezioni/eccezioni", { data: { ids } }),
+  appendBestSeller: (rows) => apiClient.post("/api/items/eccezioni/bestseller", { rows }),
+  updateBestSeller: (id, data) => apiClient.patch(`/api/items/eccezioni/bestseller/${id}`, data),
+  deleteBestSeller: (ids) => apiClient.delete("/api/items/eccezioni/bestseller", { data: { ids } }),
 }

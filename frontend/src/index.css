@@ -18,3 +18,14 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.2; }
 }
+
+/* Ticker scorrevole stile notiziario — usato per messaggi informativi lunghi */
+@keyframes ftc-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ftc-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ftc-marquee 25s linear infinite;
+}

@@ -34,6 +34,7 @@ import StockUnifiedPage from "@/pages/utilities/stock/StockUnifiedPage"
 import StockNavPage from "@/pages/utilities/StockNavPage"
 import ItemListPage from "@/pages/utilities/ItemListPage"
 import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
+import ItemListHub from "@/pages/utilities/ItemListHub"
 import CodiceOperatore from "@/pages/ho/CodiceOperatore"
 import CheckPrezziPage from "@/pages/utilities/CheckPrezziPage"
 
@@ -81,7 +82,10 @@ export default function App() {
         <Route path="utilities/genera-tabelle/item-list" element={<ItemListPage />} />
         <Route path="utilities/genera-tabelle/check-prezzi" element={<CheckPrezziPage />} />
         <Route path="utilities/consulta-database/stock-nav" element={<StockNavPage />} />
-        <Route path="utilities/consulta-database/item-list" element={<ItemListConsultPage />} />
+        <Route path="utilities/consulta-database/item-list" element={<ItemListHub />} />
+        <Route path="utilities/consulta-database/item-list/it01" element={<ItemListConsultPage />} />
+        <Route path="utilities/consulta-database/item-list/it02" element={<ItemListConsultPage />} />
+        <Route path="utilities/consulta-database/item-list/it03" element={<ItemListConsultPage />} />
         <Route path="tickets" element={<TicketList />} />
         <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN"]}><TicketDashboard /></RoleRoute>} />
         <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "DM"]}><TicketHistory /></RoleRoute>} />
