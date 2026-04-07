@@ -19,6 +19,17 @@ from app.models.ticket_config import (
 from app.schemas.tickets import TicketCreate, TicketResponse, TicketStatusUpdate, TicketAssignUpdate, TicketBulkAction
 from app.services.tickets import notification_service, routing_service, chat_service
 
+PRIORITY_LEVELS = ["critical", "high", "medium", "low"]
+
+
+def _degrade_priority(priority: str, levels: int) -> str:
+    """Degrada la priorità di N livelli. Se non può scendere oltre, ritorna il livello più basso."""
+    try:
+        idx = PRIORITY_LEVELS.index(priority.lower())
+    except ValueError:
+        return "medium"
+    return PRIORITY_LEVELS[min(idx + levels, len(PRIORITY_LEVELS) - 1)]
+
 
 async def _get_manager_user_ids(db: AsyncSession) -> list:
     """Restituisce gli ID di tutti gli utenti attivi con ruolo di gestione ticket (IT, SUPERUSER)."""
@@ -147,7 +158,8 @@ async def _load_name_maps(
 
 
 async def _get_user_store_number(db: AsyncSession, user_id) -> Optional[str]:
-    """Restituisce lo store_code primario dell'utente da user_assignments, se esiste."""
+    """Restituisce lo store_code primario dell'utente da user_assignments.
+    Fallback: cerca per nome in ho.stores.sm_name."""
     result = await db.execute(
         select(UserAssignment).where(
             UserAssignment.user_id == user_id,
@@ -156,7 +168,25 @@ async def _get_user_store_number(db: AsyncSession, user_id) -> Optional[str]:
         ).order_by(UserAssignment.assignment_type)  # PRIMARY prima
     )
     assignment = result.scalars().first()
-    return assignment.store_code if assignment else None
+    if assignment:
+        return assignment.store_code
+
+    # Fallback: cerca per nome utente nella tabella stores
+    from app.models.stores import Store
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if user and user.full_name:
+        store_result = await db.execute(
+            select(Store.store_number).where(
+                Store.sm_name == user.full_name,
+                Store.is_active == True,
+            )
+        )
+        store_num = store_result.scalar_one_or_none()
+        if store_num:
+            return store_num
+
+    return None
 
 
 async def create_ticket(
@@ -168,11 +198,15 @@ async def create_ticket(
     result = await db.execute(text("SELECT nextval('tickets.ticket_number_seq')"))
     next_num = result.scalar()
 
-    # Auto-popola store_number per STORE e STOREMANAGER
+    # Auto-popola store_number: negozio per STORE/STOREMANAGER, department per HO
     store_number: Optional[str] = None
     department = getattr(current_user, "department", None)
     if department in (UserDepartment.STORE, UserDepartment.STOREMANAGER):
         store_number = await _get_user_store_number(db, current_user.id)
+    elif department:
+        # Per utenti HO/Admin: mostra il department come contesto
+        dept_value = department.value if hasattr(department, "value") else str(department)
+        store_number = dept_value
 
     original_description = data.original_description or data.description
     description = await chat_service.enhance_description(data.title, data.description)
@@ -203,7 +237,6 @@ async def create_ticket(
     if rule:
         if rule.assigned_user_id:
             ticket.assigned_to = rule.assigned_user_id
-            ticket.status = TicketStatus.IN_PROGRESS
         if rule.team_id:
             ticket.team_id = rule.team_id
             # carica email del team
@@ -239,6 +272,23 @@ async def create_ticket(
         body=f"{ticket.title} — aperto da {creator_name}",
         ticket_id=ticket.id,
     )
+
+    # Notifiche in-app ai backup con priorità degradata (no email — gestita dal digest giornaliero)
+    if rule:
+        priority_str = ticket.priority if isinstance(ticket.priority, str) else ticket.priority.value
+        for backup_uid, degrade_levels in [(rule.backup_user_id_1, 1), (rule.backup_user_id_2, 2)]:
+            if not backup_uid or backup_uid == current_user.id:
+                continue
+            degraded = _degrade_priority(priority_str, degrade_levels)
+            label = "Backup 1" if degrade_levels == 1 else "Backup 2"
+            await notification_service.push(
+                db, backup_uid,
+                type="ticket_backup",
+                title=f"[{label}] Ticket #{ticket.ticket_number:04d} — priorità {degraded}",
+                body=f"{ticket.title} — aperto da {creator_name} (priorità originale: {priority_str})",
+                ticket_id=ticket.id,
+            )
+
     await db.commit()
 
     # Carica nomi per la risposta
@@ -738,6 +788,8 @@ async def admin_truncate_tickets(db: AsyncSession) -> int:
     await db.execute(delete(TicketComment))
     await db.execute(delete(Notification).where(Notification.ticket_id != None))
     await db.execute(delete(Ticket))
+    # Resetta la sequenza ticket_number a 1
+    await db.execute(text("ALTER SEQUENCE tickets.ticket_number_seq RESTART WITH 1"))
     await db.commit()
 
     return total

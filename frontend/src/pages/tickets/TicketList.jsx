@@ -343,7 +343,11 @@ export default function TicketList() {
                       #{String(t.ticket_number).padStart(4, "0")}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">{t.title}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{t.subcategory_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-xs">
+                      {t.category_name && <span className="text-gray-500">{t.category_name}</span>}
+                      {t.subcategory_name && <span className="block text-gray-400 text-[11px]">{t.subcategory_name}</span>}
+                      {!t.category_name && !t.subcategory_name && "—"}
+                    </td>
                     <td className="px-4 py-3"><TicketPriorityBadge priority={t.priority} /></td>
                     <td className="px-4 py-3"><TicketStatusBadge status={t.status} /></td>
                     <td className="px-4 py-3 text-xs text-gray-400">
@@ -480,6 +484,20 @@ export default function TicketList() {
           </select>
         )}
 
+        <select value={filters.subcategory_id} onChange={set("subcategory_id")} className={selectClass}>
+          <option value="">Tutti gli ambiti</option>
+          {(() => {
+            const seen = new Map()
+            ;(tickets || []).forEach(t => {
+              if (t.subcategory_id && t.subcategory_name && !seen.has(t.subcategory_id))
+                seen.set(t.subcategory_id, t.subcategory_name)
+            })
+            return [...seen.entries()]
+              .sort((a, b) => a[1].localeCompare(b[1]))
+              .map(([id, name]) => <option key={id} value={id}>{name}</option>)
+          })()}
+        </select>
+
         {hasFilters && (
           <button
             onClick={resetAll}
@@ -546,10 +564,10 @@ export default function TicketList() {
                     {t.title}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {t.store_number
-                      ? <span className="font-mono font-semibold text-gray-700">{t.store_number}</span>
-                      : <span className="font-mono font-semibold text-gray-700">{t.requester_name || "—"}</span>
-                    }
+                    <span className="font-semibold text-gray-700">{t.requester_name || t.creator_name || "—"}</span>
+                    {t.store_number && (
+                      <span className="block font-mono text-[11px] text-gray-400 mt-0.5">{t.store_number}</span>
+                    )}
                   </td>
                   {canSeeTeam && (
                     <td className="px-4 py-3 text-xs">

@@ -657,6 +657,7 @@ function TeamsTab() {
 function RoutingRulesTab() {
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [editingRule, setEditingRule] = useState(null) // null = nuova, id = modifica
   const [form, setForm] = useState({
     category_id: "",
     subcategory_id: "",
@@ -702,9 +703,18 @@ function RoutingRulesTab() {
     ? allUsers.filter(u => teamMemberIds.has(u.id))
     : allUsers
 
+  const resetForm = () => {
+    setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" })
+    setEditingRule(null)
+    setShowForm(false)
+  }
   const createRule = useMutation({
     mutationFn: (data) => ticketConfigApi.createRoutingRule(data),
-    onSuccess: () => { qc.invalidateQueries(["admin-routing-rules"]); setShowForm(false); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }) },
+    onSuccess: () => { qc.invalidateQueries(["admin-routing-rules"]); resetForm() },
+  })
+  const updateRule = useMutation({
+    mutationFn: ({ id, data }) => ticketConfigApi.updateRoutingRule(id, data),
+    onSuccess: () => { qc.invalidateQueries(["admin-routing-rules"]); resetForm() },
   })
   const deleteRule = useMutation({
     mutationFn: (id) => ticketConfigApi.deleteRoutingRule(id),
@@ -727,18 +737,21 @@ function RoutingRulesTab() {
 
   const selectClass = "w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition text-sm"
 
-  // Verifica duplicati
+  // Verifica duplicati: solo sulla coppia categoria+sottocategoria
+  // (una categoria può avere più regole, una sottocategoria al massimo una)
   const isDuplicate = rules.some(r =>
+    r.id !== editingRule &&
     r.category_id === parseInt(form.category_id) &&
-    ((!r.subcategory_id && !form.subcategory_id) ||
-     r.subcategory_id === parseInt(form.subcategory_id))
+    (form.subcategory_id
+      ? r.subcategory_id === parseInt(form.subcategory_id)
+      : !r.subcategory_id)
   )
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm) { resetForm() } else { setEditingRule(null); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }); setShowForm(true) } }}
           className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition"
         >
           <Plus size={14} /> Nuova regola
@@ -747,7 +760,7 @@ function RoutingRulesTab() {
 
       {showForm && (
         <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
-          <h4 className="font-semibold text-gray-700 text-sm">Nuova regola di assegnazione</h4>
+          <h4 className="font-semibold text-gray-700 text-sm">{editingRule ? "Modifica regola di assegnazione" : "Nuova regola di assegnazione"}</h4>
           {isDuplicate && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
               <AlertCircle size={13} />
@@ -809,7 +822,7 @@ function RoutingRulesTab() {
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="text-sm text-gray-500 px-4 py-2 rounded-xl hover:bg-gray-100 transition">Annulla</button>
+            <button onClick={resetForm} className="text-sm text-gray-500 px-4 py-2 rounded-xl hover:bg-gray-100 transition">Annulla</button>
             <button
               onClick={() => {
                 const payload = {
@@ -821,12 +834,16 @@ function RoutingRulesTab() {
                   backup_user_id_2: form.backup_user_id_2 || null,
                   priority_override: form.priority_override || null,
                 }
-                createRule.mutate(payload)
+                if (editingRule) {
+                  updateRule.mutate({ id: editingRule, data: payload })
+                } else {
+                  createRule.mutate(payload)
+                }
               }}
-              disabled={!form.category_id || isDuplicate || createRule.isPending}
+              disabled={!form.category_id || (isDuplicate && !editingRule) || createRule.isPending || updateRule.isPending}
               className="text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition disabled:opacity-40"
             >
-              Salva
+              {editingRule ? "Aggiorna" : "Salva"}
             </button>
           </div>
         </div>
@@ -870,24 +887,50 @@ function RoutingRulesTab() {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${rule.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                    <button
+                      aria-label={rule.is_active ? "Disattiva regola" : "Attiva regola"}
+                      onClick={() => updateRule.mutate({ id: rule.id, data: { ...rule, is_active: !rule.is_active } })}
+                      className={`text-xs px-2 py-0.5 rounded font-medium cursor-pointer transition hover:opacity-70 ${rule.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                    >
                       {rule.is_active ? "attiva" : "inattiva"}
-                    </span>
+                    </button>
                   </td>
                   <td className="px-4 py-3">
-                    {confirmDelete === rule.id ? (
-                      <ConfirmDelete
-                        onConfirm={() => deleteRule.mutate(rule.id)}
-                        onCancel={() => setConfirmDelete(null)}
-                      />
-                    ) : (
+                    <div className="flex items-center gap-1">
                       <button
-                        onClick={() => setConfirmDelete(rule.id)}
-                        className="p-1 rounded text-gray-300 hover:text-red-500 transition"
+                        aria-label="Modifica regola"
+                        onClick={() => {
+                          setEditingRule(rule.id)
+                          setForm({
+                            category_id: String(rule.category_id ?? ""),
+                            subcategory_id: String(rule.subcategory_id ?? ""),
+                            team_id: String(rule.team_id ?? ""),
+                            assigned_user_id: rule.assigned_user_id ?? "",
+                            backup_user_id_1: rule.backup_user_id_1 ?? "",
+                            backup_user_id_2: rule.backup_user_id_2 ?? "",
+                            priority_override: rule.priority_override ?? "",
+                          })
+                          setShowForm(true)
+                        }}
+                        className="p-1 rounded text-gray-300 hover:text-[#2563eb] transition"
                       >
-                        <Trash2 size={14} />
+                        <Pencil size={14} />
                       </button>
-                    )}
+                      {confirmDelete === rule.id ? (
+                        <ConfirmDelete
+                          onConfirm={() => deleteRule.mutate(rule.id)}
+                          onCancel={() => setConfirmDelete(null)}
+                        />
+                      ) : (
+                        <button
+                          aria-label="Elimina regola"
+                          onClick={() => setConfirmDelete(rule.id)}
+                          className="p-1 rounded text-gray-300 hover:text-red-500 transition"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
