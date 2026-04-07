@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, func, or_, cast, String, case, delete
+from sqlalchemy import select, func, or_, cast, String, case, delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.auth import User, UserDepartment
@@ -164,11 +164,9 @@ async def create_ticket(
     data: TicketCreate,
     current_user: User,
 ) -> TicketResponse:
-    # ticket_number: prossimo intero disponibile
-    result = await db.execute(
-        select(func.coalesce(func.max(Ticket.ticket_number), 0))
-    )
-    next_num = result.scalar() + 1
+    # ticket_number: usa sequenza PostgreSQL (concurrency-safe)
+    result = await db.execute(text("SELECT nextval('tickets.ticket_number_seq')"))
+    next_num = result.scalar()
 
     # Auto-popola store_number per STORE e STOREMANAGER
     store_number: Optional[str] = None
