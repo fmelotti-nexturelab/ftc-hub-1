@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Font etichette ── */
+@font-face {
+  font-family: 'FrutigerTigerBold';
+  src: url('./assets/fonts/FrutigerTIGER-bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'FrutigerLight';
+  src: url('./assets/fonts/FrutigerNextLTW1G-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Code128';
+  src: url('./assets/fonts/code128.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900;

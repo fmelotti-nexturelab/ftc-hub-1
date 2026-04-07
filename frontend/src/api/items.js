@@ -62,4 +62,6 @@ export const itemsApi = {
   appendPicking: (rows) => apiClient.post("/api/items/picking", { rows }),
   updatePicking: (id, data) => apiClient.patch(`/api/items/picking/${id}`, data),
   deletePicking: (ids) => apiClient.delete("/api/items/picking", { data: { ids } }),
+
+  enrichLabels: (zebraCodes, mode = "normal") => apiClient.post("/api/items/labels/enrich", { zebra_codes: zebraCodes, mode }),
 }

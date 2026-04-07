@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
 import { ticketsApi } from "@/api/tickets"
-import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck } from "lucide-react"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck, Tag } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
@@ -202,6 +202,24 @@ export default function Sidebar() {
             </NavLink>
           )}
         </div>
+
+        {canView("stampa_etichette") && (
+          <div className="mt-4">
+            <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+              ETICHETTE
+            </div>
+            <NavLink
+              to="/utilities/stampa-etichette"
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+                ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+              }
+            >
+              <Tag size={17} aria-hidden="true" />
+              <span>Stampa Etichette</span>
+            </NavLink>
+          </div>
+        )}
 
         {canView("codici_operatore") && (
           <NavLink

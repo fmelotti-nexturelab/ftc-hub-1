@@ -1,0 +1,165 @@
+/* ── Print-only styles per Stampa Etichette ──────────────────────────── */
+/* Font @font-face dichiarati in index.css */
+
+#label-print-root { display: none; }
+
+@media print {
+  body * { visibility: hidden; }
+  #label-print-root, #label-print-root * { visibility: visible; }
+  #label-print-root {
+    display: block !important;
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+  }
+
+  /* ═══ GRANDI: A4 landscape 3x3 ═══ */
+  .label-page-large {
+    page-break-after: always;
+    width: 234mm;
+    display: grid;
+    grid-template-columns: repeat(3, 77.2mm);
+    grid-template-rows: repeat(3, 54.9mm);
+    column-gap: 1.5mm;
+    padding: 0; margin: 0 auto;
+  }
+
+  /* ═══ PICCOLE: A4 portrait 3x7 ═══ */
+  .label-page-small {
+    page-break-after: always;
+    width: 183mm;
+    display: grid;
+    grid-template-columns: repeat(3, 60.3mm);
+    grid-template-rows: repeat(7, 38.2mm);
+    gap: 0; padding: 0; margin: 0 auto;
+  }
+
+  .label-page-large:last-child,
+  .label-page-small:last-child { page-break-after: auto; }
+
+  /* ═══ Cella etichetta ═══ */
+  .label-cell {
+    box-sizing: border-box;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .label-cell-empty { box-sizing: border-box; }
+
+  /* ── TOP: desc a sinistra + badge a destra ── */
+  .label-top {
+    display: flex;
+    width: 100%;
+  }
+  .label-top-left {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+  .label-top-right {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  /* Desc riga 1: FrutigerTigerBold */
+  .label-desc-row1 {
+    font-family: 'FrutigerTigerBold', Helvetica, sans-serif;
+    text-align: left;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  /* Desc riga 2: FrutigerLight */
+  .label-desc-row2 {
+    font-family: 'FrutigerLight', Helvetica, sans-serif;
+    text-align: left;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  /* Desc riga 3 (categoria): FrutigerLight */
+  .label-desc-row3 {
+    font-family: 'FrutigerLight', Helvetica, sans-serif;
+    text-align: left;
+    color: #000;
+    line-height: 1.3;
+  }
+
+  /* ── MIDDLE: prezzo allineato a destra ── */
+  .label-price-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .label-price {
+    font-family: 'FrutigerTigerBold', Helvetica, sans-serif;
+    color: #000;
+    line-height: 1;
+    text-align: right;
+  }
+
+  /* ── BOTTOM: barcode | codice | EUR x/L ── */
+  .label-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 100%;
+    gap: 2mm;
+  }
+  .label-barcode {
+    flex-shrink: 0;
+  }
+  .label-barcode svg { display: block; }
+  .label-zebra {
+    font-family: 'FrutigerLight', Helvetica, sans-serif;
+    color: #000;
+    white-space: nowrap;
+    text-align: right;
+  }
+  .label-kgl {
+    font-family: 'FrutigerLight', Helvetica, sans-serif;
+    color: #000;
+    white-space: nowrap;
+  }
+
+  /* Badge Best Seller (cerchio nero) */
+  .label-badge-bs {
+    background: #222;
+    color: #fff;
+    font-family: 'FrutigerTigerBold', Helvetica, sans-serif;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.1;
+  }
+
+  /* ═══════════════ GRANDI ═══════════════ */
+  .label-page-large .label-cell { padding: 2mm 3mm 2mm 3mm; }
+  .label-page-large .label-desc-row1 { font-size: 16pt; }
+  .label-page-large .label-desc-row2 { font-size: 14pt; }
+  .label-page-large .label-desc-row3 { font-size: 12pt; }
+  .label-page-large .label-price { font-size: 80pt; }
+  .label-page-large .label-zebra { font-size: 8pt; }
+  .label-page-large .label-kgl { font-size: 8pt; }
+  .label-page-large .label-badge-bs { width: 16mm; height: 16mm; font-size: 16pt; }
+
+  /* ═══════════════ PICCOLE ═══════════════ */
+  .label-page-small .label-cell { padding: 1.5mm 2mm 1mm 2mm; }
+  .label-page-small .label-desc-row1 { font-size: 10pt; }
+  .label-page-small .label-desc-row2 { font-size: 9pt; }
+  .label-page-small .label-desc-row3 { font-size: 8pt; }
+  .label-page-small .label-price { font-size: 36pt; }
+  .label-page-small .label-zebra { font-size: 6pt; }
+  .label-page-small .label-kgl { font-size: 6pt; }
+  .label-page-small .label-badge-bs { width: 10mm; height: 10mm; font-size: 10pt; }
+}

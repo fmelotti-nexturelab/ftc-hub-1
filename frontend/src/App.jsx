@@ -37,6 +37,7 @@ import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
 import ItemListHub from "@/pages/utilities/ItemListHub"
 import CodiceOperatore from "@/pages/ho/CodiceOperatore"
 import CheckPrezziPage from "@/pages/utilities/CheckPrezziPage"
+import StampaEtichettePage from "@/pages/utilities/StampaEtichettePage"
 
 
 function RoleRedirect() {
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="utilities/genera-tabelle/stock" element={<StockUnifiedPage />} />
         <Route path="utilities/genera-tabelle/item-list" element={<ItemListPage />} />
         <Route path="utilities/genera-tabelle/check-prezzi" element={<CheckPrezziPage />} />
+        <Route path="utilities/stampa-etichette" element={<StampaEtichettePage />} />
         <Route path="utilities/consulta-database/stock-nav" element={<StockNavPage />} />
         <Route path="utilities/consulta-database/item-list" element={<ItemListHub />} />
         <Route path="utilities/consulta-database/item-list/it01" element={<ItemListConsultPage />} />
