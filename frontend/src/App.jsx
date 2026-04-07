@@ -27,6 +27,7 @@ import TicketHistory from "@/pages/tickets/TicketHistory"
 import TicketPerformance from "@/pages/tickets/TicketPerformance"
 import SupportLookup from "@/pages/admin/SupportLookup"
 import TicketConfig from "@/pages/admin/TicketConfig"
+import SchedulerPage from "@/pages/admin/SchedulerPage"
 import TicketConfigHub from "@/pages/utilities/TicketConfigHub"
 import ProfilePage from "@/pages/ProfilePage"
 import SettingsPage from "@/pages/SettingsPage"
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="admin" element={<RoleRoute roles={["ADMIN", "IT"]}><AdminUsers /></RoleRoute>} />
         <Route path="admin/support" element={<RoleRoute roles={["ADMIN", "IT"]}><SupportLookup /></RoleRoute>} />
         <Route path="admin/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfig /></RoleRoute>} />
+        <Route path="admin/scheduler" element={<RoleRoute roles={["ADMIN", "IT"]}><SchedulerPage /></RoleRoute>} />
         <Route path="utilities" element={<UtilitiesDashboard />} />
         <Route path="utilities/consulta-database" element={<ConsultaDatabase />} />
         <Route path="utilities/genera-tabelle" element={<GeneraTabelle />} />

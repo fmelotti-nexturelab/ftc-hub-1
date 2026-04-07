@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Users, Settings2, Database, TableProperties } from "lucide-react"
+import { Users, Settings2, Database, TableProperties, Clock } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
@@ -46,6 +46,7 @@ export default function UtilitiesDashboard() {
   const adminModules = isItAdmin ? [
     { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
     { path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" },
+    { path: "/admin/scheduler", icon: Clock, label: "Task Scheduler", color: "bg-[#1e3a5f]", desc: "Gestisci i task schedulati del sistema" },
   ] : []
 
   // Database

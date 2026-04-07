@@ -47,6 +47,9 @@ from app.routers.items import picking as items_picking_router
 from app.routers.items import labels as items_labels_router
 from app.routers import operator_code as operator_code_router
 from app.routers import app_settings as app_settings_router
+from app.routers.admin import scheduler as admin_scheduler_router
+from app.models import scheduler as scheduler_models  # noqa: F401
+from app.services.scheduler import scheduler_service
 
 
 @asynccontextmanager
@@ -58,7 +61,9 @@ async def lifespan(app: FastAPI):
 
     Le tabelle devono essere create e versionate SOLO tramite migration.
     """
+    await scheduler_service.start()
     yield
+    await scheduler_service.stop()
 
 
 app = FastAPI(
@@ -104,6 +109,7 @@ app.include_router(notifications_router.router)
 app.include_router(admin_support_router.router)
 app.include_router(admin_diagnostics_router.router)
 app.include_router(admin_ticket_performance_router.router)
+app.include_router(admin_scheduler_router.router)
 app.include_router(stock_router.router)
 app.include_router(archive_router.router)
 app.include_router(items_it01_router.router)
