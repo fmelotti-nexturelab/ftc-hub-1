@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select, func, cast, String, case, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +9,7 @@ from app.database import get_db
 from app.models.tickets import Ticket
 from app.models.ticket_config import TicketTeamModel, TicketCategoryModel
 from app.core.dependencies import require_permission
+from app.services.tickets import analyst_service
 
 router = APIRouter(prefix="/api/admin/tickets/performance", tags=["Admin - Ticket Performance"])
 
@@ -232,3 +234,17 @@ async def get_performance(
         "trend": trend,
         "sla_thresholds": SLA_HOURS,
     }
+
+
+class AnalystQuestion(BaseModel):
+    question: str
+    off_topic_count: int = 0
+
+
+@router.post(
+    "/analyst",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def ask_analyst(data: AnalystQuestion):
+    """Analisi AI sui dati ticket tramite query SQL read-only."""
+    return await analyst_service.ask(data.question, data.off_topic_count)

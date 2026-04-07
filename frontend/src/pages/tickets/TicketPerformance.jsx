@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
 import {
   TrendingUp, TrendingDown, Minus, AlertTriangle, Clock,
   Users, BarChart2, LogOut, RefreshCw, CheckCircle, XCircle,
+  Sparkles, Send, Loader2,
 } from "lucide-react"
 import { ticketPerformanceApi } from "@/api/ticketPerformance"
 
@@ -117,9 +118,159 @@ function TrendChart({ trend }) {
   )
 }
 
+const SUGGESTED_QUESTIONS = [
+  "Qual è il negozio che ha aperto più ticket?",
+  "Qual è il problema più frequente per il team IT?",
+  "Tempo medio di risoluzione per priorità critical?",
+  "Quanti ticket sono ancora aperti da più di una settimana?",
+  "Quali store manager aprono più ticket?",
+]
+
+function AIAnalystPanel({ open, onClose }) {
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState("")
+  const [offTopicCount, setOffTopicCount] = useState(0)
+  const scrollRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const ask = useMutation({
+    mutationFn: (question) => ticketPerformanceApi.askAnalyst(question, offTopicCount).then(r => r.data),
+    onSuccess: (data) => {
+      setMessages(prev => [...prev, { role: "assistant", ...data }])
+      if (data.off_topic) setOffTopicCount(c => c + 1)
+      else setOffTopicCount(0)
+      setTimeout(() => inputRef.current?.focus(), 100)
+    },
+    onError: (err) => {
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        answer: err.response?.data?.detail || "Errore nella comunicazione con l'AI.",
+        sql: null,
+        data: null,
+      }])
+      setTimeout(() => inputRef.current?.focus(), 100)
+    },
+  })
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
+
+  function handleSend(question) {
+    const q = question || input.trim()
+    if (!q || ask.isPending) return
+    setMessages(prev => [...prev, { role: "user", content: q }])
+    setInput("")
+    ask.mutate(q)
+  }
+
+  return (
+    <>
+      {/* Overlay */}
+      {open && <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />}
+
+      {/* Pannello laterale */}
+      <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}>
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-gray-200 flex items-center gap-2 shrink-0">
+          <Sparkles size={16} className="text-[#2563eb]" />
+          <span className="font-semibold text-gray-800 text-sm flex-1">Assistente AI</span>
+          <button
+            onClick={onClose}
+            aria-label="Chiudi assistente"
+            className="text-gray-400 hover:text-gray-600 transition p-1"
+          >
+            <XCircle size={18} />
+          </button>
+        </div>
+
+        {/* Chat area */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          {messages.length === 0 && (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-400">Chiedimi qualsiasi cosa sui dati dei ticket. Esempi:</p>
+              <div className="flex flex-col gap-2">
+                {SUGGESTED_QUESTIONS.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(q)}
+                    className="text-xs bg-gray-50 hover:bg-blue-50 hover:text-[#2563eb] border border-gray-200 hover:border-blue-200 rounded-lg px-3 py-2 transition text-gray-600 text-left"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[90%] rounded-xl px-4 py-2.5 text-sm ${
+                msg.role === "user"
+                  ? "bg-[#1e3a5f] text-white"
+                  : "bg-gray-50 border border-gray-200 text-gray-700"
+              }`}>
+                {msg.role === "user" ? (
+                  <span>{msg.content}</span>
+                ) : (
+                  <div className="whitespace-pre-wrap leading-relaxed">{msg.answer}</div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {ask.isPending && (
+            <div className="flex justify-start">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-gray-400">
+                <Loader2 size={14} className="animate-spin" />
+                Analisi in corso...
+              </div>
+            </div>
+          )}
+          <div ref={scrollRef} />
+        </div>
+
+        {/* Input */}
+        <div className="px-5 py-4 pb-12 border-t border-gray-200 shrink-0">
+          <form
+            onSubmit={e => { e.preventDefault(); handleSend() }}
+            className="flex items-center gap-2"
+          >
+            <label htmlFor="analyst-input" className="sr-only">Domanda</label>
+            <input
+              ref={inputRef}
+              id="analyst-input"
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Fai una domanda..."
+              disabled={ask.isPending}
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition text-sm disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || ask.isPending}
+              aria-label="Invia domanda"
+              className="bg-[#1e3a5f] hover:bg-[#2563eb] text-white p-2.5 rounded-xl shadow transition disabled:opacity-40"
+            >
+              <Send size={16} />
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  )
+}
+
+
 export default function TicketPerformance() {
   const navigate = useNavigate()
   const [days, setDays] = useState(30)
+  const [aiOpen, setAiOpen] = useState(false)
 
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["ticket-performance", days],
@@ -171,6 +322,13 @@ export default function TicketPerformance() {
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition disabled:opacity-40"
           >
             <RefreshCw size={13} className={isFetching ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={() => setAiOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-medium text-[#2563eb] hover:text-white border border-[#2563eb] hover:bg-[#2563eb] rounded-lg px-3 py-1.5 transition"
+          >
+            <Sparkles size={14} />
+            Assistente AI
           </button>
           <button
             onClick={() => navigate(-1)}
@@ -370,6 +528,8 @@ export default function TicketPerformance() {
           </div>
         </>
       )}
+
+      <AIAnalystPanel open={aiOpen} onClose={() => setAiOpen(false)} />
     </div>
   )
 }

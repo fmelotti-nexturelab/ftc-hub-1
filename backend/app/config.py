@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ENVIRONMENT: str = "development"
 
+    # DB read-only per AI analyst (default: stessa connessione con utente ftc_reader)
+    DATABASE_READONLY_URL: str = ""
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
@@ -62,6 +65,21 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         return self.database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+    @property
+    def readonly_database_url(self) -> str:
+        if self.DATABASE_READONLY_URL:
+            return self.DATABASE_READONLY_URL
+        # Default: sostituisci user:password con ftc_reader
+        base = self.database_url
+        # postgresql+asyncpg://ftc_admin:changeme@db:5432/ftc_hub
+        #                      ^^^^^^^^^^^^^^^^^ → ftc_reader:ftc_reader_readonly_2026
+        import re
+        return re.sub(
+            r"://[^@]+@",
+            "://ftc_reader:ftc_reader_readonly_2026@",
+            base,
+        )
 
 
 settings = Settings()
