@@ -5,7 +5,7 @@ import {
   Search, X, Plus, Trash2, FileUp, Save, Check,
 } from "lucide-react"
 import * as XLSX from "xlsx/dist/xlsx.full.min.js"
-import { getFolderHandle } from "@/utils/folderStorage"
+
 import { itemsApi } from "@/api/items"
 
 const COLUMNS = ["zebra", "bloccato", "descrizione", "categoria"]
@@ -151,26 +151,6 @@ export default function ScrapWdPanel() {
     setReplacing(true); setReplaceError(null)
     try {
       await itemsApi.replaceScrapWd(importedRows)
-
-      const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
-      if (legacyMode) {
-        try {
-          const storesHandle = await getFolderHandle("stock_folder")
-          if (storesHandle) {
-            const perm = await storesHandle.requestPermission({ mode: "readwrite" })
-            if (perm === "granted") {
-              const wb = XLSX.utils.book_new()
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([HEADERS, ...importedRows.map(i => COLUMNS.map(k => i[k] ?? ""))]), "SCRAP WD")
-              const bytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsm", compression: true }))
-              const ed = await storesHandle.getDirectoryHandle("00 - Estrazioni")
-              const sd = await ed.getDirectoryHandle("97 - Service")
-              const td = await sd.getDirectoryHandle("01 - Tables")
-              const fh = await td.getFileHandle("tbl_ScrapWd.xlsm", { create: true })
-              const w = await fh.createWritable(); await w.write(bytes); await w.close()
-            }
-          }
-        } catch { /* legacy best-effort */ }
-      }
 
       setImportedRows(null); setImportFileName(null); refresh()
     } catch (e) {

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { X, CheckCircle, Loader2, AlertCircle, TriangleAlert, FileText, Trash2 } from "lucide-react"
 import { getFolderHandle } from "@/utils/folderStorage"
-import { EXPORT_STEPS, EXPORT_STEPS_NEW, runStockExport } from "../stockExportRunner"
+import { EXPORT_STEPS, runStockExport } from "../stockExportRunner"
 
 const ALL_ENTITIES = ["IT01", "IT02", "IT03"]
 const STOCK_RE = /^Stock-(\d{4}-\d{2}-\d{2})-(IT0[123])\.csv$/i
@@ -98,8 +98,7 @@ function EntityColumn({ entity, state, activeSteps }) {
 }
 
 export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
-  const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
-  const activeSteps = legacyMode ? EXPORT_STEPS : EXPORT_STEPS_NEW
+  const activeSteps = EXPORT_STEPS
 
   // entities = le entity target per questa esecuzione. Se e' la lista completa
   // (IT01/IT02/IT03) siamo in modalita' "Genera tutti"; se e' una sola, siamo
@@ -112,16 +111,12 @@ export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
 
   const [phase, setPhase] = useState("scanning")   // scanning | preflight | running | done
   const [scanError, setScanError] = useState(null)
-  const [writeZeros, setWriteZeros] = useState(false)
   const [deletedFiles, setDeletedFiles] = useState([])
   const [entityStates, setEntityStates] = useState(() => {
     const init = {}
     for (const e of entities) init[e] = makeEntityState(activeSteps)
     return init
   })
-
-  const rootHandleRef = useRef(null)
-  const commercialHandleRef = useRef(null)
 
   const today = new Date().toISOString().slice(0, 10)
   const todayFormatted = new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -142,17 +137,6 @@ export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
         setScanError("Permesso negato sulla cartella. Riconnetti la cartella nelle Impostazioni.")
         setPhase("preflight")
         return
-      }
-
-      rootHandleRef.current = rootHandle
-
-      // Try commercial folder
-      const commercialHandle = await getFolderHandle("stock_folder_commercial")
-      if (commercialHandle) {
-        try {
-          const perm2 = await commercialHandle.requestPermission({ mode: "readwrite" })
-          if (perm2 === "granted") commercialHandleRef.current = commercialHandle
-        } catch { /* silently skip */ }
       }
 
       // Open NAV subfolder
@@ -238,9 +222,6 @@ export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
       return next
     })
 
-    const rootHandle = rootHandleRef.current
-    const commercialHandle = commercialHandleRef.current
-
     const makeOnStep = (entity) => (stepIndex, status, message = null) => {
       setEntityStates(prev => {
         const e = prev[entity]
@@ -262,10 +243,6 @@ export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
             entity,
             csvFileHandle,
             stockDate,
-            rootHandle,
-            commercialHandle,
-            writeZeros,
-            legacyMode,
             onStep: makeOnStep(entity),
           })
           setEntityStates(prev => ({
@@ -371,19 +348,6 @@ export default function GeneraTuttiModal({ onClose, entities = ALL_ENTITIES }) {
                       </div>
                     </div>
                   )}
-
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={writeZeros}
-                      onChange={e => setWriteZeros(e.target.checked)}
-                      className="w-4 h-4 accent-[#1e3a5f]"
-                    />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">Scrivi zeri espliciti</span>
-                      <p className="text-xs text-gray-400 mt-0.5">File più grande ma mostra 0 per ogni negozio senza stock</p>
-                    </div>
-                  </label>
 
                   <button
                     onClick={handleAvvia}

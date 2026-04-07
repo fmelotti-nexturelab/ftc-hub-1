@@ -11,7 +11,6 @@ import { getFolderHandle } from "@/utils/folderStorage"
 import { itemsApi } from "@/api/items"
 import { loadItem } from "@/lib/checkPrezziStore"
 import { checkAgentHealth } from "@/lib/navAgent"
-import { buildXlsm, filterColumns } from "@/pages/utilities/stock/itemExportRunner"
 import EccezioniPanel from "./EccezioniPanel"
 import ScrapInvPanel from "./ScrapInvPanel"
 import ScrapWdPanel from "./ScrapWdPanel"
@@ -38,7 +37,6 @@ const TABS = [
 const IMPORT_STEPS = [
   "Caricamento file nel database...",
   "Generazione file di archivio (tbl_ItemM, ItemM, ItemListPortale)...",
-  "Salvataggio nelle cartelle legacy (Stores + Commercial)...",
 ]
 
 function formatDate(iso) {
@@ -301,72 +299,6 @@ export default function ItemListPage() {
       } catch (genErr) {
         const genMsg = genErr.response?.data?.detail || genErr.message || "Errore generazione file"
         setStep(1, "warning", genMsg)
-      }
-
-      // ── Step 2: Genera tbl_ItemM.xlsm con SheetJS e salva (se legacy) ─────
-      const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
-      if (legacyMode && converterRows) {
-        setStep(2, "running")
-        try {
-          // Genera il file .xlsm con la stessa logica di itemExportRunner
-          const { headers: filtH, dataRows: filtD, colCount } = filterColumns(
-            converterRows.headers.map(String),
-            converterRows.dataRows.map(r => r.map(c => c == null ? "" : String(c))),
-          )
-          const batchId = data.batch_id
-          const tblData = buildXlsm(filtH, filtD, colCount, batchId, new Date())
-
-          const storesHandle = await getFolderHandle("stock_folder")
-          if (storesHandle) {
-            const perm = await storesHandle.requestPermission({ mode: "readwrite" })
-            if (perm === "granted") {
-              // 97 - Service / 01 - Tables / tbl_ItemM.xlsm
-              try {
-                const serviceDir = await storesHandle.getDirectoryHandle("97 - Service")
-                const tablesDir = await serviceDir.getDirectoryHandle("01 - Tables")
-                const fh = await tablesDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
-                const w = await fh.createWritable()
-                await w.write(tblData)
-                await w.close()
-
-                // Tables_for_FTP / tbl_ItemM.xlsm
-                try {
-                  const ftpDir = await tablesDir.getDirectoryHandle("Tables_for_FTP")
-                  const fh2 = await ftpDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
-                  const w2 = await fh2.createWritable()
-                  await w2.write(tblData)
-                  await w2.close()
-                } catch { /* Tables_for_FTP non trovata — ignora */ }
-              } catch (e) {
-                setStep(2, "warning", "Stores: " + (e.message || "cartella non trovata"))
-              }
-            }
-          }
-
-          const commercialHandle = await getFolderHandle("stock_folder_commercial")
-          if (commercialHandle) {
-            const perm = await commercialHandle.requestPermission({ mode: "readwrite" })
-            if (perm === "granted") {
-              try {
-                const sharedDir = await commercialHandle.getDirectoryHandle("28 - Italy Shared Folder")
-                const fh = await sharedDir.getFileHandle("tbl_ItemM.xlsm", { create: true })
-                const w = await fh.createWritable()
-                await w.write(tblData)
-                await w.close()
-              } catch (e) {
-                setStep(2, "warning", "Commercial: " + (e.message || "cartella non trovata"))
-              }
-            }
-          }
-
-          setStep(2, "done", "tbl_ItemM.xlsm salvato in Stores e Commercial")
-        } catch (e) {
-          setStep(2, "warning", e.message || "Errore salvataggio legacy")
-        }
-      } else if (!legacyMode) {
-        setStep(2, "done", "Legacy mode disattivato — skip")
-      } else {
-        setStep(2, "warning", "Dati converter non disponibili per generare tbl_ItemM")
       }
 
       setImportResult({ row_count: data.row_count })
@@ -691,8 +623,8 @@ export default function ItemListPage() {
 
       {activeEntity === "IT02" && <ItemListTable entity="IT02" />}
       {activeEntity === "IT03" && <ItemListTable entity="IT03" />}
-      {activeEntity === "PROMO" && <ItemGenericPanel key="PROMO" label="ItemPromo" queryKey="items-promo" getApi={itemsApi.getPromo} replaceApi={itemsApi.replacePromo} legacyFile="tbl_ItemP.xlsm" />}
-      {activeEntity === "BF" && <ItemGenericPanel key="BF" label="ItemBlackFriday" queryKey="items-blackfriday" getApi={itemsApi.getBlackFriday} replaceApi={itemsApi.replaceBlackFriday} legacyFile="tbl_ItemBF.xlsm" />}
+      {activeEntity === "PROMO" && <ItemGenericPanel key="PROMO" label="ItemPromo" queryKey="items-promo" getApi={itemsApi.getPromo} replaceApi={itemsApi.replacePromo} />}
+      {activeEntity === "BF" && <ItemGenericPanel key="BF" label="ItemBlackFriday" queryKey="items-blackfriday" getApi={itemsApi.getBlackFriday} replaceApi={itemsApi.replaceBlackFriday} />}
       {activeEntity === "ECCEZIONI" && <EccezioniPanel />}
       {activeEntity === "SCRAP_INV" && <ScrapInvPanel />}
       {activeEntity === "SCRAP_WD" && <ScrapWdPanel />}
@@ -1007,7 +939,7 @@ const PROMO_HEADERS = [
   "", "Modulo",
 ]
 
-function ItemGenericPanel({ label, queryKey, getApi, replaceApi, legacyFile }) {
+function ItemGenericPanel({ label, queryKey, getApi, replaceApi }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [importedRows, setImportedRows] = useState(null)
@@ -1123,45 +1055,6 @@ function ItemGenericPanel({ label, queryKey, getApi, replaceApi, legacyFile }) {
       }).filter(obj => obj.item_no)
 
       await replaceApi(dbRows)
-
-      // Legacy save
-      const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
-      if (legacyMode) {
-        try {
-          const storesHandle = await getFolderHandle("stock_folder")
-          if (storesHandle) {
-            const perm = await storesHandle.requestPermission({ mode: "readwrite" })
-            if (perm === "granted") {
-              // Genera xlsm con SheetJS
-              const wsData = {}
-              importedHeaders.forEach((h, c) => {
-                wsData[XLSX.utils.encode_cell({ r: 0, c })] = { v: String(h), t: "s" }
-              })
-              importedRows.forEach((row, ri) => {
-                row.forEach((cell, c) => {
-                  if (cell == null || cell === "") return
-                  wsData[XLSX.utils.encode_cell({ r: ri + 1, c })] = {
-                    v: cell,
-                    t: typeof cell === "number" ? "n" : "s",
-                  }
-                })
-              })
-              wsData["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: importedRows.length, c: importedHeaders.length - 1 } })
-              const wbLegacy = XLSX.utils.book_new()
-              XLSX.utils.book_append_sheet(wbLegacy, wsData, "ITEMS")
-              const xlsmBytes = new Uint8Array(XLSX.write(wbLegacy, { type: "array", bookType: "xlsm", compression: true }))
-
-              const estrazioniDir = await storesHandle.getDirectoryHandle("00 - Estrazioni")
-              const serviceDir = await estrazioniDir.getDirectoryHandle("97 - Service")
-              const tablesDir = await serviceDir.getDirectoryHandle("01 - Tables")
-              const fh = await tablesDir.getFileHandle(legacyFile, { create: true })
-              const w = await fh.createWritable()
-              await w.write(xlsmBytes)
-              await w.close()
-            }
-          }
-        } catch { /* legacy save best-effort */ }
-      }
 
       setImportedRows(null)
       setImportedHeaders(null)
@@ -1409,29 +1302,6 @@ function __UNUSED() {
     setReplaceError(null)
     try {
       await itemsApi.replaceEccezioni(importedEcc || [], importedBs || [])
-
-      const legacyMode = localStorage.getItem("ftchub_legacy_mode") !== "false"
-      if (legacyMode) {
-        try {
-          const storesHandle = await getFolderHandle("stock_folder")
-          if (storesHandle) {
-            const perm = await storesHandle.requestPermission({ mode: "readwrite" })
-            if (perm === "granted") {
-              const wb = XLSX.utils.book_new()
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([ECC_HEADERS, ...(importedEcc || []).map(i => ECC_COLUMNS.map(k => i[k] ?? ""))]), "ECCEZIONI")
-              XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["ITEM"], ...(importedBs || []).map(i => [i.item_no])]), "BEST SELLER")
-              const xlsmBytes = new Uint8Array(XLSX.write(wb, { type: "array", bookType: "xlsm", compression: true }))
-              const estrazioniDir = await storesHandle.getDirectoryHandle("00 - Estrazioni")
-              const serviceDir = await estrazioniDir.getDirectoryHandle("97 - Service")
-              const tablesDir = await serviceDir.getDirectoryHandle("01 - Tables")
-              const fh = await tablesDir.getFileHandle("tbl_Eccezioni.xlsm", { create: true })
-              const w = await fh.createWritable()
-              await w.write(xlsmBytes)
-              await w.close()
-            }
-          }
-        } catch { /* legacy best-effort */ }
-      }
 
       setImportedEcc(null); setImportedBs(null); setImportFileName(null)
       queryClient.invalidateQueries({ queryKey: ["items-eccezioni"] })
