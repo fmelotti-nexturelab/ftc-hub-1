@@ -24,6 +24,84 @@ function ConfirmDelete({ label, onConfirm, onCancel }) {
   )
 }
 
+// ── UserCombobox (ricerca dinamica) ──────────────────────────────────────────
+
+function UserCombobox({ users, value, onChange, placeholder = "Cerca utente...", className = "" }) {
+  const [query, setQuery] = useState("")
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
+
+  const selected = users.find(u => u.id === value)
+  const filtered = query
+    ? users.filter(u => (u.full_name || u.username).toLowerCase().includes(query.toLowerCase()))
+    : users
+
+  return (
+    <div ref={ref} className="relative">
+      <div
+        className={`flex items-center gap-1 ${className}`}
+        onClick={() => setOpen(true)}
+      >
+        <input
+          type="text"
+          value={open ? query : (selected ? (selected.full_name || selected.username) : "")}
+          onChange={e => { setQuery(e.target.value); setOpen(true) }}
+          onFocus={() => { setQuery(""); setOpen(true) }}
+          placeholder={selected ? (selected.full_name || selected.username) : placeholder}
+          className="w-full bg-transparent outline-none text-sm"
+          aria-label="Cerca utente backup 2"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onChange(""); setQuery("") }}
+            className="text-gray-400 hover:text-gray-600 shrink-0"
+            aria-label="Rimuovi utente backup 2"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <ul className="absolute z-50 mt-1 w-full max-h-48 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg text-sm">
+          <li>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-gray-400 hover:bg-gray-50"
+              onClick={() => { onChange(""); setQuery(""); setOpen(false) }}
+            >
+              Nessun backup
+            </button>
+          </li>
+          {filtered.length === 0 && (
+            <li className="px-3 py-2 text-gray-400 text-xs">Nessun risultato</li>
+          )}
+          {filtered.map(u => (
+            <li key={u.id}>
+              <button
+                type="button"
+                className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 transition ${u.id === value ? "bg-blue-50 font-medium text-[#1e3a5f]" : ""}`}
+                onClick={() => { onChange(u.id); setQuery(""); setOpen(false) }}
+              >
+                {u.full_name || u.username}
+                {u.department && <span className="ml-1 text-xs text-gray-400">({u.department})</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // ── MultiUserSelect ───────────────────────────────────────────────────────────
 
 function MultiUserSelect({ users, selected, onChange }) {
@@ -733,7 +811,7 @@ function RoutingRulesTab() {
       if (k === "team_id") {
         next.assigned_user_id = ""
         next.backup_user_id_1 = ""
-        next.backup_user_id_2 = ""
+        // backup_user_id_2 non si resetta: è cross-team
       }
       return next
     })
@@ -839,11 +917,17 @@ function RoutingRulesTab() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Utente Backup 2</label>
-              <select value={form.backup_user_id_2} onChange={setF("backup_user_id_2")} className={selectClass} disabled={!form.team_id}>
-                <option value="">Nessun backup</option>
-                {userOptions.map(u => <option key={u.id} value={u.id}>{u.full_name || u.username}</option>)}
-              </select>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Utente Backup 2
+                <span className="ml-1 font-normal text-gray-400">(cross-team)</span>
+              </label>
+              <UserCombobox
+                users={allUsers}
+                value={form.backup_user_id_2}
+                onChange={val => setForm(f => ({ ...f, backup_user_id_2: val }))}
+                placeholder="Cerca tra tutti gli utenti..."
+                className={selectClass}
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Override priorità</label>

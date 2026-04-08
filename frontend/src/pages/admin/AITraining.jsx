@@ -13,6 +13,7 @@ export default function AITraining() {
   const [filterStatus, setFilterStatus] = useState("")
   const [state, setState] = useState(null)
   const [saveResult, setSaveResult] = useState(null)
+  const [includeDesc, setIncludeDesc] = useState(false)
 
   const { data: rawTickets = [], isLoading } = useQuery({
     queryKey: ["training-tickets"],
@@ -106,7 +107,7 @@ export default function AITraining() {
         team_name: teams.find(t => t.id === i.new_team_id)?.name || null,
         priority: i.new_priority,
       }))
-      return ticketConfigApi.saveTraining(examples).then(r => r.data)
+      return ticketConfigApi.saveTraining(examples, includeDesc).then(r => r.data)
     },
     onSuccess: (data) => setSaveResult(data),
   })
@@ -162,6 +163,15 @@ export default function AITraining() {
         <button onClick={resetAll} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
           <RotateCcw size={12} className="inline mr-1" />Reset
         </button>
+        <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
+          <input
+            type="checkbox"
+            checked={includeDesc}
+            onChange={e => setIncludeDesc(e.target.checked)}
+            className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]"
+          />
+          Includi descrizione
+        </label>
         <button
           onClick={() => saveMutation.mutate()}
           disabled={reviewed === 0 || saveMutation.isPending}

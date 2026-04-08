@@ -680,6 +680,7 @@ class TrainingItem(BaseModel):
 
 class TrainingSaveRequest(BaseModel):
     examples: list[TrainingItem]
+    include_description: bool = False
 
 
 @router.post(
@@ -694,9 +695,15 @@ async def save_training(data: TrainingSaveRequest):
     for ex in data.examples:
         sub = ex.subcategory_name or "—"
         team = ex.team_name or "—"
-        lines.append(f"Titolo: {ex.title} | Categoria: {ex.category_name} | Sottocategoria: {sub} | Team: {team} | Priorità: {ex.priority}")
+        line = f"Titolo: {ex.title}"
+        if data.include_description and ex.description:
+            desc = ex.description[:300].replace("\n", " ").strip()
+            line += f" | Descrizione: {desc}"
+        line += f" | Categoria: {ex.category_name} | Sottocategoria: {sub} | Team: {team} | Priorità: {ex.priority}"
+        lines.append(line)
 
     training_file = Path(__file__).resolve().parent.parent.parent / "app" / "services" / "tickets" / "training_examples.txt"
     training_file.write_text("\n".join(lines), encoding="utf-8")
 
-    return {"saved": len(lines), "message": f"{len(lines)} esempi salvati. L'AI li userà immediatamente."}
+    mode = "con descrizione" if data.include_description else "solo titolo"
+    return {"saved": len(lines), "message": f"{len(lines)} esempi salvati ({mode}). L'AI li userà immediatamente."}
