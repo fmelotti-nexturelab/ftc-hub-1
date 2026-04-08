@@ -34,4 +34,8 @@ export const ticketConfigApi = {
   createRoutingRule: (data) => apiClient.post("/api/admin/tickets/routing-rules", data),
   updateRoutingRule: (id, data) => apiClient.put(`/api/admin/tickets/routing-rules/${id}`, data),
   deleteRoutingRule: (id) => apiClient.delete(`/api/admin/tickets/routing-rules/${id}`),
+
+  // Training AI
+  getTrainingTickets: (limit = 300) => apiClient.get("/api/admin/tickets/training/tickets", { params: { limit } }),
+  saveTraining: (examples) => apiClient.post("/api/admin/tickets/training/save", { examples }),
 }

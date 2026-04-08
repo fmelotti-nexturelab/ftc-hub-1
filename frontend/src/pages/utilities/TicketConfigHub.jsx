@@ -1,12 +1,14 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Database, Settings2, LogOut } from "lucide-react"
+import { Database, Settings2, LogOut, Sparkles } from "lucide-react"
 import TicketDatabase from "@/pages/utilities/TicketDatabase"
 import TicketConfig from "@/pages/admin/TicketConfig"
+import AITraining from "@/pages/admin/AITraining"
 
 const TABS = [
   { id: "database", label: "Gestione Database Ticket", icon: Database },
   { id: "config",   label: "Configurazione Team e Regole", icon: Settings2 },
+  { id: "training", label: "Training AI", icon: Sparkles },
 ]
 
 export default function TicketConfigHub() {
@@ -46,7 +48,9 @@ export default function TicketConfigHub() {
 
       {/* Tab content */}
       <div>
-        {tab === "database" ? <TicketDatabase /> : <TicketConfig />}
+        {tab === "database" && <TicketDatabase />}
+        {tab === "config" && <TicketConfig />}
+        {tab === "training" && <AITraining />}
       </div>
     </div>
   )

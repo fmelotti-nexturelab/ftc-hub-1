@@ -609,3 +609,94 @@ async def delete_routing_rule(
     await db.delete(rule)
     await db.commit()
     return {"message": "Regola eliminata"}
+
+
+# ── Training AI ──────────────────────────────────────────────────────────────
+
+@router.get(
+    "/training/tickets",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def get_training_tickets(
+    limit: int = 300,
+    db: AsyncSession = Depends(get_db),
+):
+    """Estrae un campione di ticket bilanciato per categoria per il training AI."""
+    from app.models.tickets import Ticket
+    from sqlalchemy import text, cast, String
+
+    result = await db.execute(text("""
+        WITH ranked AS (
+            SELECT
+                t.id, t.ticket_number, t.title,
+                LEFT(t.description, 500) as description,
+                t.category_id, c.name as category_name,
+                t.subcategory_id, s.name as subcategory_name,
+                t.team_id, tm.name as team_name,
+                CAST(t.priority AS TEXT) as priority,
+                ROW_NUMBER() OVER (PARTITION BY t.category_id ORDER BY RANDOM()) as rn
+            FROM tickets.tickets t
+            LEFT JOIN tickets.ticket_categories c ON c.id = t.category_id
+            LEFT JOIN tickets.ticket_subcategories s ON s.id = t.subcategory_id
+            LEFT JOIN tickets.ticket_teams tm ON tm.id = t.team_id
+            WHERE t.is_active = true AND t.category_id IS NOT NULL
+        )
+        SELECT id, ticket_number, title, description,
+               category_id, category_name, subcategory_id, subcategory_name,
+               team_id, team_name, priority
+        FROM ranked WHERE rn <= 40
+        LIMIT :limit
+    """), {"limit": limit})
+
+    return [
+        {
+            "id": str(r[0]),
+            "ticket_number": r[1],
+            "title": r[2],
+            "description": r[3] or "",
+            "category_id": r[4],
+            "category_name": r[5],
+            "subcategory_id": r[6],
+            "subcategory_name": r[7],
+            "team_id": r[8],
+            "team_name": r[9],
+            "priority": r[10],
+        }
+        for r in result.fetchall()
+    ]
+
+
+from pydantic import BaseModel
+
+
+class TrainingItem(BaseModel):
+    title: str
+    description: str
+    category_name: str | None
+    subcategory_name: str | None
+    team_name: str | None
+    priority: str
+
+
+class TrainingSaveRequest(BaseModel):
+    examples: list[TrainingItem]
+
+
+@router.post(
+    "/training/save",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def save_training(data: TrainingSaveRequest):
+    """Salva gli esempi di training revisionati nel file usato dall'AI."""
+    from pathlib import Path
+
+    lines = []
+    for ex in data.examples:
+        sub = ex.subcategory_name or "—"
+        team = ex.team_name or "—"
+        lines.append(f"Titolo: {ex.title} | Categoria: {ex.category_name} | Sottocategoria: {sub} | Team: {team} | Priorità: {ex.priority}")
+
+    training_file = Path(__file__).resolve().parent.parent.parent / "app" / "services" / "tickets" / "training_examples.txt"
+    training_file.write_text("\n".join(lines), encoding="utf-8")
+
+    return {"saved": len(lines), "message": f"{len(lines)} esempi salvati. L'AI li userà immediatamente."}
