@@ -7,8 +7,6 @@ import { authApi } from "@/api/auth"
 import ModuleConfig from "./ModuleConfig"
 import UtilitiesConfig from "./UtilitiesConfig"
 
-const USER_TYPES = ["ADMIN", "HR", "FINANCE", "MARKETING", "IT", "COMMERCIAL", "DM", "STORE", "STOREMANAGER", "RETAIL"]
-
 const USER_TYPE_BADGE = {
   SUPERUSER:  "bg-red-100 text-red-700",
   ADMIN:      "bg-orange-100 text-orange-700",
@@ -75,7 +73,7 @@ function NewUserModal({ onClose, onSaved }) {
           <div>
             <label htmlFor="nu-department" className="sr-only">Tipo utente</label>
             <select id="nu-department" value={form.department} onChange={set("department")} className={inputClass + " bg-white"}>
-              {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {departmentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
         </div>
@@ -111,7 +109,7 @@ function ChangeTypeModal({ user, onClose, onSaved }) {
         <div>
           <label htmlFor="ct-usertype" className="sr-only">Tipo utente</label>
           <select id="ct-usertype" value={userType} onChange={(e) => setUserType(e.target.value)} className={inputClass + " bg-white"}>
-            {USER_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {departmentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div className="flex gap-2 justify-end">
@@ -326,6 +324,11 @@ export default function AdminUsers() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => authApi.listUsers().then((r) => r.data.filter((u) => u.department !== "SUPERUSER")),
+  })
+
+  const { data: departmentTypes = [] } = useQuery({
+    queryKey: ["department-types"],
+    queryFn: () => authApi.getDepartmentTypes().then((r) => r.data.filter((d) => d !== "SUPERUSER")),
   })
 
   const toggleActive = useMutation({

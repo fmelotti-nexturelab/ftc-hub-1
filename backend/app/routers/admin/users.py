@@ -104,6 +104,19 @@ def _require_admin_or_above(current_user: User = Depends(get_current_user)) -> U
     return current_user
 
 
+# ── Department types (dal DB enum) ────────────────────────────────────────────
+
+@router.get("/department-types")
+async def get_department_types(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(_require_admin_or_above),
+):
+    """Ritorna i valori dell'enum department_enum dal database."""
+    from sqlalchemy import text
+    result = await db.execute(text("SELECT unnest(enum_range(NULL::auth.department_enum))::text"))
+    return [row[0] for row in result.fetchall()]
+
+
 # ── CRUD Utenti ───────────────────────────────────────────────────────────────
 
 @router.get("", response_model=list[UserResponse])

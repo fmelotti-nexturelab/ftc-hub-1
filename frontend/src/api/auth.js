@@ -11,6 +11,7 @@ export const authApi = {
   changePassword: (data) => apiClient.put("/api/auth/password", data),
 
   // Admin — user management
+  getDepartmentTypes: () => apiClient.get("/api/admin/users/department-types"),
   listUsers: (params) => apiClient.get("/api/admin/users", { params }),
   getUser: (id) => apiClient.get(`/api/admin/users/${id}`),
   createUser: (data) => apiClient.post("/api/admin/users", data),
