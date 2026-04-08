@@ -291,22 +291,22 @@ function TrainingExamplesPanel() {
 
   const toggleMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.toggleTrainingExample(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["training-examples"] }),
+    onSuccess: () => qc.refetchQueries({ queryKey: ["training-examples"] }),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.deleteTrainingExample(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["training-examples"] }); setConfirmDeleteId(null) },
+    onSuccess: () => { qc.refetchQueries({ queryKey: ["training-examples"] }); setConfirmDeleteId(null) },
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => ticketConfigApi.updateTrainingExample(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["training-examples"] }); setEditingId(null) },
+    onSuccess: () => { qc.refetchQueries({ queryKey: ["training-examples"] }); setEditingId(null) },
   })
 
   const bulkMutation = useMutation({
     mutationFn: ({ ids, action }) => ticketConfigApi.bulkTrainingExamples(ids, action),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["training-examples"] }); setSelected(new Set()); setConfirmBulk(null) },
+    onSuccess: () => { qc.refetchQueries({ queryKey: ["training-examples"] }); setSelected(new Set()); setConfirmBulk(null) },
   })
 
   const filtered = useMemo(() => examples.filter(ex => {
