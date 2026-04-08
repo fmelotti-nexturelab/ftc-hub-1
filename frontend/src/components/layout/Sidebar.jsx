@@ -31,16 +31,18 @@ function TicketSidebarLink({ user }) {
     enabled: !isStore,
   })
 
-  // Ticket non chiusi assegnati a me
+  // Ticket non chiusi assegnati a me (per HO/IT) o creati da me (per Store)
   const { data: myTickets } = useQuery({
     queryKey: ["sidebar-tickets-mine"],
-    queryFn: () => ticketsApi.list({ assigned_to_id: user?.id }).then(r => r.data),
+    queryFn: () => ticketsApi.list(
+      isStore ? { created_by_id: user?.id } : { assigned_to_id: user?.id }
+    ).then(r => r.data),
     refetchInterval: 30_000,
     enabled: !!user?.id,
   })
 
   const teamCount = (teamTickets ?? []).filter(t => t.status !== "closed").length
-  const myCount = (myTickets ?? []).filter(t => t.status !== "closed" && t.assigned_to === user?.id).length
+  const myCount = (myTickets ?? []).filter(t => t.status !== "closed").length
 
   return (
     <NavLink
