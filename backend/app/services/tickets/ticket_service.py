@@ -172,13 +172,28 @@ async def _get_user_store_number(db: AsyncSession, user_id) -> Optional[str]:
         return assignment.store_code
 
     # Fallback: cerca per nome utente nella tabella stores
+    # sm_name può avere diciture come "(ad interim)", "(in formazione)" — le ignoriamo
     from app.models.stores import Store
+    from sqlalchemy import func as sqlfunc
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user and user.full_name:
+        # Cerca match esatto prima
         store_result = await db.execute(
             select(Store.store_number).where(
                 Store.sm_name == user.full_name,
+                Store.is_active == True,
+            )
+        )
+        store_num = store_result.scalar_one_or_none()
+        if store_num:
+            return store_num
+
+        # Fallback: cerca con LIKE ignorando diciture tra parentesi
+        # es. "Federica Zaccaria (ad interim)" contiene "Federica Zaccaria"
+        store_result = await db.execute(
+            select(Store.store_number).where(
+                sqlfunc.trim(sqlfunc.regexp_replace(Store.sm_name, r'\s*\(.*?\)', '', 'g')) == user.full_name,
                 Store.is_active == True,
             )
         )
