@@ -13,6 +13,7 @@ from app.models.ticket_config import (
     TicketTeamModel,
     TicketTeamMemberModel,
     TicketRoutingRuleModel,
+    TicketTrainingExampleModel,
 )
 from app.schemas.ticket_config import (
     CategoryCreate,
@@ -30,6 +31,8 @@ from app.schemas.ticket_config import (
     RoutingRuleCreate,
     RoutingRuleResponse,
     RoutingRuleUpdate,
+    TrainingExampleResponse,
+    TrainingExampleUpdate,
 )
 from app.core.dependencies import get_current_user, require_permission
 
@@ -687,16 +690,50 @@ class TrainingSaveRequest(BaseModel):
     "/training/save",
     dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
-async def save_training(data: TrainingSaveRequest):
-    """Salva gli esempi di training revisionati nel file usato dall'AI."""
+async def save_training(data: TrainingSaveRequest, db: AsyncSession = Depends(get_db)):
+    """Salva gli esempi di training revisionati nel DB e rigenera il file."""
+    from sqlalchemy import delete as sa_delete
+
+    # Cancella vecchi e reinserisci
+    await db.execute(sa_delete(TicketTrainingExampleModel))
+    for ex in data.examples:
+        db.add(TicketTrainingExampleModel(
+            title=ex.title,
+            description=ex.description if data.include_description else None,
+            category_name=ex.category_name or "",
+            subcategory_name=ex.subcategory_name,
+            team_name=ex.team_name,
+            priority=ex.priority,
+            is_active=True,
+        ))
+    await db.commit()
+
+    # Rigenera il file txt
+    count = await _regenerate_training_file(db, include_description=data.include_description)
+
+    mode = "con descrizione" if data.include_description else "solo titolo"
+    return {"saved": count, "message": f"{count} esempi salvati ({mode}). L'AI li userà immediatamente."}
+
+
+# ── Training Examples CRUD ────────────────────────────────────────────────────
+
+async def _regenerate_training_file(db: AsyncSession, include_description: bool = False):
+    """Rigenera il file training_examples.txt dagli esempi attivi nel DB."""
     from pathlib import Path
 
+    result = await db.execute(
+        select(TicketTrainingExampleModel)
+        .where(TicketTrainingExampleModel.is_active == True)
+        .order_by(TicketTrainingExampleModel.id)
+    )
+    examples = result.scalars().all()
+
     lines = []
-    for ex in data.examples:
+    for ex in examples:
         sub = ex.subcategory_name or "—"
         team = ex.team_name or "—"
         line = f"Titolo: {ex.title}"
-        if data.include_description and ex.description:
+        if include_description and ex.description:
             desc = ex.description[:300].replace("\n", " ").strip()
             line += f" | Descrizione: {desc}"
         line += f" | Categoria: {ex.category_name} | Sottocategoria: {sub} | Team: {team} | Priorità: {ex.priority}"
@@ -704,6 +741,99 @@ async def save_training(data: TrainingSaveRequest):
 
     training_file = Path(__file__).resolve().parent.parent.parent / "app" / "services" / "tickets" / "training_examples.txt"
     training_file.write_text("\n".join(lines), encoding="utf-8")
+    return len(lines)
 
-    mode = "con descrizione" if data.include_description else "solo titolo"
-    return {"saved": len(lines), "message": f"{len(lines)} esempi salvati ({mode}). L'AI li userà immediatamente."}
+
+@router.get(
+    "/training/examples",
+    response_model=List[TrainingExampleResponse],
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def list_training_examples(db: AsyncSession = Depends(get_db)):
+    """Lista tutti gli esempi di training con stato attivo/inattivo."""
+    result = await db.execute(
+        select(TicketTrainingExampleModel).order_by(TicketTrainingExampleModel.id)
+    )
+    return [TrainingExampleResponse.model_validate(e) for e in result.scalars().all()]
+
+
+@router.put(
+    "/training/examples/{example_id}",
+    response_model=TrainingExampleResponse,
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def update_training_example(
+    example_id: int,
+    data: TrainingExampleUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Modifica un esempio di training esistente."""
+    result = await db.execute(
+        select(TicketTrainingExampleModel).where(TicketTrainingExampleModel.id == example_id)
+    )
+    example = result.scalar_one_or_none()
+    if not example:
+        raise HTTPException(status_code=404, detail="Esempio non trovato")
+
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(example, field, value)
+
+    await db.commit()
+    await db.refresh(example)
+
+    # Rigenera il file txt
+    await _regenerate_training_file(db)
+
+    return TrainingExampleResponse.model_validate(example)
+
+
+@router.patch(
+    "/training/examples/{example_id}/toggle",
+    response_model=TrainingExampleResponse,
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def toggle_training_example(
+    example_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Attiva/disattiva un esempio di training."""
+    result = await db.execute(
+        select(TicketTrainingExampleModel).where(TicketTrainingExampleModel.id == example_id)
+    )
+    example = result.scalar_one_or_none()
+    if not example:
+        raise HTTPException(status_code=404, detail="Esempio non trovato")
+
+    example.is_active = not example.is_active
+    await db.commit()
+    await db.refresh(example)
+
+    # Rigenera il file txt
+    await _regenerate_training_file(db)
+
+    return TrainingExampleResponse.model_validate(example)
+
+
+@router.delete(
+    "/training/examples/{example_id}",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def delete_training_example(
+    example_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina un esempio di training."""
+    result = await db.execute(
+        select(TicketTrainingExampleModel).where(TicketTrainingExampleModel.id == example_id)
+    )
+    example = result.scalar_one_or_none()
+    if not example:
+        raise HTTPException(status_code=404, detail="Esempio non trovato")
+
+    await db.delete(example)
+    await db.commit()
+
+    # Rigenera il file txt
+    await _regenerate_training_file(db)
+
+    return {"message": "Esempio eliminato"}

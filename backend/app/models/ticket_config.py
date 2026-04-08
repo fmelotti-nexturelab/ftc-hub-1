@@ -66,6 +66,22 @@ class TicketTeamMemberModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class TicketTrainingExampleModel(Base):
+    __tablename__ = "training_examples"
+    __table_args__ = {"schema": "tickets"}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(500), nullable=False)
+    description = Column(String(1000), nullable=True)
+    category_name = Column(String(100), nullable=False)
+    subcategory_name = Column(String(100), nullable=True)
+    team_name = Column(String(100), nullable=True)
+    priority = Column(String(20), nullable=False, default="medium")
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class TicketRoutingRuleModel(Base):
     __tablename__ = "ticket_routing_rules"
     __table_args__ = (

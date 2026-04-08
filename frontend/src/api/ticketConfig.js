@@ -38,4 +38,10 @@ export const ticketConfigApi = {
   // Training AI
   getTrainingTickets: (limit = 300) => apiClient.get("/api/admin/tickets/training/tickets", { params: { limit } }),
   saveTraining: (examples, includeDescription = false) => apiClient.post("/api/admin/tickets/training/save", { examples, include_description: includeDescription }),
+
+  // Training Examples CRUD
+  getTrainingExamples: () => apiClient.get("/api/admin/tickets/training/examples"),
+  updateTrainingExample: (id, data) => apiClient.put(`/api/admin/tickets/training/examples/${id}`, data),
+  toggleTrainingExample: (id) => apiClient.patch(`/api/admin/tickets/training/examples/${id}/toggle`),
+  deleteTrainingExample: (id) => apiClient.delete(`/api/admin/tickets/training/examples/${id}`),
 }

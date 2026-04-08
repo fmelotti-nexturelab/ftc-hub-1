@@ -109,6 +109,32 @@ class TeamMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ── Training Example ──────────────────────────────────────────────────────────
+
+class TrainingExampleResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category_name: str
+    subcategory_name: Optional[str] = None
+    team_name: Optional[str] = None
+    priority: str
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TrainingExampleUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category_name: Optional[str] = None
+    subcategory_name: Optional[str] = None
+    team_name: Optional[str] = None
+    priority: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 # ── Routing Rule ──────────────────────────────────────────────────────────────
 
 class RoutingRuleCreate(BaseModel):
