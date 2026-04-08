@@ -275,6 +275,7 @@ function TrainingExamplesPanel() {
   const [open, setOpen] = useState(false)
   const [examples, setExamples] = useState([])
   const [isLoading, setIsLoading] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [searchEx, setSearchEx] = useState("")
   const [filterCatEx, setFilterCatEx] = useState("")
   const [filterActiveEx, setFilterActiveEx] = useState("")
@@ -286,11 +287,14 @@ function TrainingExamplesPanel() {
   const [loaded, setLoaded] = useState(false)
 
   // Carica esempi quando si apre il pannello
-  function loadExamples() {
+  async function loadExamples() {
     setIsLoading(true)
-    ticketConfigApi.getTrainingExamples()
-      .then(r => setExamples(r.data))
-      .finally(() => setIsLoading(false))
+    try {
+      const r = await ticketConfigApi.getTrainingExamples()
+      setExamples(r.data)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (open && !loaded) {
@@ -298,39 +302,41 @@ function TrainingExamplesPanel() {
     loadExamples()
   }
 
-  const toggleMutation = useMutation({
-    mutationFn: (id) => ticketConfigApi.toggleTrainingExample(id),
-    onSuccess: (res) => {
-      const updated = res.data
-      setExamples(prev => prev.map(e => e.id === updated.id ? updated : e))
-    },
-  })
+  async function doToggle(id) {
+    setBusy(true)
+    try {
+      const r = await ticketConfigApi.toggleTrainingExample(id)
+      setExamples(prev => prev.map(e => e.id === r.data.id ? r.data : e))
+    } finally { setBusy(false) }
+  }
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => ticketConfigApi.deleteTrainingExample(id),
-    onSuccess: (_res, deletedId) => {
-      setExamples(prev => prev.filter(e => e.id !== deletedId))
+  async function doDelete(id) {
+    setBusy(true)
+    try {
+      await ticketConfigApi.deleteTrainingExample(id)
+      setExamples(prev => prev.filter(e => e.id !== id))
       setConfirmDeleteId(null)
-    },
-  })
+    } finally { setBusy(false) }
+  }
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => ticketConfigApi.updateTrainingExample(id, data),
-    onSuccess: (res) => {
-      const updated = res.data
-      setExamples(prev => prev.map(e => e.id === updated.id ? updated : e))
+  async function doUpdate(id, data) {
+    setBusy(true)
+    try {
+      const r = await ticketConfigApi.updateTrainingExample(id, data)
+      setExamples(prev => prev.map(e => e.id === r.data.id ? r.data : e))
       setEditingId(null)
-    },
-  })
+    } finally { setBusy(false) }
+  }
 
-  const bulkMutation = useMutation({
-    mutationFn: ({ ids, action }) => ticketConfigApi.bulkTrainingExamples(ids, action),
-    onSuccess: () => {
+  async function doBulkAction(ids, action) {
+    setBusy(true)
+    try {
+      await ticketConfigApi.bulkTrainingExamples(ids, action)
       setSelected(new Set())
       setConfirmBulk(null)
-      loadExamples()
-    },
-  })
+      await loadExamples()
+    } finally { setBusy(false) }
+  }
 
   const filtered = useMemo(() => examples.filter(ex => {
     if (searchEx) {
@@ -362,7 +368,7 @@ function TrainingExamplesPanel() {
     const data = { ...editForm }
     if (!data.subcategory_name) data.subcategory_name = null
     if (!data.team_name) data.team_name = null
-    updateMutation.mutate({ id: editingId, data })
+    doUpdate(editingId, data)
   }
 
   function toggleSelect(id) {
@@ -386,7 +392,7 @@ function TrainingExamplesPanel() {
       setConfirmBulk("delete")
       return
     }
-    bulkMutation.mutate({ ids: [...selected], action })
+    doBulkAction([...selected], action)
   }
 
   const selectClass = "px-2 py-1 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none"
@@ -444,18 +450,18 @@ function TrainingExamplesPanel() {
             <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
               <span className="text-xs font-semibold text-blue-700">{selected.size} selezionati</span>
               <div className="flex items-center gap-2 ml-auto">
-                <button onClick={() => doBulk("activate")} disabled={bulkMutation.isPending}
+                <button onClick={() => doBulk("activate")} disabled={busy}
                   className={`${btnClass} border-green-300 text-green-700 hover:bg-green-50`} aria-label="Attiva selezionati">
                   <Eye size={14} /> Attiva
                 </button>
-                <button onClick={() => doBulk("deactivate")} disabled={bulkMutation.isPending}
+                <button onClick={() => doBulk("deactivate")} disabled={busy}
                   className={`${btnClass} border-amber-300 text-amber-700 hover:bg-amber-50`} aria-label="Disattiva selezionati">
                   <EyeOff size={14} /> Disattiva
                 </button>
                 {confirmBulk === "delete" ? (
                   <span className="flex items-center gap-1">
                     <span className="text-xs text-red-600 font-medium">Confermi?</span>
-                    <button onClick={() => doBulk("delete")} disabled={bulkMutation.isPending}
+                    <button onClick={() => doBulk("delete")} disabled={busy}
                       className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50" aria-label="Conferma eliminazione">
                       <Check size={15} />
                     </button>
@@ -465,7 +471,7 @@ function TrainingExamplesPanel() {
                     </button>
                   </span>
                 ) : (
-                  <button onClick={() => doBulk("delete")} disabled={bulkMutation.isPending}
+                  <button onClick={() => doBulk("delete")} disabled={busy}
                     className={`${btnClass} border-red-300 text-red-700 hover:bg-red-50`} aria-label="Elimina selezionati">
                     <Trash2 size={14} /> Elimina
                   </button>
@@ -512,7 +518,7 @@ function TrainingExamplesPanel() {
                               className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
                           </td>
                           <td className="px-3 py-2">
-                            <button onClick={() => toggleMutation.mutate(ex.id)}
+                            <button onClick={() => doToggle(ex.id)}
                               aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
                               className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
                               {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -561,7 +567,7 @@ function TrainingExamplesPanel() {
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={saveEdit}
                                 className="p-1.5 rounded bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-800 transition" aria-label="Salva modifiche">
-                                {updateMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                                {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                               </button>
                               <button onClick={() => setEditingId(null)}
                                 className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla modifica">
@@ -577,7 +583,7 @@ function TrainingExamplesPanel() {
                               className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
                           </td>
                           <td className="px-3 py-2">
-                            <button onClick={() => toggleMutation.mutate(ex.id)}
+                            <button onClick={() => doToggle(ex.id)}
                               aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
                               className={`p-1.5 rounded transition ${ex.is_active ? "text-green-500 hover:bg-green-50 hover:text-green-700" : "text-gray-300 hover:bg-gray-100 hover:text-gray-500"}`}>
                               {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -607,9 +613,9 @@ function TrainingExamplesPanel() {
                               {confirmDeleteId === ex.id ? (
                                 <>
                                   <span className="text-[10px] text-red-600 font-medium">Confermi?</span>
-                                  <button onClick={() => deleteMutation.mutate(ex.id)}
+                                  <button onClick={() => doDelete(ex.id)}
                                     className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 transition" aria-label="Conferma eliminazione">
-                                    {deleteMutation.isPending ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                                    {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                                   </button>
                                   <button onClick={() => setConfirmDeleteId(null)}
                                     className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla eliminazione">
