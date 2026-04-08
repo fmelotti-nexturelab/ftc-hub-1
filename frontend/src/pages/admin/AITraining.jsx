@@ -283,30 +283,52 @@ function TrainingExamplesPanel() {
   const [selected, setSelected] = useState(new Set())
   const [confirmBulk, setConfirmBulk] = useState(null)
 
-  const { data: examples = [], isLoading, refetch } = useQuery({
-    queryKey: ["training-examples"],
+  const QK = ["training-examples"]
+
+  const { data: examples = [], isLoading } = useQuery({
+    queryKey: QK,
     queryFn: () => ticketConfigApi.getTrainingExamples().then(r => r.data),
     enabled: open,
   })
 
+  // Helper: aggiorna cache locale + refetch in background
+  const reload = () => {
+    ticketConfigApi.getTrainingExamples().then(r => qc.setQueryData(QK, r.data))
+  }
+
   const toggleMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.toggleTrainingExample(id),
-    onSuccess: () => refetch(),
+    onSuccess: (res) => {
+      // Aggiornamento ottimistico immediato
+      const updated = res.data
+      qc.setQueryData(QK, old => (old || []).map(e => e.id === updated.id ? updated : e))
+    },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.deleteTrainingExample(id),
-    onSuccess: () => { refetch(); setConfirmDeleteId(null) },
+    onSuccess: (_res, deletedId) => {
+      qc.setQueryData(QK, old => (old || []).filter(e => e.id !== deletedId))
+      setConfirmDeleteId(null)
+    },
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => ticketConfigApi.updateTrainingExample(id, data),
-    onSuccess: () => { refetch(); setEditingId(null) },
+    onSuccess: (res) => {
+      const updated = res.data
+      qc.setQueryData(QK, old => (old || []).map(e => e.id === updated.id ? updated : e))
+      setEditingId(null)
+    },
   })
 
   const bulkMutation = useMutation({
     mutationFn: ({ ids, action }) => ticketConfigApi.bulkTrainingExamples(ids, action),
-    onSuccess: () => { refetch(); setSelected(new Set()); setConfirmBulk(null) },
+    onSuccess: () => {
+      setSelected(new Set())
+      setConfirmBulk(null)
+      reload()
+    },
   })
 
   const filtered = useMemo(() => examples.filter(ex => {
