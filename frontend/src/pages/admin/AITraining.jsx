@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Save, CheckCircle, AlertCircle, Loader2, Search, RotateCcw, Trash2, Pencil, X, Check, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react"
 import { ticketConfigApi } from "@/api/ticketConfig"
@@ -284,8 +284,6 @@ function TrainingExamplesPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [confirmBulk, setConfirmBulk] = useState(null)
-  const [loaded, setLoaded] = useState(false)
-
   // Carica esempi quando si apre il pannello
   async function loadExamples() {
     setIsLoading(true)
@@ -297,10 +295,9 @@ function TrainingExamplesPanel() {
     }
   }
 
-  if (open && !loaded) {
-    setLoaded(true)
-    loadExamples()
-  }
+  useEffect(() => {
+    if (open) loadExamples()
+  }, [open])
 
   async function doToggle(id) {
     setBusy(true)
