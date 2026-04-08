@@ -272,8 +272,9 @@ export default function AITraining() {
 // ── Pannello gestione esempi di training attivi ──────────────────────────────
 
 function TrainingExamplesPanel() {
-  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [examples, setExamples] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
   const [searchEx, setSearchEx] = useState("")
   const [filterCatEx, setFilterCatEx] = useState("")
   const [filterActiveEx, setFilterActiveEx] = useState("")
@@ -282,33 +283,33 @@ function TrainingExamplesPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [confirmBulk, setConfirmBulk] = useState(null)
+  const [loaded, setLoaded] = useState(false)
 
-  const QK = ["training-examples"]
+  // Carica esempi quando si apre il pannello
+  function loadExamples() {
+    setIsLoading(true)
+    ticketConfigApi.getTrainingExamples()
+      .then(r => setExamples(r.data))
+      .finally(() => setIsLoading(false))
+  }
 
-  const { data: examples = [], isLoading } = useQuery({
-    queryKey: QK,
-    queryFn: () => ticketConfigApi.getTrainingExamples().then(r => r.data),
-    enabled: open,
-  })
-
-  // Helper: aggiorna cache locale + refetch in background
-  const reload = () => {
-    ticketConfigApi.getTrainingExamples().then(r => qc.setQueryData(QK, r.data))
+  if (open && !loaded) {
+    setLoaded(true)
+    loadExamples()
   }
 
   const toggleMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.toggleTrainingExample(id),
     onSuccess: (res) => {
-      // Aggiornamento ottimistico immediato
       const updated = res.data
-      qc.setQueryData(QK, old => (old || []).map(e => e.id === updated.id ? updated : e))
+      setExamples(prev => prev.map(e => e.id === updated.id ? updated : e))
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id) => ticketConfigApi.deleteTrainingExample(id),
     onSuccess: (_res, deletedId) => {
-      qc.setQueryData(QK, old => (old || []).filter(e => e.id !== deletedId))
+      setExamples(prev => prev.filter(e => e.id !== deletedId))
       setConfirmDeleteId(null)
     },
   })
@@ -317,7 +318,7 @@ function TrainingExamplesPanel() {
     mutationFn: ({ id, data }) => ticketConfigApi.updateTrainingExample(id, data),
     onSuccess: (res) => {
       const updated = res.data
-      qc.setQueryData(QK, old => (old || []).map(e => e.id === updated.id ? updated : e))
+      setExamples(prev => prev.map(e => e.id === updated.id ? updated : e))
       setEditingId(null)
     },
   })
@@ -327,7 +328,7 @@ function TrainingExamplesPanel() {
     onSuccess: () => {
       setSelected(new Set())
       setConfirmBulk(null)
-      reload()
+      loadExamples()
     },
   })
 
