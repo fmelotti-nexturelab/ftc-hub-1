@@ -837,3 +837,48 @@ async def delete_training_example(
     await _regenerate_training_file(db)
 
     return {"message": "Esempio eliminato"}
+
+
+class BulkTrainingAction(BaseModel):
+    ids: list[int]
+    action: str  # "activate", "deactivate", "delete"
+
+
+@router.post(
+    "/training/examples/bulk",
+    dependencies=[Depends(require_permission("tickets", need_manage=True))],
+)
+async def bulk_training_examples(
+    data: BulkTrainingAction,
+    db: AsyncSession = Depends(get_db),
+):
+    """Azione bulk su esempi di training: activate, deactivate, delete."""
+    from sqlalchemy import delete as sa_delete, update as sa_update
+
+    if not data.ids:
+        raise HTTPException(status_code=400, detail="Nessun esempio selezionato")
+
+    if data.action == "activate":
+        await db.execute(
+            sa_update(TicketTrainingExampleModel)
+            .where(TicketTrainingExampleModel.id.in_(data.ids))
+            .values(is_active=True)
+        )
+    elif data.action == "deactivate":
+        await db.execute(
+            sa_update(TicketTrainingExampleModel)
+            .where(TicketTrainingExampleModel.id.in_(data.ids))
+            .values(is_active=False)
+        )
+    elif data.action == "delete":
+        await db.execute(
+            sa_delete(TicketTrainingExampleModel)
+            .where(TicketTrainingExampleModel.id.in_(data.ids))
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Azione non valida")
+
+    await db.commit()
+    await _regenerate_training_file(db)
+
+    return {"message": f"{len(data.ids)} esempi aggiornati ({data.action})"}

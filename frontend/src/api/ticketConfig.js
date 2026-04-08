@@ -44,4 +44,5 @@ export const ticketConfigApi = {
   updateTrainingExample: (id, data) => apiClient.put(`/api/admin/tickets/training/examples/${id}`, data),
   toggleTrainingExample: (id) => apiClient.patch(`/api/admin/tickets/training/examples/${id}/toggle`),
   deleteTrainingExample: (id) => apiClient.delete(`/api/admin/tickets/training/examples/${id}`),
+  bulkTrainingExamples: (ids, action) => apiClient.post("/api/admin/tickets/training/examples/bulk", { ids, action }),
 }
