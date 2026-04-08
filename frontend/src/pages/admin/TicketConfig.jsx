@@ -682,6 +682,10 @@ function RoutingRulesTab() {
     queryFn: () => ticketConfigApi.getSubcategories(form.category_id).then(r => r.data),
     enabled: !!form.category_id,
   })
+  const { data: allSubcategories = [] } = useQuery({
+    queryKey: ["admin-all-subcategories"],
+    queryFn: () => ticketConfigApi.adminGetSubcategories().then(r => r.data),
+  })
   const { data: teams = [] } = useQuery({
     queryKey: ["admin-teams"],
     queryFn: () => ticketConfigApi.getTeams().then(r => r.data),
@@ -747,12 +751,40 @@ function RoutingRulesTab() {
       : !r.subcategory_id)
   )
 
+  const [filterCat, setFilterCat] = useState("")
+  const [filterSub, setFilterSub] = useState("")
+  const [filterTeam, setFilterTeam] = useState("")
+
+  const filterSubcats = filterCat ? allSubcategories.filter(s => s.category_id === parseInt(filterCat)) : []
+
+  const filteredRules = rules.filter(r => {
+    if (filterCat && r.category_id !== parseInt(filterCat)) return false
+    if (filterSub && r.subcategory_id !== parseInt(filterSub)) return false
+    if (filterTeam && r.team_id !== parseInt(filterTeam)) return false
+    return true
+  })
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center gap-2">
+        <select value={filterCat} onChange={e => { setFilterCat(e.target.value); setFilterSub("") }} className="w-44 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-[#2563eb] outline-none">
+          <option value="">Tutte le categorie</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={filterSub} onChange={e => setFilterSub(e.target.value)} className="w-48 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-[#2563eb] outline-none disabled:opacity-40" disabled={!filterCat}>
+          <option value="">Tutte le sottocategorie</option>
+          {filterSubcats.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} className="w-40 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-[#2563eb] outline-none">
+          <option value="">Tutti i team</option>
+          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        {(filterCat || filterSub || filterTeam) && (
+          <button onClick={() => { setFilterCat(""); setFilterSub(""); setFilterTeam("") }} className="text-xs text-gray-400 hover:text-gray-600 transition underline">Reset</button>
+        )}
         <button
           onClick={() => { if (showForm) { resetForm() } else { setEditingRule(null); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }); setShowForm(true) } }}
-          className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition"
+          className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition ml-auto"
         >
           <Plus size={14} /> Nuova regola
         </button>
@@ -851,7 +883,7 @@ function RoutingRulesTab() {
 
       {/* Tabella regole */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {rules.length === 0 ? (
+        {filteredRules.length === 0 ? (
           <div className="py-12 text-center text-gray-400 text-sm">Nessuna regola configurata.</div>
         ) : (
           <table className="w-full text-sm">
@@ -869,7 +901,7 @@ function RoutingRulesTab() {
               </tr>
             </thead>
             <tbody>
-              {rules.map(rule => (
+              {filteredRules.map(rule => (
                 <tr key={rule.id} className="border-b border-gray-100 last:border-0 odd:bg-white even:bg-gray-50/50">
                   <td className="px-4 py-3 font-medium text-gray-800">{rule.category_name ?? rule.category_id}</td>
                   <td className="px-4 py-3 text-gray-500">{rule.subcategory_name ?? "—"}</td>

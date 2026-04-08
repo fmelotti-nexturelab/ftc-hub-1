@@ -606,6 +606,6 @@ async def delete_routing_rule(
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Regola non trovata")
-    rule.is_active = False
+    await db.delete(rule)
     await db.commit()
-    return {"message": "Regola disattivata"}
+    return {"message": "Regola eliminata"}
