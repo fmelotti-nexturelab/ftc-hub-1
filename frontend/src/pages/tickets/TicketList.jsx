@@ -303,6 +303,52 @@ export default function TicketList() {
           </div>
         </div>
 
+        {/* Filtri Negozio / I miei */}
+        {!storicoMode && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStoreFilter(storeFilter === "store" ? null : "store")}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+                storeFilter === "store"
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600"
+              }`}
+            >
+              <Store size={15} />
+              Negozio
+              {storeTicketCount > 0 && (
+                <span className={`ml-1 text-[10px] font-bold min-w-[18px] h-[16px] flex items-center justify-center rounded-full px-1 ${
+                  storeFilter === "store" ? "bg-white/30 text-white" : "bg-blue-100 text-blue-700"
+                }`}>{storeTicketCount}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setStoreFilter(storeFilter === "mine" ? null : "mine")}
+              className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+                storeFilter === "mine"
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-emerald-400 hover:text-emerald-600"
+              }`}
+            >
+              <User size={15} />
+              I miei
+              {myTicketCount > 0 && (
+                <span className={`ml-1 text-[10px] font-bold min-w-[18px] h-[16px] flex items-center justify-center rounded-full px-1 ${
+                  storeFilter === "mine" ? "bg-white/30 text-white" : "bg-emerald-100 text-emerald-700"
+                }`}>{myTicketCount}</span>
+              )}
+            </button>
+            {storeFilter && (
+              <button
+                onClick={() => setStoreFilter(null)}
+                className="text-xs text-gray-400 hover:text-gray-600 transition underline"
+              >
+                Mostra tutti
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Filtri storico */}
         {storicoMode && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
@@ -362,7 +408,9 @@ export default function TicketList() {
                   <tr
                     key={t.id}
                     onClick={() => navigate(`/tickets/${t.id}`)}
-                    className="border-b border-gray-100 last:border-0 hover:bg-blue-50/40 cursor-pointer transition odd:bg-white even:bg-gray-50/50"
+                    className={`border-b border-gray-100 last:border-0 hover:bg-blue-50/40 cursor-pointer transition ${
+                      t.created_by === user?.id ? "bg-emerald-50/60" : "bg-blue-50/40"
+                    }`}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-gray-500">
                       #{String(t.ticket_number).padStart(4, "0")}
