@@ -186,7 +186,7 @@ export default function AITraining() {
             <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
               <th scope="col" className="px-3 py-2.5 text-left w-8">OK</th>
               <th scope="col" className="px-3 py-2.5 text-left w-12">#</th>
-              <th scope="col" className="px-3 py-2.5 text-left w-48">Titolo</th>
+              <th scope="col" className="px-3 py-2.5 text-left w-72">Titolo</th>
               <th scope="col" className="px-3 py-2.5 text-left">Descrizione</th>
               <th scope="col" className="px-3 py-2.5 text-left w-36">Categoria</th>
               <th scope="col" className="px-3 py-2.5 text-left w-40">Sottocategoria</th>
@@ -214,7 +214,7 @@ export default function AITraining() {
                     </button>
                   </td>
                   <td className="px-3 py-2 text-gray-400">#{String(item.ticket_number).padStart(4, "0")}</td>
-                  <td className="px-3 py-2 font-medium text-gray-800 truncate max-w-[200px]">{item.title}</td>
+                  <td className="px-3 py-2 font-medium text-gray-800 truncate max-w-[300px]" title={item.title}>{item.title}</td>
                   <td className="px-3 py-2 text-gray-500 truncate max-w-[250px]" title={item.description}>{item.description}</td>
                   <td className="px-3 py-2">
                     <select value={item.new_category_id || ""} onChange={e => update(idx, "new_category_id", parseInt(e.target.value))}
