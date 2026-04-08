@@ -108,6 +108,7 @@ export default function TicketList() {
     subcategory_id: "",
     team_id: "",
   })
+  const [searchText, setSearchText] = useState("")
 
   const [selected, setSelected] = useState(new Set())
   const [bulkAssignTo, setBulkAssignTo] = useState("")
@@ -168,13 +169,23 @@ export default function TicketList() {
 
   // Per la vista store default: escludi closed client-side
   // Per la vista storico: applica filtro anno client-side
-  const tickets = isStore
+  const baseTickets = isStore
     ? storicoMode
       ? storicoRaw.filter(t =>
           (!storicoYear || new Date(t.created_at).getFullYear() === parseInt(storicoYear))
         )
       : rawTickets.filter(t => t.status !== "closed")
     : rawTickets
+
+  // Filtro testo su negozio/richiedente
+  const tickets = searchText
+    ? baseTickets.filter(t => {
+        const q = searchText.toLowerCase()
+        return (t.requester_name || "").toLowerCase().includes(q)
+          || (t.creator_name || "").toLowerCase().includes(q)
+          || (t.store_number || "").toLowerCase().includes(q)
+      })
+    : baseTickets
 
   const bulkMutation = useMutation({
     mutationFn: (data) => ticketsApi.bulkAction(data),
@@ -200,10 +211,11 @@ export default function TicketList() {
 
   const resetAll = () => {
     setFilters({ status: "", priority: "", category_id: "", subcategory_id: "", team_id: "" })
+    setSearchText("")
     setViewMode(null)
   }
 
-  const hasFilters = Object.values(filters).some(Boolean) || viewMode !== null
+  const hasFilters = Object.values(filters).some(Boolean) || viewMode !== null || searchText
 
   const toggleOne = (id) => setSelected(prev => {
     const next = new Set(prev)
@@ -483,6 +495,18 @@ export default function TicketList() {
             {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         )}
+
+        <div className="relative">
+          <label htmlFor="search-requester" className="sr-only">Cerca negozio o richiedente</label>
+          <input
+            id="search-requester"
+            type="text"
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            placeholder="Negozio / Richiedente..."
+            className="w-36 px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
+          />
+        </div>
 
         <select value={filters.subcategory_id} onChange={set("subcategory_id")} className={selectClass}>
           <option value="">Tutti gli ambiti</option>
