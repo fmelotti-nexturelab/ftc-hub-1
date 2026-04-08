@@ -83,7 +83,7 @@ export default function TicketList() {
   const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
   const isStore = ["STORE", "STOREMANAGER"].includes(user?.department)
-  const canSeeHistory = !isStore
+  const canSeeHistory = ["ADMIN", "SUPERUSER", "IT", "MANAGER", "TOPMGR"].includes(user?.department)
 
   const canSeeTeam = !isStore
   const canSeeAll = isAdmin || user?.department === "IT"
