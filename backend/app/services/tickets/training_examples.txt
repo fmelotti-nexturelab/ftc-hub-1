@@ -1,0 +1,102 @@
+Titolo: WiFi non disponibile | Categoria: IT | Sottocategoria: Rete & ConnettivitÃ  | Team: IT | Priorità: medium
+Titolo: Richiesta secondo monitor | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: Excel si chiude da solo | Categoria: IT | Sottocategoria: Tool & Applicativi | Team: IT | Priorità: medium
+Titolo: PC si riavvia da solo | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: medium
+Titolo: Errore certificato sito interno | Categoria: IT | Sottocategoria: Software & Sistemi | Team: IT | Priorità: high
+Titolo: Schermo stampante rotto | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: Disco quasi pieno | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: Problema audio cuffie | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: PC non si accende | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: medium
+Titolo: PC non si accende | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: medium
+Titolo: Richiesta nuovo mouse | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: Disco quasi pieno | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: Richiesta reset password | Categoria: IT | Sottocategoria: Windows - MS OFFICE - NAV  | Team: IT | Priorità: medium
+Titolo: Errore certificato sito interno | Categoria: IT | Sottocategoria: Software & Sistemi | Team: IT | Priorità: high
+Titolo: Antivirus blocca programma | Categoria: IT | Sottocategoria: Software & Sistemi | Team: IT | Priorità: low
+Titolo: Tastiera non risponde | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: medium
+Titolo: Schermo touch non calibrato | Categoria: IT | Sottocategoria: Cassa , POS, Stampante EPSON, Misuratore Fiscale | Team: IT | Priorità: medium
+Titolo: Errore stampa scontrino | Categoria: IT | Sottocategoria: Cassa , POS, Stampante EPSON, Misuratore Fiscale | Team: IT | Priorità: high
+Titolo: Telefono aziendale guasto | Categoria: IT | Sottocategoria: Hardware | Team: IT | Priorità: low
+Titolo: POS non legge carte contactless | Categoria: IT | Sottocategoria: Cassa , POS, Stampante EPSON, Misuratore Fiscale | Team: IT | Priorità: high
+Titolo: Scanner codici a barre rotto | Categoria: IT | Sottocategoria: Cassa , POS, Stampante EPSON, Misuratore Fiscale | Team: IT | Priorità: high
+Titolo: Problemi VPN da casa | Categoria: IT | Sottocategoria: Rete & ConnettivitÃ  | Team: IT | Priorità: medium
+Titolo: Problema email aziendale | Categoria: IT | Sottocategoria: Windows - MS OFFICE - NAV  | Team: IT | Priorità: medium
+Titolo: Software gestionale bloccato | Categoria: IT | Sottocategoria: Software & Sistemi | Team: IT | Priorità: medium
+Titolo: Antivirus blocca programma | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: medium
+Titolo: Problema audio cuffie | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: high
+Titolo: Aggiornamento Windows fallito | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: high
+Titolo: Aggiornamento Windows fallito | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: medium
+Titolo: PC molto lento | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: medium
+Titolo: WiFi non disponibile | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: low
+Titolo: Richiesta secondo monitor | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: high
+Titolo: Porta USB non funziona | Categoria: IT | Sottocategoria: — | Team: IT | Priorità: medium
+Titolo: Errore certificato sito interno | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: medium
+Titolo: WiFi non disponibile | Categoria: RETAIL | Sottocategoria: Display & Allestimento | Team: RETAIL | Priorità: high
+Titolo: WiFi non disponibile | Categoria: MARKETING | Sottocategoria: GLOVO | Team: MARKETING | Priorità: medium
+Titolo: Errore apertura file Excel | Categoria: MARKETING | Sottocategoria: GLOVO | Team: MARKETING | Priorità: high
+Titolo: PC si riavvia da solo | Categoria: MARKETING | Sottocategoria: Comunicazioni Negozio | Team: MARKETING | Priorità: low
+Titolo: Backup fallito | Categoria: COMMERCIAL | Sottocategoria: Reporting Vendite | Team: COMMERCIAL | Priorità: medium
+Titolo: Richiesta secondo monitor | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: high
+Titolo: WiFi non disponibile | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: low
+Titolo: Richiesta nuovo mouse | Categoria: FINANCE | Sottocategoria: GYB  emissione fattura | Team: FINANCE | Priorità: high
+Titolo: Errore apertura file Excel | Categoria: RETAIL | Sottocategoria: Apertura / Chiusura Negozio | Team: RETAIL | Priorità: high
+Titolo: Teams non funziona | Categoria: RETAIL | Sottocategoria: Cassa & Pagamenti | Team: RETAIL | Priorità: medium
+Titolo: POS non legge carte contactless | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: medium
+Titolo: Errore sincronizzazione OneDrive | Categoria: MARKETING | Sottocategoria: Comunicazioni Negozio | Team: MARKETING | Priorità: high
+Titolo: Porta USB non funziona | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: high
+Titolo: Webcam non rilevata | Categoria: MARKETING | Sottocategoria: Materiali Promozionali | Team: MARKETING | Priorità: medium
+Titolo: Monitor nero | Categoria: HEALTH & SAFETY | Sottocategoria: Sicurezza Struttura | Team: HEALTH & SAFETY | Priorità: low
+Titolo: Tastiera non risponde | Categoria: IT | Sottocategoria: Software & Sistemi | Team: IT | Priorità: low
+Titolo: Richiesta secondo monitor | Categoria: HEALTH & SAFETY | Sottocategoria: DPI & Normativa | Team: HEALTH & SAFETY | Priorità: low
+Titolo: Richiesta secondo monitor | Categoria: COMMERCIAL | Sottocategoria: Prezzi | Team: COMMERCIAL | Priorità: high
+Titolo: Monitor nero | Categoria: FACILITIES | Sottocategoria: Pulizie & Forniture | Team: FACILITIES | Priorità: medium
+Titolo: Problema audio cuffie | Categoria: HEALTH & SAFETY | Sottocategoria: DPI & Normativa | Team: HEALTH & SAFETY | Priorità: high
+Titolo: Aggiornamento Windows fallito | Categoria: FACILITIES | Sottocategoria: Pulizie & Forniture | Team: FACILITIES | Priorità: low
+Titolo: Problema email aziendale | Categoria: MARKETING | Sottocategoria: Campagne | Team: MARKETING | Priorità: medium
+Titolo: Schermo touch non calibrato | Categoria: HR | Sottocategoria: Malattie & Congedi | Team: HR | Priorità: medium
+Titolo: Richiesta accesso cartella condivisa | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: high
+Titolo: Porta USB non funziona | Categoria: INTERNO HO | Sottocategoria: Richiesta Generica | Team: IT | Priorità: low
+Titolo: PC si riavvia da solo | Categoria: HEALTH & SAFETY | Sottocategoria: DPI & Normativa | Team: HEALTH & SAFETY | Priorità: medium
+Titolo: Richiesta reset password | Categoria: INTERNO HO | Sottocategoria: Richiesta Generica | Team: IT | Priorità: high
+Titolo: Teams non funziona | Categoria: FACILITIES | Sottocategoria: Climatizzazione & Illuminazione | Team: FACILITIES | Priorità: high
+Titolo: Teams non funziona | Categoria: FINANCE | Sottocategoria: Fatturazione & Fornitori | Team: FINANCE | Priorità: medium
+Titolo: Antivirus blocca programma | Categoria: IT | Sottocategoria: Tool & Applicativi | Team: IT | Priorità: high
+Titolo: Problema connessione NAV | Categoria: FACILITIES | Sottocategoria: Manutenzione Negozio | Team: FACILITIES | Priorità: high
+Titolo: Richiesta accesso cartella condivisa | Categoria: FACILITIES | Sottocategoria: Manutenzione Negozio | Team: FACILITIES | Priorità: medium
+Titolo: Stampante non funziona | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: medium
+Titolo: Backup fallito | Categoria: FACILITIES | Sottocategoria: Climatizzazione & Illuminazione | Team: FACILITIES | Priorità: critical
+Titolo: Scanner codici a barre rotto | Categoria: MARKETING | Sottocategoria: Materiali Promozionali | Team: MARKETING | Priorità: high
+Titolo: Problema proiettore sala riunioni | Categoria: HR | Sottocategoria: Malattie & Congedi | Team: HR | Priorità: low
+Titolo: WiFi non disponibile | Categoria: FINANCE | Sottocategoria: GYB  emissione fattura | Team: FINANCE | Priorità: medium
+Titolo: Errore stampa scontrino | Categoria: COMMERCIAL | Sottocategoria: Richiesta Trasferimento Interno | Team: COMMERCIAL | Priorità: medium
+Titolo: Errore apertura file Excel | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: low
+Titolo: Problema cassa | Categoria: FACILITIES | Sottocategoria: Climatizzazione & Illuminazione | Team: FACILITIES | Priorità: high
+Titolo: Errore sincronizzazione OneDrive | Categoria: HR | Sottocategoria: Presenze & Turni | Team: HR | Priorità: medium
+Titolo: Richiesta installazione software | Categoria: RETAIL | Sottocategoria: Cassa & Pagamenti | Team: RETAIL | Priorità: high
+Titolo: Problema audio cuffie | Categoria: RETAIL | Sottocategoria: Apertura / Chiusura Negozio | Team: RETAIL | Priorità: low
+Titolo: Excel si chiude da solo | Categoria: HR | Sottocategoria: Note Spese & Rimborsi | Team: HR | Priorità: medium
+Titolo: Excel si chiude da solo | Categoria: RETAIL | Sottocategoria: Apertura / Chiusura Negozio | Team: RETAIL | Priorità: medium
+Titolo: Problemi VPN da casa | Categoria: HR | Sottocategoria: Formazione | Team: HR | Priorità: medium
+Titolo: Richiesta reset password | Categoria: INTERNO HO | Sottocategoria: Richiesta Generica | Team: IT | Priorità: high
+Titolo: Errore stampa scontrino | Categoria: HR | Sottocategoria: Formazione | Team: HR | Priorità: medium
+Titolo: Problema email aziendale | Categoria: INTERNO HO | Sottocategoria: Richiesta Generica | Team: IT | Priorità: low
+Titolo: Richiesta nuovo mouse | Categoria: COMMERCIAL | Sottocategoria: Richiesta Trasferimento Interno | Team: COMMERCIAL | Priorità: medium
+Titolo: VPN si disconnette spesso | Categoria: FINANCE | Sottocategoria: Cassa & Riconciliazione | Team: FINANCE | Priorità: critical
+Titolo: Webcam non rilevata | Categoria: IT | Sottocategoria: TICKET - gestione di un ticket | Team: IT | Priorità: high
+Titolo: Antivirus blocca programma | Categoria: FACILITIES | Sottocategoria: Climatizzazione & Illuminazione | Team: FACILITIES | Priorità: critical
+Titolo: Excel si chiude da solo | Categoria: MARKETING | Sottocategoria: Materiali Promozionali | Team: MARKETING | Priorità: low
+Titolo: Tastiera non risponde | Categoria: MARKETING | Sottocategoria: Comunicazioni Negozio | Team: MARKETING | Priorità: low
+Titolo: Telefono aziendale guasto | Categoria: RETAIL | Sottocategoria: Display & Allestimento | Team: RETAIL | Priorità: low
+Titolo: Excel si chiude da solo | Categoria: HR | Sottocategoria: Buste Paga & Amministrazione | Team: HR | Priorità: low
+Titolo: Software gestionale bloccato | Categoria: RETAIL | Sottocategoria: Display & Allestimento | Team: RETAIL | Priorità: high
+Titolo: Schermo touch non calibrato | Categoria: MARKETING | Sottocategoria: Campagne | Team: MARKETING | Priorità: low
+Titolo: Stampante non funziona | Categoria: HR | Sottocategoria: Formazione | Team: HR | Priorità: medium
+Titolo: Porta USB non funziona | Categoria: HEALTH & SAFETY | Sottocategoria: Segnalazione Incidente | Team: HEALTH & SAFETY | Priorità: high
+Titolo: Badge non riconosciuto | Categoria: HEALTH & SAFETY | Sottocategoria: DPI & Normativa | Team: HEALTH & SAFETY | Priorità: medium
+Titolo: PC si riavvia da solo | Categoria: HR | Sottocategoria: Presenze & Turni | Team: HR | Priorità: medium
+Titolo: Aggiornamento Windows fallito | Categoria: HEALTH & SAFETY | Sottocategoria: Sicurezza Struttura | Team: HEALTH & SAFETY | Priorità: medium
+Titolo: Richiesta secondo monitor | Categoria: COMMERCIAL | Sottocategoria: Promozioni | Team: COMMERCIAL | Priorità: medium
+Titolo: Richiesta nuovo mouse | Categoria: FACILITIES | Sottocategoria: Manutenzione Negozio | Team: FACILITIES | Priorità: low
+Titolo: Outlook non sincronizza | Categoria: RETAIL | Sottocategoria: Cassa & Pagamenti | Team: RETAIL | Priorità: high
+Titolo: Stampante non funziona | Categoria: FINANCE | Sottocategoria: Budget & Previsioni | Team: FINANCE | Priorità: low
+Titolo: Badge non riconosciuto | Categoria: HEALTH & SAFETY | Sottocategoria: Segnalazione Incidente | Team: HEALTH & SAFETY | Priorità: medium

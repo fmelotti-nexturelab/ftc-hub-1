@@ -206,6 +206,16 @@ async def analyze_ticket(
     teams_desc, teams_names = _build_teams_block(teams)
     cats_block = _build_cats_block(categories)
 
+    # Carica esempi di training se disponibili
+    training_block = ""
+    try:
+        from pathlib import Path
+        training_file = Path(__file__).parent / "training_examples.txt"
+        if training_file.exists():
+            training_block = f"\n\nEsempi di ticket già classificati correttamente (usa come riferimento):\n{training_file.read_text(encoding='utf-8')}\n"
+    except Exception:
+        pass
+
     system = f"""Sei un analizzatore di ticket per Flying Tiger Copenhagen.
 Analizza il ticket e rispondi SOLO con un JSON valido, niente altro.
 
@@ -216,11 +226,13 @@ Nomi esatti da usare nel JSON: {teams_names}
 
 Categorie disponibili:
 {cats_block}
-
+{training_block}
 Regole:
 - Pertinente = qualsiasi richiesta lavorativa
 - Non pertinente = messaggi personali, spam, test, testo senza senso
 - suggested_teams: 1-2 team massimo, solo quelli competenti
+- category_id: OBBLIGATORIO, scegli SEMPRE la categoria più pertinente. Usa gli esempi sopra come guida.
+- subcategory_id: scegli la sottocategoria più pertinente, null solo se nessuna corrisponde
 - priority: critical=blocco totale negozio, high=grave, medium=disagio, low=non urgente
 - enhanced_description: riscrivi in modo chiaro e professionale, niente markdown
 
