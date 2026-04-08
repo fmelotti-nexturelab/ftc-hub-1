@@ -543,7 +543,7 @@ async def update_status(
             )
         status_labels = {
             "open": "Aperto", "in_progress": "In lavorazione",
-            "waiting": "In attesa", "resolved": "Risolto", "closed": "Chiuso",
+            "waiting": "In attesa", "closed": "Chiuso",
         }
         label = status_labels.get(data.status.value, data.status.value)
         await notification_service.push(

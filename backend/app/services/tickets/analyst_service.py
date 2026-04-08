@@ -32,7 +32,7 @@ MAX_RESULT_ROWS = 100
 DB_SCHEMA = """
 Schema: tickets
 Tabelle:
-- tickets.tickets (id UUID, ticket_number INT, title TEXT, description TEXT, category_id INT, subcategory_id INT, team_id INT, priority tickets.ticketpriority ENUM(low,medium,high,critical), status tickets.ticketstatus ENUM(open,in_progress,waiting,resolved,closed), store_number VARCHAR, requester_name VARCHAR, requester_email VARCHAR, created_by UUID, assigned_to UUID, is_active BOOL, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, closed_at TIMESTAMPTZ, taken_at TIMESTAMPTZ, resolution_minutes INT, has_solution BOOL)
+- tickets.tickets (id UUID, ticket_number INT, title TEXT, description TEXT, category_id INT, subcategory_id INT, team_id INT, priority tickets.ticketpriority ENUM(low,medium,high,critical), status tickets.ticketstatus ENUM(open,in_progress,waiting,closed), store_number VARCHAR, requester_name VARCHAR, requester_email VARCHAR, created_by UUID, assigned_to UUID, is_active BOOL, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, closed_at TIMESTAMPTZ, taken_at TIMESTAMPTZ, resolution_minutes INT, has_solution BOOL)
 - tickets.ticket_categories (id INT, name VARCHAR, is_active BOOL)
 - tickets.ticket_subcategories (id INT, category_id INT, name VARCHAR, is_active BOOL)
 - tickets.ticket_teams (id INT, name VARCHAR, is_active BOOL)

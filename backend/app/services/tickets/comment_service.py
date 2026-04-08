@@ -47,8 +47,8 @@ async def add_comment(
     )
     db.add(comment)
 
-    # Se l'autore del ticket commenta su un ticket resolved → torna open
-    if not is_manager and ticket.created_by == current_user.id and ticket.status == TicketStatus.RESOLVED:
+    # Se l'autore del ticket commenta su un ticket chiuso → torna open
+    if not is_manager and ticket.created_by == current_user.id and ticket.status == TicketStatus.CLOSED:
         ticket.status = TicketStatus.OPEN
 
     await db.commit()
