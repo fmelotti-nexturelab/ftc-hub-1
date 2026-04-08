@@ -2,7 +2,7 @@ import { useState, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, Filter, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox, LogOut, Paperclip, MessageSquare, Lock, Lightbulb } from "lucide-react"
+import { Plus, Filter, LayoutDashboard, X, CheckSquare, History, User, Users, Inbox, LogOut, Paperclip, MessageSquare, Lock, Lightbulb, Store } from "lucide-react"
 import { ticketsApi } from "@/api/tickets"
 import { ticketConfigApi } from "@/api/ticketConfig"
 import { useAuthStore } from "@/store/authStore"
@@ -109,6 +109,7 @@ export default function TicketList() {
     team_id: "",
   })
   const [searchText, setSearchText] = useState("")
+  const [storeFilter, setStoreFilter] = useState(null) // null=tutti, "store"=negozio, "mine"=miei
 
   const [selected, setSelected] = useState(new Set())
   const [bulkAssignTo, setBulkAssignTo] = useState("")
@@ -177,15 +178,26 @@ export default function TicketList() {
       : rawTickets.filter(t => t.status !== "closed")
     : rawTickets
 
+  // Filtro store (negozio vs miei) per store manager
+  const storeFiltered = isStore && storeFilter
+    ? storeFilter === "mine"
+      ? baseTickets.filter(t => t.created_by === user?.id)
+      : baseTickets.filter(t => t.created_by !== user?.id)
+    : baseTickets
+
   // Filtro testo su negozio/richiedente
   const tickets = searchText
-    ? baseTickets.filter(t => {
+    ? storeFiltered.filter(t => {
         const q = searchText.toLowerCase()
         return (t.requester_name || "").toLowerCase().includes(q)
           || (t.creator_name || "").toLowerCase().includes(q)
           || (t.store_number || "").toLowerCase().includes(q)
       })
-    : baseTickets
+    : storeFiltered
+
+  // Contatori per store manager
+  const storeTicketCount = isStore ? baseTickets.filter(t => t.created_by !== user?.id).length : 0
+  const myTicketCount = isStore ? baseTickets.filter(t => t.created_by === user?.id).length : 0
 
   const bulkMutation = useMutation({
     mutationFn: (data) => ticketsApi.bulkAction(data),
@@ -212,10 +224,11 @@ export default function TicketList() {
   const resetAll = () => {
     setFilters({ status: "", priority: "", category_id: "", subcategory_id: "", team_id: "" })
     setSearchText("")
+    setStoreFilter(null)
     setViewMode(null)
   }
 
-  const hasFilters = Object.values(filters).some(Boolean) || viewMode !== null || searchText
+  const hasFilters = Object.values(filters).some(Boolean) || viewMode !== null || searchText || storeFilter
 
   const toggleOne = (id) => setSelected(prev => {
     const next = new Set(prev)
@@ -431,6 +444,52 @@ export default function TicketList() {
         </div>
       </div>
 
+      {/* Filtri store manager: Negozio / I miei */}
+      {isStore && !storicoMode && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setStoreFilter(storeFilter === "store" ? null : "store")}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+              storeFilter === "store"
+                ? "bg-blue-500 text-white border-blue-500"
+                : "bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600"
+            }`}
+          >
+            <Store size={15} />
+            Negozio
+            {storeTicketCount > 0 && (
+              <span className={`ml-1 text-[10px] font-bold min-w-[18px] h-[16px] flex items-center justify-center rounded-full px-1 ${
+                storeFilter === "store" ? "bg-white/30 text-white" : "bg-blue-100 text-blue-700"
+              }`}>{storeTicketCount}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setStoreFilter(storeFilter === "mine" ? null : "mine")}
+            className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
+              storeFilter === "mine"
+                ? "bg-emerald-500 text-white border-emerald-500"
+                : "bg-white text-gray-600 border-gray-300 hover:border-emerald-400 hover:text-emerald-600"
+            }`}
+          >
+            <User size={15} />
+            I miei
+            {myTicketCount > 0 && (
+              <span className={`ml-1 text-[10px] font-bold min-w-[18px] h-[16px] flex items-center justify-center rounded-full px-1 ${
+                storeFilter === "mine" ? "bg-white/30 text-white" : "bg-emerald-100 text-emerald-700"
+              }`}>{myTicketCount}</span>
+            )}
+          </button>
+          {storeFilter && (
+            <button
+              onClick={() => setStoreFilter(null)}
+              className="text-xs text-gray-400 hover:text-gray-600 transition underline"
+            >
+              Mostra tutti
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Quick view buttons */}
       <div className="flex items-center gap-2">
         {canSeeHistory && (
@@ -573,7 +632,10 @@ export default function TicketList() {
                   key={t.id}
                   onClick={() => navigate(`/tickets/${t.id}`)}
                   className={`border-b border-gray-100 last:border-0 hover:bg-blue-50/40 cursor-pointer transition ${
-                    selected.has(t.id) ? "bg-blue-50" : "odd:bg-white even:bg-gray-50/50"
+                    selected.has(t.id) ? "bg-blue-50"
+                    : isStore && t.created_by === user?.id ? "bg-emerald-50/60"
+                    : isStore && t.created_by !== user?.id ? "bg-blue-50/40"
+                    : "odd:bg-white even:bg-gray-50/50"
                   }`}
                 >
                   {canSeeTeam && (

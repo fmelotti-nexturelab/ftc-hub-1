@@ -365,10 +365,13 @@ async def get_tickets(
     )
 
     if department == UserDepartment.STOREMANAGER:
-        # Vede solo i ticket del suo negozio
+        # Vede i ticket del suo negozio + quelli creati da lui
         store_number = await _get_user_store_number(db, current_user.id)
         if store_number:
-            stmt = stmt.where(Ticket.store_number == store_number)
+            stmt = stmt.where(or_(
+                Ticket.store_number == store_number,
+                Ticket.created_by == current_user.id,
+            ))
         else:
             stmt = stmt.where(Ticket.created_by == current_user.id)
 

@@ -31,18 +31,21 @@ function TicketSidebarLink({ user }) {
     enabled: !isStore,
   })
 
-  // Ticket non chiusi assegnati a me (per HO/IT) o creati da me (per Store)
+  // Per store: carica tutti i ticket (il backend filtra per negozio)
+  // Per HO/IT: carica ticket assegnati a me
   const { data: myTickets } = useQuery({
-    queryKey: ["sidebar-tickets-mine"],
+    queryKey: ["sidebar-tickets-mine", isStore],
     queryFn: () => ticketsApi.list(
-      isStore ? { created_by_id: user?.id } : { assigned_to_id: user?.id }
+      isStore ? {} : { assigned_to_id: user?.id }
     ).then(r => r.data),
     refetchInterval: 30_000,
     enabled: !!user?.id,
   })
 
-  const teamCount = (teamTickets ?? []).filter(t => t.status !== "closed").length
-  const myCount = (myTickets ?? []).filter(t => t.status !== "closed").length
+  const allOpen = (myTickets ?? []).filter(t => t.status !== "closed")
+  const teamCount = isStore ? 0 : (teamTickets ?? []).filter(t => t.status !== "closed").length
+  const storeCount = isStore ? allOpen.filter(t => t.created_by !== user?.id).length : 0
+  const myCount = isStore ? allOpen.filter(t => t.created_by === user?.id).length : allOpen.length
 
   return (
     <NavLink
@@ -64,9 +67,17 @@ function TicketSidebarLink({ user }) {
             <span className="text-[8px] text-white/40 mt-0.5">team</span>
           </div>
         )}
+        {storeCount > 0 && (
+          <div className="flex flex-col items-center">
+            <span className="bg-blue-500 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1">
+              {storeCount}
+            </span>
+            <span className="text-[8px] text-white/40 mt-0.5">negozio</span>
+          </div>
+        )}
         {myCount > 0 && (
           <div className="flex flex-col items-center">
-            <span className="bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1">
+            <span className="bg-emerald-500 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1">
               {myCount}
             </span>
             <span className="text-[8px] text-white/40 mt-0.5">miei</span>
