@@ -91,9 +91,9 @@ export default function App() {
         <Route path="utilities/consulta-database/item-list/it02" element={<ItemListConsultPage />} />
         <Route path="utilities/consulta-database/item-list/it03" element={<ItemListConsultPage />} />
         <Route path="tickets" element={<TicketList />} />
-        <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER"]}><TicketDashboard /></RoleRoute>} />
-        <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER"]}><TicketHistory /></RoleRoute>} />
-        <Route path="tickets/performance" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER"]}><TicketPerformance /></RoleRoute>} />
+        <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "HR", "COMMERCIAL", "FINANCE", "MARKETING", "RETAIL", "TOPMGR"]}><TicketDashboard /></RoleRoute>} />
+        <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "HR", "COMMERCIAL", "FINANCE", "MARKETING", "RETAIL", "TOPMGR"]}><TicketHistory /></RoleRoute>} />
+        <Route path="tickets/performance" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "HR", "COMMERCIAL", "FINANCE", "MARKETING", "RETAIL", "TOPMGR"]}><TicketPerformance /></RoleRoute>} />
         <Route path="tickets/new" element={<TicketCreate />} />
         <Route path="tickets/:id" element={<TicketDetail />} />
         <Route path="profile" element={<ProfilePage />} />

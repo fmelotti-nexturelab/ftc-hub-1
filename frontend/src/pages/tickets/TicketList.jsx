@@ -83,7 +83,7 @@ export default function TicketList() {
   const { hasRole, user } = useAuthStore()
   const isAdmin = hasRole("ADMIN")
   const isStore = ["STORE", "STOREMANAGER"].includes(user?.department)
-  const canSeeHistory = ["ADMIN", "SUPERUSER", "IT", "MANAGER"].includes(user?.department)
+  const canSeeHistory = !isStore
 
   const canSeeTeam = !isStore
   const canSeeAll = isAdmin || user?.department === "IT"
@@ -457,7 +457,7 @@ export default function TicketList() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
+          {canSeeHistory && (
             <button
               onClick={() => navigate("/tickets/dashboard")}
               className="flex items-center gap-2 border border-gray-300 hover:border-[#2563eb] hover:text-[#2563eb] text-gray-600 font-semibold py-2.5 px-4 rounded-xl transition text-sm"
