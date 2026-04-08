@@ -34,7 +34,7 @@ const inputClass =
 
 // ── Modals ────────────────────────────────────────────────────────────────────
 
-function NewUserModal({ onClose, onSaved }) {
+function NewUserModal({ onClose, onSaved, departmentTypes }) {
   const [form, setForm] = useState({ username: "", email: "", full_name: "", password: "", department: "COMMERCIAL" })
   const [error, setError] = useState("")
   const mutation = useMutation({
@@ -89,7 +89,7 @@ function NewUserModal({ onClose, onSaved }) {
   )
 }
 
-function ChangeTypeModal({ user, onClose, onSaved }) {
+function ChangeTypeModal({ user, onClose, onSaved, departmentTypes }) {
   const [userType, setUserType] = useState(user.department)
   const [error, setError] = useState("")
   const mutation = useMutation({
@@ -348,10 +348,10 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-4">
-      {showNew && <NewUserModal onClose={() => setShowNew(false)} onSaved={invalidate} />}
+      {showNew && <NewUserModal onClose={() => setShowNew(false)} onSaved={invalidate} departmentTypes={departmentTypes} />}
       {resetUser && <ResetPasswordModal user={resetUser} onClose={() => setResetUser(null)} />}
       {changeTypeUser && (
-        <ChangeTypeModal user={changeTypeUser} onClose={() => setChangeTypeUser(null)} onSaved={invalidate} />
+        <ChangeTypeModal user={changeTypeUser} onClose={() => setChangeTypeUser(null)} onSaved={invalidate} departmentTypes={departmentTypes} />
       )}
 
       <div className="flex items-center justify-between">
