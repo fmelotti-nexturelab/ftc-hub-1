@@ -17,41 +17,56 @@ from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
+    from app.models.ticket_config import TicketTeamMemberModel
     result = await db.execute(
         select(User).where(User.username == data.username, User.is_active == True)
     )
     user = result.scalar_one_or_none()
-    
+
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenziali non valide",
         )
-    
+
     await db.execute(
         update(User).where(User.id == user.id)
         .values(last_login=datetime.now(timezone.utc))
     )
-    
+
     access_token = create_access_token({"sub": str(user.id), "role": user.role.value})
     raw_refresh, hashed_refresh = create_refresh_token()
-    
+
     refresh_obj = RefreshToken(
         user_id=user.id,
         token_hash=hashed_refresh,
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     db.add(refresh_obj)
-    await db.commit()
-    
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=raw_refresh,
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserInfo.model_validate(user),
+
+    # Check team lead
+    tl_result = await db.execute(
+        select(TicketTeamMemberModel).where(
+            TicketTeamMemberModel.user_id == user.id,
+            TicketTeamMemberModel.is_team_lead == True,
+        )
     )
+    is_team_lead = tl_result.scalar_one_or_none() is not None
+
+    await db.commit()
+
+    user_info = UserInfo.model_validate(user).model_dump()
+    user_info["is_team_lead"] = is_team_lead
+
+    return {
+        "access_token": access_token,
+        "refresh_token": raw_refresh,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": user_info,
+    }
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
@@ -102,9 +117,21 @@ async def logout(current_user: User = Depends(get_current_user), db: AsyncSessio
     await db.commit()
     return {"message": "Logout effettuato"}
 
-@router.get("/me", response_model=UserInfo)
-async def get_me(current_user: User = Depends(get_current_user)):
-    return UserInfo.model_validate(current_user)
+@router.get("/me")
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.models.ticket_config import TicketTeamMemberModel
+    info = UserInfo.model_validate(current_user).model_dump()
+    result = await db.execute(
+        select(TicketTeamMemberModel).where(
+            TicketTeamMemberModel.user_id == current_user.id,
+            TicketTeamMemberModel.is_team_lead == True,
+        )
+    )
+    info["is_team_lead"] = result.scalar_one_or_none() is not None
+    return info
 
 
 @router.get("/my-modules")

@@ -91,9 +91,9 @@ export default function App() {
         <Route path="utilities/consulta-database/item-list/it02" element={<ItemListConsultPage />} />
         <Route path="utilities/consulta-database/item-list/it03" element={<ItemListConsultPage />} />
         <Route path="tickets" element={<TicketList />} />
-        <Route path="tickets/dashboard" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "TOPMGR"]}><TicketDashboard /></RoleRoute>} />
-        <Route path="tickets/history" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "TOPMGR"]}><TicketHistory /></RoleRoute>} />
-        <Route path="tickets/performance" element={<RoleRoute roles={["ADMIN", "IT", "SUPERUSER", "MANAGER", "TOPMGR"]}><TicketPerformance /></RoleRoute>} />
+        <Route path="tickets/dashboard" element={<TicketDashboard />} />
+        <Route path="tickets/history" element={<TicketHistory />} />
+        <Route path="tickets/performance" element={<TicketPerformance />} />
         <Route path="tickets/new" element={<TicketCreate />} />
         <Route path="tickets/:id" element={<TicketDetail />} />
         <Route path="profile" element={<ProfilePage />} />
