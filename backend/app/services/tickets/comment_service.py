@@ -17,6 +17,34 @@ def _enrich_comment(comment: TicketComment, author: User | None) -> CommentRespo
     return r
 
 
+async def _can_access_ticket(
+    db: AsyncSession, ticket: Ticket, current_user: User, is_manager: bool,
+) -> bool:
+    """Controlla se l'utente può accedere al ticket:
+    - manager (tickets.manage)
+    - creatore del ticket
+    - assegnato al ticket
+    - team leader del team destinatario
+    """
+    if is_manager:
+        return True
+    if ticket.created_by == current_user.id:
+        return True
+    if ticket.assigned_to == current_user.id:
+        return True
+    if ticket.team_id:
+        result = await db.execute(
+            select(TicketTeamMemberModel).where(
+                TicketTeamMemberModel.team_id == ticket.team_id,
+                TicketTeamMemberModel.user_id == current_user.id,
+                TicketTeamMemberModel.is_team_lead == True,
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+    return False
+
+
 async def add_comment(
     db: AsyncSession,
     ticket_id: UUID,
@@ -31,7 +59,7 @@ async def add_comment(
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket non trovato")
-    if not is_manager and ticket.created_by != current_user.id:
+    if not await _can_access_ticket(db, ticket, current_user, is_manager):
         raise HTTPException(status_code=403, detail="Accesso negato")
 
     # Solo i manager possono fare note interne o marcare come soluzione
@@ -138,15 +166,27 @@ async def get_comments(
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket non trovato")
-    if not is_manager and ticket.created_by != current_user.id:
+    if not await _can_access_ticket(db, ticket, current_user, is_manager):
         raise HTTPException(status_code=403, detail="Accesso negato")
+
+    # Note interne visibili solo a manager, assegnato e team leader
+    can_see_internal = is_manager or ticket.assigned_to == current_user.id
+    if not can_see_internal and ticket.team_id:
+        tl_result = await db.execute(
+            select(TicketTeamMemberModel).where(
+                TicketTeamMemberModel.team_id == ticket.team_id,
+                TicketTeamMemberModel.user_id == current_user.id,
+                TicketTeamMemberModel.is_team_lead == True,
+            )
+        )
+        can_see_internal = tl_result.scalar_one_or_none() is not None
 
     stmt = (
         select(TicketComment)
         .where(TicketComment.ticket_id == ticket_id, TicketComment.is_active == True)
         .order_by(TicketComment.created_at.asc())
     )
-    if not is_manager:
+    if not can_see_internal:
         stmt = stmt.where(TicketComment.is_internal == False)
 
     comments = (await db.execute(stmt)).scalars().all()
