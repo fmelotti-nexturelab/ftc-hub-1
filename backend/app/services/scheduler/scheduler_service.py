@@ -114,7 +114,7 @@ async def _seed_jobs():
             result = await db.execute(
                 select(ScheduledJob).where(ScheduledJob.name == job_def["name"])
             )
-            existing = result.scalar_one_or_none()
+            existing = result.scalars().first()
             if not existing:
                 db.add(ScheduledJob(
                     name=job_def["name"],
