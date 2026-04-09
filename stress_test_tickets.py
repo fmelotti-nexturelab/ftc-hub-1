@@ -145,6 +145,98 @@ TICKET_TITLES = [t[0] for t in TICKET_SCENARIOS]
 
 TICKET_DESCRIPTIONS = [t[1] for t in TICKET_SCENARIOS]
 
+# ═══════════════════════════════════════════════════════════════════
+# MAPPATURA SCENARIO → CATEGORIA / SUBCATEGORIA
+# Ogni titolo viene associato alla categoria e subcategoria corretta
+# così il routing assegna il ticket al team giusto.
+# ═══════════════════════════════════════════════════════════════════
+
+SCENARIO_CATEGORY_MAP = {
+    # ── IT ──
+    "PC non si accende":                ("IT", "Hardware"),
+    "Stampante non funziona":           ("IT", "Casse / POS / Stampanti Fiscali / Misuratore Fiscale / Scanner"),
+    "Errore login POS":                 ("IT", "Casse / POS / Stampanti Fiscali / Misuratore Fiscale / Scanner"),
+    "Scanner codici a barre rotto":     ("IT", "Casse / POS / Stampanti Fiscali / Misuratore Fiscale / Scanner"),
+    "WiFi non disponibile":             ("IT", "Rete & Connettività"),
+    "Problema email aziendale":         ("IT", "Software & Sistemi"),
+    "VPN si disconnette spesso":        ("IT", "Rete & Connettività"),
+    "PC molto lento":                   ("IT", "Hardware"),
+    "Richiesta reset password":         ("IT", "Software & Sistemi"),
+    "POS non legge carte contactless":  ("IT", "Casse / POS / Stampanti Fiscali / Misuratore Fiscale / Scanner"),
+    "Errore stampa etichette":          ("IT", "Casse / POS / Stampanti Fiscali / Misuratore Fiscale / Scanner"),
+    "Teams non funziona":               ("IT", "Software & Sistemi"),
+    "Richiesta installazione software": ("IT", "Software & Sistemi"),
+    "Problema connessione NAV":         ("IT", "Software & Sistemi"),
+    "Monitor nero":                     ("IT", "Hardware"),
+    # ── HR ──
+    "Richiesta busta paga":             ("HR", "Buste Paga & Amministrazione"),
+    "Domanda su TFR":                   ("HR", "Buste Paga & Amministrazione"),
+    "Richiesta ferie":                  ("HR", "Presenze & Turni"),
+    "Problema con straordinari":        ("HR", "Presenze & Turni"),
+    "Cambio turno":                     ("HR", "Presenze & Turni"),
+    "Richiesta permesso":               ("HR", "Presenze & Turni"),
+    "Errore in busta paga":             ("HR", "Buste Paga & Amministrazione"),
+    "Contratto da rinnovare":           ("HR", "Onboarding / Offboarding"),
+    "Richiesta maternità":              ("HR", "Malattie & Congedi"),
+    "Infortunio sul lavoro":            ("HR", "Malattie & Congedi"),
+    # ── HEALTH & SAFETY ──
+    "Richiesta DPI":                    ("HEALTH & SAFETY", "DPI & Normativa"),
+    "Segnalazione pavimento scivoloso": ("HEALTH & SAFETY", "Segnalazione Incidente"),
+    "Problema estintore":               ("HEALTH & SAFETY", "Sicurezza Struttura"),
+    "Uscita emergenza bloccata":        ("HEALTH & SAFETY", "Sicurezza Struttura"),
+    "Segnalazione muffa":               ("HEALTH & SAFETY", "Segnalazione Incidente"),
+    "Cassetta primo soccorso vuota":    ("HEALTH & SAFETY", "DPI & Normativa"),
+    "Richiesta visita medica lavoro":   ("HEALTH & SAFETY", "DPI & Normativa"),
+    "Allergene non segnalato":          ("HEALTH & SAFETY", "Segnalazione Incidente"),
+    "Temperatura negozio troppo alta":  ("HEALTH & SAFETY", "Sicurezza Struttura"),
+    "Scaffale instabile":               ("HEALTH & SAFETY", "Sicurezza Struttura"),
+    # ── RETAIL ──
+    "Reso merce danneggiata":           ("RETAIL", "Apertura / Chiusura Negozio"),
+    "Planogramma non arrivato":         ("RETAIL", "Display & Allestimento"),
+    "Prodotto esaurito richiesto":      ("RETAIL", "Display & Allestimento"),
+    "Errore prezzo a scaffale":         ("COMMERCIAL", "Prezzi stampa etichette"),
+    "Problema allestimento vetrina":    ("RETAIL", "Display & Allestimento"),
+    "Merce arrivata danneggiata":       ("COMMERCIAL", "Disservizi corriere"),
+    "Richiesta trasferimento merce":    ("COMMERCIAL", "Trasferimento Interno"),
+    "Cliente reclamo":                  ("RETAIL", "Apertura / Chiusura Negozio"),
+    "Inventario non quadra":            ("RETAIL", "Apertura / Chiusura Negozio"),
+    "Prodotto ritirato dal mercato":    ("RETAIL", "Display & Allestimento"),
+    # ── COMMERCIAL ──
+    "Ordine non arrivato":              ("COMMERCIAL", "Disservizi corriere"),
+    "Errore nel listino prezzi":        ("COMMERCIAL", "Prezzi stampa etichette"),
+    "Richiesta campioni nuova collezione": ("COMMERCIAL", "Promozioni"),
+    "Promozione non attiva in cassa":   ("COMMERCIAL", "Promozioni"),
+    "Fornitore non consegna":           ("COMMERCIAL", "Disservizi corriere"),
+    "Richiesta cambio prezzi":          ("COMMERCIAL", "Prezzi stampa etichette"),
+    # ── MARKETING ──
+    "Materiale POP non arrivato":       ("MARKETING", "Materiali Promozionali"),
+    "Errore su volantino":              ("MARKETING", "Materiali Promozionali"),
+    "Richiesta foto negozio":           ("MARKETING", "Comunicazioni Negozio"),
+    "Problema insegna esterna":         ("FACILITIES", "Manutenzione Negozio"),
+    "Evento in negozio":                ("MARKETING", "Comunicazioni Negozio"),
+    "Social media - commento negativo": ("MARKETING", "Comunicazioni Negozio"),
+    # ── FACILITIES ──
+    "Luci reparto rotte":               ("FACILITIES", "Climatizzazione & Illuminazione"),
+    "Bagno clienti guasto":             ("FACILITIES", "Manutenzione Negozio"),
+    "Problema climatizzazione":         ("FACILITIES", "Climatizzazione & Illuminazione"),
+    "Serratura porta magazzino":        ("FACILITIES", "Manutenzione Negozio"),
+    "Allarme antifurto difettoso":      ("FACILITIES", "Manutenzione Negozio"),
+    "Infiltrazione acqua":              ("FACILITIES", "Manutenzione Negozio"),
+    "Pulizia straordinaria":            ("FACILITIES", "Pulizie & Forniture"),
+    "Porta automatica bloccata":        ("FACILITIES", "Manutenzione Negozio"),
+    "Ascensore fuori servizio":         ("FACILITIES", "Manutenzione Negozio"),
+    # ── FINANCE ──
+    "Differenza di cassa":              ("FINANCE", "Cassa & Riconciliazione"),
+    "Richiesta nota spese":             ("FINANCE", "Note Spese & Rimborsi"),
+    "Fattura fornitore errata":         ("FINANCE", "Fatturazione & Fornitori"),
+    "Problema con il fondo cassa":      ("FINANCE", "Cassa & Riconciliazione"),
+    "Rimborso cliente":                 ("FINANCE", "Note Spese & Rimborsi"),
+    "Richiesta budget per evento":      ("FINANCE", "Budget & Previsioni"),
+}
+
+# Mappa risolta al setup: titolo → (cat_id, sub_id)
+resolved_category_map: dict[str, tuple[int, int | None]] = {}
+
 COMMENT_TEXTS = [
     "Ho verificato il problema. Procedo con la diagnostica.",
     "Potrebbe essere un problema di driver. Provo ad aggiornare.",
@@ -291,12 +383,26 @@ class ApiClient:
             metrics.record_error(scenario, endpoint_name, 0, str(e)[:200])
             return None
 
-    async def create_ticket(self, scenario: str, category_id: int,
+    async def create_ticket(self, scenario: str, category_id: int = None,
                             subcategory_id: int | None = None,
-                            priority: str = "medium") -> dict | None:
+                            priority: str = "medium",
+                            title: str = None,
+                            description: str = None) -> dict | None:
+        # Se titolo non fornito, scegli scenario random
+        if not title:
+            idx = random.randrange(len(TICKET_SCENARIOS))
+            title = TICKET_SCENARIOS[idx][0]
+            description = TICKET_SCENARIOS[idx][1]
+
+        # Risolvi categoria dalla mappa se non fornita esplicitamente
+        if category_id is None and title in resolved_category_map:
+            category_id, subcategory_id = resolved_category_map[title]
+        elif category_id is None:
+            category_id, subcategory_id = random_category()
+
         payload = {
-            "title": random.choice(TICKET_TITLES),
-            "description": random.choice(TICKET_DESCRIPTIONS),
+            "title": title,
+            "description": description,
             "category_id": category_id,
             "subcategory_id": subcategory_id,
             "priority": priority,
@@ -556,6 +662,22 @@ async def setup(client: httpx.AsyncClient):
     total_subs = sum(len(v) for v in subcategories.values())
     print(f"  [OK] {total_subs} subcategorie trovate")
 
+    # Risolvi SCENARIO_CATEGORY_MAP: nomi → ID
+    cat_name_to_id = {c["name"]: c["id"] for c in categories}
+    sub_name_to_id: dict[int, dict[str, int]] = {}
+    for cid, subs_list in subcategories.items():
+        sub_name_to_id[cid] = {s["name"]: s["id"] for s in subs_list}
+
+    mapped = 0
+    for title, (cat_name, sub_name) in SCENARIO_CATEGORY_MAP.items():
+        cid = cat_name_to_id.get(cat_name)
+        if not cid:
+            continue
+        sid = sub_name_to_id.get(cid, {}).get(sub_name)
+        resolved_category_map[title] = (cid, sid)
+        mapped += 1
+    print(f"  [OK] {mapped}/{len(SCENARIO_CATEGORY_MAP)} scenari mappati a categoria/subcategoria")
+
     # Fallback: se non ci sono categorie, creiamo dati minimi
     if not categories:
         print("  [WARN] Nessuna categoria trovata. I ticket verranno creati senza categoria.")
@@ -636,22 +758,69 @@ def get_random_manager(http_client: httpx.AsyncClient) -> ApiClient:
 
 async def create_full_ticket(sem: asyncio.Semaphore, http_client: httpx.AsyncClient,
                               ticket_num: int, scenario: str):
-    """Crea 1 ticket + commenti + allegati."""
+    """Crea 1 ticket con analisi AI + commenti + allegati."""
     async with sem:
         api = get_random_creator(http_client)
-        cat_id, sub_id = random_category()
-        priority = random_priority()
 
-        # 1. Crea ticket
-        ticket = await api.create_ticket(scenario, cat_id, sub_id, priority)
-        if not ticket:
+        # 1. Scegli scenario random
+        title, description = random.choice(TICKET_SCENARIOS)
+        store = f"IT{random.randint(100, 350)}"
+        description = f"[Negozio {store}] {description}"
+
+        # 2. Analisi AI (come nel flusso reale)
+        analysis = await api.analyze_ticket(scenario, title, description)
+
+        if analysis and analysis.get("relevant", True):
+            category_id = analysis.get("category_id")
+            subcategory_id = analysis.get("subcategory_id")
+            priority = analysis.get("priority", "medium")
+            enhanced_desc = analysis.get("enhanced_description") or description
+            team_id = None
+            suggested = analysis.get("suggested_teams") or []
+            if suggested:
+                team_id = suggested[0].get("id") or suggested[0].get("team_id")
+        else:
+            # Fallback: mappa statica
+            if title in resolved_category_map:
+                category_id, subcategory_id = resolved_category_map[title]
+            else:
+                category_id, subcategory_id = random_category()
+            priority = random_priority()
+            enhanced_desc = description
+            team_id = None
+
+        if priority not in ("low", "medium", "high", "critical"):
+            priority = "medium"
+
+        # 3. Crea ticket con dati AI
+        payload = {
+            "title": title,
+            "description": enhanced_desc,
+            "original_description": description,
+            "category_id": category_id,
+            "subcategory_id": subcategory_id,
+            "priority": priority,
+            "requester_name": api.full_name,
+            "requester_email": f"store_{store.lower()}@tigeritalia.com",
+            "requester_phone": random.choice(PHONE_NUMBERS),
+            "teamviewer_code": f"TV-{random.randint(100000000, 999999999)}",
+        }
+        if team_id:
+            payload["team_id"] = team_id
+
+        resp = await api._request(
+            "POST", "/api/tickets", "POST /api/tickets", scenario,
+            json=payload,
+        )
+        if not resp:
             return
+        ticket = resp.json()
 
         ticket_id = ticket.get("id")
         if not ticket_id:
             return
 
-        # 2. Aggiungi commenti (usa manager per avere permesso)
+        # 4. Aggiungi commenti (usa manager per avere permesso)
         n_comments = random.randint(*SA_COMMENTS_RANGE)
         n_attachments = random.randint(*SA_ATTACHMENTS_RANGE)
 
@@ -662,7 +831,7 @@ async def create_full_ticket(sem: asyncio.Semaphore, http_client: httpx.AsyncCli
                 is_internal=random.random() < 0.2,
             )
 
-        # 3. Upload allegati (usa il creatore o manager)
+        # 5. Upload allegati (usa il creatore o manager)
         for i in range(n_attachments):
             attach_api = get_random_manager(http_client)
             await attach_api.upload_attachment(scenario, ticket_id)
@@ -677,12 +846,15 @@ async def scenario_a(http_client: httpx.AsyncClient):
     print(f"  (~{SA_TOTAL_TICKETS / (SA_DURATION_SEC / 60):.1f} ticket/min)")
     print("=" * 60)
 
-    sem = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+    # Concurrency ridotta: ogni ticket passa dall'AI (più lento)
+    ai_concurrency = min(MAX_CONCURRENT_REQUESTS, 10)
+    sem = asyncio.Semaphore(ai_concurrency)
     use_rate_limit = SA_TOTAL_TICKETS > 400
     interval = SA_DURATION_SEC / SA_TOTAL_TICKETS if use_rate_limit else 0
     t_start = time.perf_counter()
     metrics.scenario_times["A"] = (datetime.now(), None)
 
+    print(f"  (AI routing attivo — concurrency: {ai_concurrency})")
     if not use_rate_limit:
         print(f"  (max velocità — rate limiting solo sopra 400 ticket)")
 
@@ -726,8 +898,7 @@ async def scenario_a(http_client: httpx.AsyncClient):
 async def create_simple_ticket(http_client: httpx.AsyncClient, scenario: str):
     """Crea 1 ticket (senza commenti/allegati) per test spike."""
     api = get_random_creator(http_client)
-    cat_id, sub_id = random_category()
-    return await api.create_ticket(scenario, cat_id, sub_id, random_priority())
+    return await api.create_ticket(scenario, priority=random_priority())
 
 
 async def scenario_b(http_client: httpx.AsyncClient):
@@ -975,7 +1146,7 @@ async def ai_create_ticket(sem: asyncio.Semaphore, http_client: httpx.AsyncClien
             "category_id": category_id,
             "subcategory_id": subcategory_id,
             "priority": priority,
-            "requester_name": self.full_name,
+            "requester_name": api.full_name,
             "requester_email": f"store_{store.lower()}@tigeritalia.com",
             "requester_phone": random.choice(PHONE_NUMBERS),
             "teamviewer_code": f"TV-{random.randint(100000000, 999999999)}",
