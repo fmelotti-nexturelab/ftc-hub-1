@@ -44,10 +44,15 @@
     <div class="section-block">
       <div class="section-label"><h2>Generale</h2></div>
       <div class="grid">
-        <a href="login-profilo.html" class="card">
+        <a href="login-profilo-users.html" class="card">
           <div class="card-icon">🔐</div>
           <h3>Login e Profilo</h3>
           <p>Accesso all'applicazione, dati personali e cambio password</p>
+        </a>
+        <a href="login-profilo-admin.html" class="card hidden" data-admin>
+          <div class="card-icon">👥</div>
+          <h3>Gestione Utenti</h3>
+          <p>Creare, modificare e gestire gli utenti e i permessi di accesso</p>
         </a>
       </div>
     </div>
@@ -55,7 +60,17 @@
     <div class="section-block" id="section-moduli">
       <div class="section-label"><h2>Moduli</h2></div>
       <div class="grid" id="grid-moduli">
-        <a href="tickets.html" class="card hidden" data-module="tickets">
+        <a href="tickets-admin.html" class="card hidden" data-module="tickets" data-admin>
+          <div class="card-icon">🎫</div>
+          <h3>Ticket — Guida Amministratore</h3>
+          <p>Gestione completa, configurazione, AI training e database</p>
+        </a>
+        <a href="tickets-teamlead.html" class="card hidden" data-module="tickets" data-teamlead>
+          <div class="card-icon">🎫</div>
+          <h3>Ticket — Guida Team Leader</h3>
+          <p>Gestione team, assegnazioni, dashboard e performance</p>
+        </a>
+        <a href="tickets-users.html" class="card hidden" data-module="tickets" data-user>
           <div class="card-icon">🎫</div>
           <h3>Ticket di supporto</h3>
           <p>Come aprire e gestire i ticket</p>
@@ -74,7 +89,7 @@
       <div id="no-access" class="hidden">Nessun modulo disponibile per il tuo profilo.</div>
     </div>
 
-    <div class="section-block">
+    <div class="section-block hidden" id="section-testcases">
       <div class="section-label"><h2>Test Cases</h2></div>
       <div class="grid">
         <a href="test-ticket.html" class="card">
@@ -91,39 +106,88 @@
       return localStorage.getItem("ftc_access_token") || sessionStorage.getItem("ftc_access_token")
     }
 
-    async function loadModules() {
+    function getStoredUser() {
+      try {
+        const raw = sessionStorage.getItem("ftc_user") || localStorage.getItem("ftc_user")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    }
+
+    function getStoredModules() {
+      try {
+        const raw = sessionStorage.getItem("ftc_modules") || localStorage.getItem("ftc_modules")
+        return raw ? JSON.parse(raw) : null
+      } catch { return null }
+    }
+
+    const ADMIN_DEPARTMENTS = ["ADMIN", "SUPERUSER", "IT"]
+
+    async function loadPage() {
       const token = getToken()
       if (!token) return
 
-      try {
-        const res = await fetch("/api/utilities/my-access", {
-          headers: { "Authorization": "Bearer " + token }
-        })
-        if (!res.ok) return
+      const headers = { "Authorization": "Bearer " + token }
 
-        const access = await res.json()
+      // Prova API, con fallback su dati cached in localStorage/sessionStorage
+      let access = null
+      let user = null
+
+      try {
+        const [accessRes, meRes] = await Promise.all([
+          fetch("/api/utilities/my-access", { headers }).catch(() => null),
+          fetch("/api/auth/me", { headers }).catch(() => null),
+        ])
+        if (accessRes?.ok) access = await accessRes.json()
+        if (meRes?.ok) user = await meRes.json()
+      } catch (e) { /* fallback sotto */ }
+
+      // Fallback: usa dati salvati dal frontend React
+      if (!access) access = getStoredModules()
+      if (!user) user = getStoredUser()
+
+      // Determina il ruolo dell'utente
+      const isAdmin = user && ADMIN_DEPARTMENTS.includes(user.department)
+      const isTeamLead = user && user.is_team_lead === true && !isAdmin
+
+      // --- Sezione Moduli ---
+      if (access) {
         const cards = document.querySelectorAll("[data-module]")
         let visibili = 0
 
         cards.forEach(card => {
           const code = card.dataset.module
-          if (access[code]?.can_view) {
-            card.classList.remove("hidden")
-            visibili++
+          if (!access[code]?.can_view) return
+
+          // Card con filtro ruolo: mostra solo quella giusta
+          const hasRoleFilter = card.hasAttribute("data-admin") || card.hasAttribute("data-teamlead") || card.hasAttribute("data-user")
+          if (hasRoleFilter) {
+            const show = (card.hasAttribute("data-admin") && isAdmin)
+              || (card.hasAttribute("data-teamlead") && isTeamLead)
+              || (card.hasAttribute("data-user") && !isAdmin && !isTeamLead)
+            if (!show) return
           }
+
+          card.classList.remove("hidden")
+          visibili++
         })
 
         if (visibili === 0) {
           document.getElementById("grid-moduli").classList.add("hidden")
           document.getElementById("no-access").classList.remove("hidden")
         }
-      } catch (e) {
-        // in caso di errore mostra tutto
+      } else {
+        // Nessun dato: mostra tutto come fallback
         document.querySelectorAll("[data-module]").forEach(c => c.classList.remove("hidden"))
+      }
+
+      // --- Contenuti solo admin/IT (sezione Generale + Test Cases) ---
+      if (isAdmin) {
+        document.getElementById("section-testcases").classList.remove("hidden")
+        document.querySelectorAll(".grid > [data-admin]:not([data-module])").forEach(el => el.classList.remove("hidden"))
       }
     }
 
-    loadModules()
+    loadPage()
   </script>
 </body>
 </html>

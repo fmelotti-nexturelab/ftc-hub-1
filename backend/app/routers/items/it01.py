@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
@@ -254,7 +254,7 @@ async def lookup_item(
 
     item_result = await db.execute(
         select(ItemMasterIT01.description, ItemMasterIT01.category)
-        .where(ItemMasterIT01.session_id == session_id, ItemMasterIT01.item_no == item_no.strip())
+        .where(ItemMasterIT01.session_id == session_id, func.lower(ItemMasterIT01.item_no) == item_no.strip().lower())
     )
     row = item_result.first()
     if not row:

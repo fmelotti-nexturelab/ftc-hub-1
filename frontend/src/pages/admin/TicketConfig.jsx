@@ -231,7 +231,7 @@ function MultiUserSelect({ users, selected, onChange }) {
 
 // ── TAB 1: Categorie & Sottocategorie ─────────────────────────────────────────
 
-function CategoriesTab() {
+function CategoriesTab({ readOnly = false }) {
   const qc = useQueryClient()
   const [selectedCatId, setSelectedCatId] = useState(null)
   const [editingCat, setEditingCat] = useState(null)        // null | "new" | {id, name, ...}
@@ -288,12 +288,14 @@ function CategoriesTab() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-gray-700 text-sm">Categorie</h3>
-          <button
-            onClick={() => { setEditingCat("new"); setCatForm({ name: "", description: "", sort_order: 0 }) }}
-            className="flex items-center gap-1 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg transition"
-          >
-            <Plus size={13} /> Nuova
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => { setEditingCat("new"); setCatForm({ name: "", description: "", sort_order: 0 }) }}
+              className="flex items-center gap-1 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg transition"
+            >
+              <Plus size={13} /> Nuova
+            </button>
+          )}
         </div>
 
         {editingCat === "new" && (
@@ -347,6 +349,7 @@ function CategoriesTab() {
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedCatId === cat.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
                     {cat.subcategory_count}
                   </span>
+                  {!readOnly && <>
                   <button
                     onClick={e => { e.stopPropagation(); setEditingCat(cat); setCatForm({ name: cat.name, description: cat.description || "", sort_order: cat.sort_order }) }}
                     className={`p-1 rounded hover:bg-white/20 transition ${selectedCatId === cat.id ? "text-white/70 hover:text-white" : "text-gray-400 hover:text-gray-600"}`}
@@ -368,6 +371,7 @@ function CategoriesTab() {
                       <Trash2 size={12} />
                     </button>
                   )}
+                  </>}
                 </div>
               )}
             </div>
@@ -385,7 +389,7 @@ function CategoriesTab() {
             Sottocategorie
             {selectedCat && <span className="ml-2 text-gray-400 font-normal">— {selectedCat.name}</span>}
           </h3>
-          {selectedCatId && (
+          {!readOnly && selectedCatId && (
             <button
               onClick={() => { setEditingSub("new"); setSubForm({ name: "", description: "", sort_order: 0 }) }}
               className="flex items-center gap-1 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-3 py-1.5 rounded-lg transition"
@@ -441,6 +445,7 @@ function CategoriesTab() {
                       {!sub.is_active && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded">inattiva</span>
                       )}
+                      {!readOnly && <>
                       <button
                         onClick={() => { setEditingSub(sub); setSubForm({ name: sub.name, description: sub.description || "", sort_order: sub.sort_order }) }}
                         className="p-1 rounded text-gray-400 hover:text-gray-600 transition"
@@ -460,6 +465,7 @@ function CategoriesTab() {
                           <Trash2 size={12} />
                         </button>
                       )}
+                      </>}
                     </div>
                   )}
                 </div>
@@ -477,7 +483,7 @@ function CategoriesTab() {
 
 // ── TAB 2: Team ───────────────────────────────────────────────────────────────
 
-function TeamsTab() {
+function TeamsTab({ readOnly = false }) {
   const qc = useQueryClient()
   const [expandedTeamId, setExpandedTeamId] = useState(null)
   const [editingTeam, setEditingTeam] = useState(null) // null | "new" | {id,...}
@@ -552,14 +558,16 @@ function TeamsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <button
-          onClick={() => { setEditingTeam("new"); setTeamForm({ name: "", email: "", description: "" }) }}
-          className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition"
-        >
-          <Plus size={14} /> Nuovo team
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => { setEditingTeam("new"); setTeamForm({ name: "", email: "", description: "" }) }}
+            className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition"
+          >
+            <Plus size={14} /> Nuovo team
+          </button>
+        </div>
+      )}
 
       {editingTeam === "new" && (
         <div className="bg-white rounded-xl border border-blue-200 p-4 space-y-3">
@@ -634,6 +642,7 @@ function TeamsTab() {
                   Membri
                   {expandedTeamId === team.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                 </button>
+                {!readOnly && <>
                 <button
                   onClick={() => { setEditingTeam(team); setTeamForm({ name: team.name, email: team.email || "", description: team.description || "" }) }}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
@@ -653,11 +662,13 @@ function TeamsTab() {
                     <Trash2 size={14} />
                   </button>
                 )}
+                </>}
               </div>
 
               {expandedTeamId === team.id && (
                 <div className="border-t border-gray-100 px-4 py-3 space-y-3 bg-gray-50/50">
                   {/* Aggiungi membri */}
+                  {!readOnly && (
                   <div className="flex gap-2 items-center">
                     <MultiUserSelect
                       users={availableUsers}
@@ -682,6 +693,7 @@ function TeamsTab() {
                       {addMemberUserIds.size > 1 ? `Aggiungi (${addMemberUserIds.size})` : "Aggiungi"}
                     </button>
                   </div>
+                  )}
 
                   {/* Lista membri */}
                   {members.length === 0 ? (
@@ -695,21 +707,27 @@ function TeamsTab() {
                           </div>
                           <span className="flex-1 text-sm text-gray-700">{m.full_name || m.username}</span>
                           <span className="text-xs text-gray-400">{m.username}</span>
-                          <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={m.is_team_lead}
-                              onChange={e => toggleLead.mutate({ teamId: team.id, userId: m.user_id, is_team_lead: e.target.checked })}
-                              className="rounded"
-                            />
-                            Lead
-                          </label>
-                          <button
-                            onClick={() => removeMember.mutate({ teamId: team.id, userId: m.user_id })}
-                            className="p-1 rounded text-gray-300 hover:text-red-500 transition"
-                          >
-                            <X size={13} />
-                          </button>
+                          {!readOnly ? (
+                            <>
+                              <label className="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={m.is_team_lead}
+                                  onChange={e => toggleLead.mutate({ teamId: team.id, userId: m.user_id, is_team_lead: e.target.checked })}
+                                  className="rounded"
+                                />
+                                Lead
+                              </label>
+                              <button
+                                onClick={() => removeMember.mutate({ teamId: team.id, userId: m.user_id })}
+                                className="p-1 rounded text-gray-300 hover:text-red-500 transition"
+                              >
+                                <X size={13} />
+                              </button>
+                            </>
+                          ) : (
+                            m.is_team_lead && <span className="text-xs text-[#1e3a5f] font-medium">Lead</span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -732,7 +750,7 @@ function TeamsTab() {
 
 // ── TAB 3: Regole di assegnazione ─────────────────────────────────────────────
 
-function RoutingRulesTab() {
+function RoutingRulesTab({ readOnly = false }) {
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [editingRule, setEditingRule] = useState(null) // null = nuova, id = modifica
@@ -860,12 +878,14 @@ function RoutingRulesTab() {
         {(filterCat || filterSub || filterTeam) && (
           <button onClick={() => { setFilterCat(""); setFilterSub(""); setFilterTeam("") }} className="text-xs text-gray-400 hover:text-gray-600 transition underline">Reset</button>
         )}
-        <button
-          onClick={() => { if (showForm) { resetForm() } else { setEditingRule(null); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }); setShowForm(true) } }}
-          className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition ml-auto"
-        >
-          <Plus size={14} /> Nuova regola
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => { if (showForm) { resetForm() } else { setEditingRule(null); setForm({ category_id: "", subcategory_id: "", team_id: "", assigned_user_id: "", backup_user_id_1: "", backup_user_id_2: "", priority_override: "" }); setShowForm(true) } }}
+            className="flex items-center gap-1 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white px-4 py-2 rounded-xl shadow transition ml-auto"
+          >
+            <Plus size={14} /> Nuova regola
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -981,7 +1001,7 @@ function RoutingRulesTab() {
                 <th scope="col" className="px-4 py-3 text-left">Backup 2</th>
                 <th scope="col" className="px-4 py-3 text-left">Priorità</th>
                 <th scope="col" className="px-4 py-3 text-left">Stato</th>
-                <th scope="col" className="px-4 py-3 text-left"></th>
+                {!readOnly && <th scope="col" className="px-4 py-3 text-left"></th>}
               </tr>
             </thead>
             <tbody>
@@ -1011,6 +1031,7 @@ function RoutingRulesTab() {
                       {rule.is_active ? "attiva" : "inattiva"}
                     </button>
                   </td>
+                  {!readOnly && (
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
@@ -1048,6 +1069,7 @@ function RoutingRulesTab() {
                       )}
                     </div>
                   </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -1060,24 +1082,14 @@ function RoutingRulesTab() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function TicketConfig() {
-  const navigate = useNavigate()
+export default function TicketConfig({ readOnly = false }) {
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Configurazione Ticketing</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Gestisci categorie, team e regole di assegnazione automatica</p>
+      {readOnly && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
+          Modalità sola lettura — puoi consultare la configurazione ma non modificarla.
         </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
-        >
-          <LogOut size={15} aria-hidden="true" />
-          Esci
-        </button>
-      </div>
-
+      )}
       <Tabs.Root defaultValue="categories">
         <Tabs.List className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-5">
           {[
@@ -1096,13 +1108,13 @@ export default function TicketConfig() {
         </Tabs.List>
 
         <Tabs.Content value="categories">
-          <CategoriesTab />
+          <CategoriesTab readOnly={readOnly} />
         </Tabs.Content>
         <Tabs.Content value="teams">
-          <TeamsTab />
+          <TeamsTab readOnly={readOnly} />
         </Tabs.Content>
         <Tabs.Content value="routing">
-          <RoutingRulesTab />
+          <RoutingRulesTab readOnly={readOnly} />
         </Tabs.Content>
       </Tabs.Root>
     </div>

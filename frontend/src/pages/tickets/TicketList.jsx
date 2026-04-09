@@ -189,7 +189,9 @@ export default function TicketList() {
   const tickets = searchText
     ? storeFiltered.filter(t => {
         const q = searchText.toLowerCase()
-        return (t.requester_name || "").toLowerCase().includes(q)
+        const ticketNum = String(t.ticket_number || "").padStart(4, "0")
+        return ticketNum.includes(q)
+          || (t.requester_name || "").toLowerCase().includes(q)
           || (t.creator_name || "").toLowerCase().includes(q)
           || (t.store_number || "").toLowerCase().includes(q)
       })
@@ -453,7 +455,7 @@ export default function TicketList() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">Ticket di assistenza</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {isAdmin ? "Tutti i ticket" : canSeeTeam ? "Ticket del team" : "I miei ticket"}
+            {isAdmin ? "Tutti i ticket" : user?.department === "DM" ? "Ticket dei miei negozi" : canSeeTeam ? "Ticket del team" : "I miei ticket"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -540,7 +542,7 @@ export default function TicketList() {
 
       {/* Quick view buttons */}
       <div className="flex items-center gap-2">
-        {canSeeHistory && (
+        {!isStore && (
           <button
             onClick={() => toggleViewMode("mine")}
             className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl border transition ${
@@ -563,7 +565,7 @@ export default function TicketList() {
             }`}
           >
             <Users size={15} />
-            Ticket del team
+            {user?.department === "DM" ? "I miei negozi" : "Ticket del team"}
           </button>
         )}
         {canSeeAll && (
@@ -604,14 +606,14 @@ export default function TicketList() {
         )}
 
         <div className="relative">
-          <label htmlFor="search-requester" className="sr-only">Cerca negozio o richiedente</label>
+          <label htmlFor="search-requester" className="sr-only">Cerca per numero ticket, negozio o richiedente</label>
           <input
             id="search-requester"
             type="text"
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
-            placeholder="Negozio / Richiedente..."
-            className="w-36 px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
+            placeholder="N° Ticket / Negozio / Richiedente"
+            className="w-56 px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
           />
         </div>
 
@@ -683,6 +685,8 @@ export default function TicketList() {
                     selected.has(t.id) ? "bg-blue-50"
                     : isStore && t.created_by === user?.id ? "bg-emerald-50/60"
                     : isStore && t.created_by !== user?.id ? "bg-blue-50/40"
+                    : !isStore && t.assigned_to_id === user?.id ? "bg-emerald-50/60"
+                    : !isStore && !t.assigned_to_id ? "bg-amber-50/40"
                     : "odd:bg-white even:bg-gray-50/50"
                   }`}
                 >

@@ -20,7 +20,8 @@ $ALLOWED_ORIGINS = @(
     "https://127.0.0.1",
     "https://HO-SERVICES",
     "https://10.74.0.110",
-    "https://hub.nexturelab.com"
+    "https://hub.nexturelab.com",
+    "https://hub.tigeritalia.com"
 )
 
 # Win32 API per portare una finestra in primo piano (con workaround restrizioni Windows)

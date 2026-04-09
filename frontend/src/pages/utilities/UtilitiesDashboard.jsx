@@ -33,7 +33,7 @@ function CardButton({ path, icon: Icon, label, color, desc, soon, navigate }) {
 
 export default function UtilitiesDashboard() {
   const navigate = useNavigate()
-  const { hasRole } = useAuthStore()
+  const { hasRole, user } = useAuthStore()
 
   const isItAdmin = hasRole("ADMIN", "IT")
 
@@ -43,11 +43,18 @@ export default function UtilitiesDashboard() {
   })
 
   // Gestione & Configurazione (solo IT/ADMIN)
-  const adminModules = isItAdmin ? [
-    { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
-    { path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" },
-    { path: "/admin/scheduler", icon: Clock, label: "Task Scheduler", color: "bg-[#1e3a5f]", desc: "Gestisci i task schedulati del sistema" },
-  ] : []
+  const canSeeTicketConfig = isItAdmin || (user?.is_team_lead && !isError && access?.ticket_config?.can_view)
+  const adminModules = [
+    ...(isItAdmin ? [
+      { path: "/admin", icon: Users, label: "Gestione Utenti", color: "bg-[#1e3a5f]", desc: "Crea e gestisci gli utenti della piattaforma" },
+    ] : []),
+    ...(canSeeTicketConfig ? [
+      { path: "/utilities/ticket-config", icon: Settings2, label: "Configurazione Ticket", color: "bg-[#1e3a5f]", desc: "Database ticket, team e regole di smistamento" },
+    ] : []),
+    ...(isItAdmin ? [
+      { path: "/admin/scheduler", icon: Clock, label: "Task Scheduler", color: "bg-[#1e3a5f]", desc: "Gestisci i task schedulati del sistema" },
+    ] : []),
+  ]
 
   // Database
   const dbModules = [

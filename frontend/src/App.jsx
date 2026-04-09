@@ -80,7 +80,7 @@ export default function App() {
         <Route path="utilities/genera-tabelle" element={<GeneraTabelle />} />
         <Route path="utilities/stores" element={<StoresPage />} />
         <Route path="utilities/ticket-database" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketDatabase /></RoleRoute>} />
-        <Route path="utilities/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfigHub /></RoleRoute>} />
+        <Route path="utilities/ticket-config" element={<TicketConfigHub />} />
         <Route path="utilities/genera-tabelle/stock" element={<StockUnifiedPage />} />
         <Route path="utilities/genera-tabelle/item-list" element={<ItemListPage />} />
         <Route path="utilities/genera-tabelle/check-prezzi" element={<CheckPrezziPage />} />

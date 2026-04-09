@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_permission
@@ -29,7 +29,7 @@ async def get_archive_dates(
     """Restituisce le date per cui esiste un file in archivio per tipo+entity."""
     result = await db.execute(
         select(FileArchive.file_date)
-        .where(FileArchive.file_type == file_type, FileArchive.entity == entity)
+        .where(func.lower(FileArchive.file_type) == file_type.lower(), func.lower(FileArchive.entity) == entity.lower())
         .order_by(FileArchive.file_date.asc())
     )
     dates = result.scalars().all()
@@ -58,8 +58,8 @@ async def register_archive(
 
     result = await db.execute(
         select(FileArchive).where(
-            FileArchive.file_type == file_type,
-            FileArchive.entity == entity,
+            func.lower(FileArchive.file_type) == file_type.lower(),
+            func.lower(FileArchive.entity) == entity.lower(),
             FileArchive.file_date == file_date,
         )
     )

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -148,7 +148,7 @@ async def create_user(
             raise HTTPException(403, "Solo SUPERUSER può creare utenti SUPERUSER o ADMIN")
 
     # Verifica username univoco
-    existing = await db.execute(select(User).where(User.username == data.username))
+    existing = await db.execute(select(User).where(func.lower(User.username) == data.username.lower()))
     if existing.scalar_one_or_none():
         raise HTTPException(409, f"Username '{data.username}' già in uso")
 

@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -103,11 +103,11 @@ async def list_stores(
 ):
     q = select(Store).where(Store.is_active == True)
     if entity:
-        q = q.where(Store.entity == entity)
+        q = q.where(func.lower(Store.entity) == entity.lower())
     if district:
-        q = q.where(Store.district == district)
+        q = q.where(func.lower(Store.district) == district.lower())
     if dm_name:
-        q = q.where(Store.dm_name == dm_name)
+        q = q.where(func.lower(Store.dm_name) == dm_name.lower())
     if search:
         s = f"%{search}%"
         q = q.where(or_(
@@ -122,7 +122,7 @@ async def list_stores(
 
 @router.post("", dependencies=[Depends(_require_utilities_manage)])
 async def create_store(data: StorePayload, db: AsyncSession = Depends(get_db)):
-    existing = await db.execute(select(Store).where(Store.store_number == data.store_number))
+    existing = await db.execute(select(Store).where(func.lower(Store.store_number) == data.store_number.lower()))
     if existing.scalar_one_or_none():
         raise HTTPException(409, f"Store '{data.store_number}' già esistente")
     from datetime import date

@@ -375,6 +375,39 @@ async def get_tickets(
         else:
             stmt = stmt.where(Ticket.created_by == current_user.id)
 
+    elif department == UserDepartment.DM:
+        # DM: filtro "I miei" vs "I miei negozi"
+        if created_by_id or assigned_to_id:
+            # "I miei ticket": solo creati da lui o assegnati a lui
+            conditions = []
+            if created_by_id:
+                conditions.append(Ticket.created_by == created_by_id)
+            if assigned_to_id:
+                conditions.append(Ticket.assigned_to == assigned_to_id)
+            stmt = stmt.where(or_(*conditions))
+        else:
+            # "I miei negozi": ticket dei negozi che gestisce + creati/assegnati a lui
+            from app.models.stores import Store
+            dm_stores_result = await db.execute(
+                select(Store.store_number).where(
+                    func.lower(Store.dm_name) == (current_user.full_name or "").lower(),
+                    Store.is_active == True,
+                )
+            )
+            dm_store_numbers = list(dm_stores_result.scalars().all())
+
+            if dm_store_numbers:
+                stmt = stmt.where(or_(
+                    Ticket.store_number.in_(dm_store_numbers),
+                    Ticket.created_by == current_user.id,
+                    Ticket.assigned_to == current_user.id,
+                ))
+            else:
+                stmt = stmt.where(or_(
+                    Ticket.created_by == current_user.id,
+                    Ticket.assigned_to == current_user.id,
+                ))
+
     elif is_privileged:
         # IT / ADMIN / SUPERUSER: accesso completo con filtri opzionali
         if my_team:

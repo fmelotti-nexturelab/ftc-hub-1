@@ -27,12 +27,13 @@ const TYPE_LABEL = {
 }
 
 const UTILITY_TABLES = [
-  { code: "utilities_stores",    name: "Info Stores",  module: "utilities_stores" },
-  { code: "utilities_sales",     name: "Sales Data",   module: "utilities_sales" },
-  { code: "utilities_stock_nav", name: "Stock NAV",    module: "utilities_stock_nav" },
-  { code: "items_view",          name: "ItemList",     module: "items_view" },
-  { code: "ordini",              name: "Ordini",       module: "ordini" },
-  { code: "check_prezzi",        name: "Check Prezzi", module: "check_prezzi" },
+  { code: "utilities_stores",    name: "Info Stores",    module: "utilities_stores" },
+  { code: "utilities_sales",     name: "Sales Data",     module: "utilities_sales" },
+  { code: "utilities_stock_nav", name: "Stock NAV",      module: "utilities_stock_nav" },
+  { code: "items_view",          name: "ItemList",       module: "items_view" },
+  { code: "ordini",              name: "Ordini",         module: "ordini" },
+  { code: "check_prezzi",        name: "Check Prezzi",   module: "check_prezzi" },
+  { code: "ticket_config",       name: "Ticket Config",  module: "ticket_config" },
 ]
 
 function Toggle({ checked, onChange, disabled }) {

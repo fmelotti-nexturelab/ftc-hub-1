@@ -70,7 +70,7 @@ async def get_sessions(
 ):
     stmt = select(StockSession).order_by(StockSession.stock_date.desc())
     if entity:
-        stmt = stmt.where(StockSession.entity == entity)
+        stmt = stmt.where(func.lower(StockSession.entity) == entity.lower())
     result = await db.execute(stmt)
     sessions = result.scalars().all()
     return [

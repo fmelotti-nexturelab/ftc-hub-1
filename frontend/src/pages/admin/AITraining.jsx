@@ -1,12 +1,53 @@
 import { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Save, CheckCircle, AlertCircle, Loader2, Search, RotateCcw, Trash2, Pencil, X, Check, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react"
+import { Save, CheckCircle, Loader2, Search, RotateCcw, Trash2, Pencil, X, Check, Eye, EyeOff, ClipboardCheck, BookOpen } from "lucide-react"
 import { ticketConfigApi } from "@/api/ticketConfig"
 
 const PRIORITIES = ["critical", "high", "medium", "low"]
 const PRIORITY_LABELS = { critical: "Critica", high: "Alta", medium: "Media", low: "Bassa" }
 
+const TABS = [
+  { key: "review", label: "Revisiona Ticket", icon: ClipboardCheck },
+  { key: "examples", label: "Istruzioni AI", icon: BookOpen },
+]
+
 export default function AITraining() {
+  const [activeTab, setActiveTab] = useState("review")
+
+  return (
+    <div className="space-y-4">
+      {/* Tab switcher */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {TABS.map(tab => {
+          const Icon = tab.icon
+          const active = activeTab === tab.key
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+                active
+                  ? "border-[#1e3a5f] text-[#1e3a5f]"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <Icon size={16} aria-hidden="true" />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {activeTab === "review" && <ReviewTicketsTab onSaved={() => setActiveTab("examples")} />}
+      {activeTab === "examples" && <TrainingExamplesTab />}
+    </div>
+  )
+}
+
+
+// ── Tab 1: Revisiona Ticket ─────────────────────────────────────────────────
+
+function ReviewTicketsTab({ onSaved }) {
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
   const [filterCat, setFilterCat] = useState("")
@@ -15,9 +56,11 @@ export default function AITraining() {
   const [saveResult, setSaveResult] = useState(null)
   const [includeDesc, setIncludeDesc] = useState(false)
 
-  const { data: rawTickets = [], isLoading } = useQuery({
+  const { data: rawTickets = [], isLoading, isFetching } = useQuery({
     queryKey: ["training-tickets"],
     queryFn: () => ticketConfigApi.getTrainingTickets(300).then(r => r.data),
+    staleTime: 0,
+    refetchOnMount: "always",
   })
 
   const { data: categories = [] } = useQuery({
@@ -35,17 +78,23 @@ export default function AITraining() {
     queryFn: () => ticketConfigApi.getTeams().then(r => r.data),
   })
 
-  // Inizializza stato al primo caricamento
-  if (rawTickets.length > 0 && !state) {
-    setState(rawTickets.map(t => ({
-      ...t,
-      new_category_id: t.category_id,
-      new_subcategory_id: t.subcategory_id,
-      new_team_id: t.team_id,
-      new_priority: t.priority,
-      reviewed: false,
-    })))
-  }
+  // Sincronizza stato locale quando arrivano dati freschi dal server
+  const [lastRawIds, setLastRawIds] = useState("")
+  useEffect(() => {
+    if (rawTickets.length === 0) return
+    const ids = rawTickets.map(t => t.id).join(",")
+    if (ids !== lastRawIds) {
+      setLastRawIds(ids)
+      setState(rawTickets.map(t => ({
+        ...t,
+        new_category_id: t.category_id,
+        new_subcategory_id: t.subcategory_id,
+        new_team_id: t.team_id,
+        new_priority: t.priority,
+        reviewed: false,
+      })))
+    }
+  }, [rawTickets])
 
   const items = state || []
 
@@ -109,12 +158,17 @@ export default function AITraining() {
       }))
       return ticketConfigApi.saveTraining(examples, includeDesc).then(r => r.data)
     },
-    onSuccess: (data) => setSaveResult(data),
+    onSuccess: (data) => {
+      setSaveResult(data)
+      setState(prev => prev.filter(i => !i.reviewed))
+      qc.invalidateQueries({ queryKey: ["training-tickets"] })
+      onSaved()
+    },
   })
 
   const selectClass = "px-2 py-1 border border-gray-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none"
 
-  if (isLoading) {
+  if (isLoading || (isFetching && !state)) {
     return (
       <div className="py-16 text-center text-gray-400 text-sm">
         <Loader2 size={20} className="animate-spin mx-auto mb-2" />
@@ -125,7 +179,6 @@ export default function AITraining() {
 
   return (
     <div className="space-y-4">
-      {/* Info + azioni */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
         Rivedi le assegnazioni dei ticket. Correggi categoria, sottocategoria, team e priorità dove necessario,
         poi segna come "OK" e salva. L'assistente AI userà questi esempi per migliorare le sue previsioni.
@@ -137,13 +190,15 @@ export default function AITraining() {
           <label htmlFor="training-search" className="sr-only">Cerca</label>
           <input id="training-search" type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Cerca..." className="w-40 pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-          <Search size={12} className="absolute left-2.5 top-2 text-gray-400" />
+          <Search size={12} className="absolute left-2.5 top-2 text-gray-400" aria-hidden="true" />
         </div>
-        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectClass}>
+        <label htmlFor="training-filter-cat" className="sr-only">Filtra per categoria</label>
+        <select id="training-filter-cat" value={filterCat} onChange={e => setFilterCat(e.target.value)} className={selectClass}>
           <option value="">Tutte le categorie</option>
           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
+        <label htmlFor="training-filter-status" className="sr-only">Filtra per stato</label>
+        <select id="training-filter-status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
           <option value="">Tutti</option>
           <option value="modified">Modificati</option>
           <option value="reviewed">Revisionati</option>
@@ -161,7 +216,7 @@ export default function AITraining() {
           Segna tutti OK
         </button>
         <button onClick={resetAll} className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
-          <RotateCcw size={12} className="inline mr-1" />Reset
+          <RotateCcw size={12} className="inline mr-1" aria-hidden="true" />Reset
         </button>
         <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition">
           <input
@@ -261,18 +316,14 @@ export default function AITraining() {
           <div className="py-12 text-center text-gray-400 text-sm">Nessun ticket trovato.</div>
         )}
       </div>
-
-      {/* ── Pannello esempi attivi ── */}
-      <TrainingExamplesPanel />
     </div>
   )
 }
 
 
-// ── Pannello gestione esempi di training attivi ──────────────────────────────
+// ── Tab 2: Istruzioni AI (esempi salvati) ───────────────────────────────────
 
-function TrainingExamplesPanel() {
-  const [open, setOpen] = useState(false)
+function TrainingExamplesTab() {
   const [examples, setExamples] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -284,7 +335,7 @@ function TrainingExamplesPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [confirmBulk, setConfirmBulk] = useState(null)
-  // Carica esempi quando si apre il pannello
+
   async function loadExamples() {
     setIsLoading(true)
     try {
@@ -295,9 +346,7 @@ function TrainingExamplesPanel() {
     }
   }
 
-  useEffect(() => {
-    if (open) loadExamples()
-  }, [open])
+  useEffect(() => { loadExamples() }, [])
 
   async function doToggle(id) {
     setBusy(true)
@@ -396,247 +445,237 @@ function TrainingExamplesPanel() {
   const btnClass = "flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border transition disabled:opacity-40"
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-5 py-4 text-left hover:bg-gray-50 transition rounded-xl"
-        aria-expanded={open}
-      >
-        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        <span className="font-bold text-gray-800">Istruzioni AI attive</span>
-        <span className="text-xs text-gray-400 ml-2">
-          {examples.length > 0 ? `${activeCount} attivi / ${examples.length} totali` : ""}
-        </span>
-      </button>
+    <div className="space-y-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-700">
+        Questi sono gli esempi che l'AI usa come riferimento per classificare i ticket.
+        Puoi modificarli, disattivarli temporaneamente o eliminarli. Usa le checkbox per azioni bulk.
+      </div>
 
-      {open && (
-        <div className="px-5 pb-5 space-y-3">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
-            Questi sono gli esempi che l'AI usa come riferimento per classificare i ticket.
-            Puoi modificarli, disattivarli temporaneamente o eliminarli. Usa le checkbox per azioni bulk.
-          </div>
+      {/* Stats */}
+      <div className="flex items-center gap-3 text-xs text-gray-500">
+        <span className="font-semibold text-gray-700">{activeCount} attivi</span>
+        <span>su {examples.length} totali</span>
+      </div>
 
-          {/* Filtri */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <label htmlFor="examples-search" className="sr-only">Cerca negli esempi</label>
-              <input id="examples-search" type="text" value={searchEx} onChange={e => setSearchEx(e.target.value)}
-                placeholder="Cerca..." className="w-40 pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-              <Search size={12} className="absolute left-2.5 top-2 text-gray-400" aria-hidden="true" />
-            </div>
-            <label htmlFor="examples-filter-cat" className="sr-only">Filtra per categoria</label>
-            <select id="examples-filter-cat" value={filterCatEx} onChange={e => setFilterCatEx(e.target.value)} className={selectClass}>
-              <option value="">Tutte le categorie</option>
-              {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <label htmlFor="examples-filter-status" className="sr-only">Filtra per stato</label>
-            <select id="examples-filter-status" value={filterActiveEx} onChange={e => setFilterActiveEx(e.target.value)} className={selectClass}>
-              <option value="">Tutti</option>
-              <option value="active">Attivi</option>
-              <option value="inactive">Disattivati</option>
-            </select>
-            {(searchEx || filterCatEx || filterActiveEx) && (
-              <button onClick={() => { setSearchEx(""); setFilterCatEx(""); setFilterActiveEx("") }}
-                className="text-xs text-gray-400 hover:text-gray-600 underline">Reset filtri</button>
+      {/* Filtri */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative">
+          <label htmlFor="examples-search" className="sr-only">Cerca negli esempi</label>
+          <input id="examples-search" type="text" value={searchEx} onChange={e => setSearchEx(e.target.value)}
+            placeholder="Cerca..." className="w-40 pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
+          <Search size={12} className="absolute left-2.5 top-2 text-gray-400" aria-hidden="true" />
+        </div>
+        <label htmlFor="examples-filter-cat" className="sr-only">Filtra per categoria</label>
+        <select id="examples-filter-cat" value={filterCatEx} onChange={e => setFilterCatEx(e.target.value)} className={selectClass}>
+          <option value="">Tutte le categorie</option>
+          {categoryNames.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <label htmlFor="examples-filter-status" className="sr-only">Filtra per stato</label>
+        <select id="examples-filter-status" value={filterActiveEx} onChange={e => setFilterActiveEx(e.target.value)} className={selectClass}>
+          <option value="">Tutti</option>
+          <option value="active">Attivi</option>
+          <option value="inactive">Disattivati</option>
+        </select>
+        {(searchEx || filterCatEx || filterActiveEx) && (
+          <button onClick={() => { setSearchEx(""); setFilterCatEx(""); setFilterActiveEx("") }}
+            className="text-xs text-gray-400 hover:text-gray-600 underline">Reset filtri</button>
+        )}
+        <span className="text-xs text-gray-400 ml-auto">{filtered.length} risultati</span>
+      </div>
+
+      {/* Bulk actions bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+          <span className="text-xs font-semibold text-blue-700">{selected.size} selezionati</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button onClick={() => doBulk("activate")} disabled={busy}
+              className={`${btnClass} border-green-300 text-green-700 hover:bg-green-50`} aria-label="Attiva selezionati">
+              <Eye size={14} /> Attiva
+            </button>
+            <button onClick={() => doBulk("deactivate")} disabled={busy}
+              className={`${btnClass} border-amber-300 text-amber-700 hover:bg-amber-50`} aria-label="Disattiva selezionati">
+              <EyeOff size={14} /> Disattiva
+            </button>
+            {confirmBulk === "delete" ? (
+              <span className="flex items-center gap-1">
+                <span className="text-xs text-red-600 font-medium">Confermi?</span>
+                <button onClick={() => doBulk("delete")} disabled={busy}
+                  className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50" aria-label="Conferma eliminazione">
+                  <Check size={15} />
+                </button>
+                <button onClick={() => setConfirmBulk(null)}
+                  className="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100" aria-label="Annulla eliminazione">
+                  <X size={15} />
+                </button>
+              </span>
+            ) : (
+              <button onClick={() => doBulk("delete")} disabled={busy}
+                className={`${btnClass} border-red-300 text-red-700 hover:bg-red-50`} aria-label="Elimina selezionati">
+                <Trash2 size={14} /> Elimina
+              </button>
             )}
-            <span className="text-xs text-gray-400 ml-auto">{filtered.length} risultati</span>
+            <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600 ml-1 underline">
+              Deseleziona
+            </button>
           </div>
+        </div>
+      )}
 
-          {/* Bulk actions bar */}
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
-              <span className="text-xs font-semibold text-blue-700">{selected.size} selezionati</span>
-              <div className="flex items-center gap-2 ml-auto">
-                <button onClick={() => doBulk("activate")} disabled={busy}
-                  className={`${btnClass} border-green-300 text-green-700 hover:bg-green-50`} aria-label="Attiva selezionati">
-                  <Eye size={14} /> Attiva
-                </button>
-                <button onClick={() => doBulk("deactivate")} disabled={busy}
-                  className={`${btnClass} border-amber-300 text-amber-700 hover:bg-amber-50`} aria-label="Disattiva selezionati">
-                  <EyeOff size={14} /> Disattiva
-                </button>
-                {confirmBulk === "delete" ? (
-                  <span className="flex items-center gap-1">
-                    <span className="text-xs text-red-600 font-medium">Confermi?</span>
-                    <button onClick={() => doBulk("delete")} disabled={busy}
-                      className="text-red-600 hover:text-red-800 p-1.5 rounded hover:bg-red-50" aria-label="Conferma eliminazione">
-                      <Check size={15} />
-                    </button>
-                    <button onClick={() => setConfirmBulk(null)}
-                      className="text-gray-400 hover:text-gray-600 p-1.5 rounded hover:bg-gray-100" aria-label="Annulla eliminazione">
-                      <X size={15} />
-                    </button>
-                  </span>
-                ) : (
-                  <button onClick={() => doBulk("delete")} disabled={busy}
-                    className={`${btnClass} border-red-300 text-red-700 hover:bg-red-50`} aria-label="Elimina selezionati">
-                    <Trash2 size={14} /> Elimina
-                  </button>
-                )}
-                <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-gray-600 ml-1 underline">
-                  Deseleziona
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="py-8 text-center text-gray-400 text-sm">
-              <Loader2 size={18} className="animate-spin mx-auto mb-2" />
-              Caricamento...
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
-                    <th scope="col" className="px-3 py-2.5 text-left w-8">
-                      <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length}
-                        onChange={toggleSelectAll} className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]"
-                        aria-label="Seleziona tutti" />
-                    </th>
-                    <th scope="col" className="px-3 py-2.5 text-left w-10">Stato</th>
-                    <th scope="col" className="px-3 py-2.5 text-left">Titolo</th>
-                    <th scope="col" className="px-3 py-2.5 text-left">Descrizione</th>
-                    <th scope="col" className="px-3 py-2.5 text-left w-32">Categoria</th>
-                    <th scope="col" className="px-3 py-2.5 text-left w-40">Sottocategoria</th>
-                    <th scope="col" className="px-3 py-2.5 text-left w-28">Team</th>
-                    <th scope="col" className="px-3 py-2.5 text-left w-20">Priorità</th>
-                    <th scope="col" className="px-3 py-2.5 text-right w-28">Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(ex => (
-                    <tr key={ex.id} className={`border-b border-gray-100 ${!ex.is_active ? "opacity-50 bg-gray-50/50" : ""} ${editingId === ex.id ? "bg-blue-50/50" : ""} ${selected.has(ex.id) ? "bg-blue-50/30" : ""}`}>
-                      {editingId === ex.id ? (
-                        <>
-                          <td className="px-3 py-2">
-                            <input type="checkbox" checked={selected.has(ex.id)} onChange={() => toggleSelect(ex.id)}
-                              className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
-                          </td>
-                          <td className="px-3 py-2">
-                            <button onClick={() => doToggle(ex.id)}
-                              aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
-                              className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
-                              {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
-                            </button>
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-title-${ex.id}`} className="sr-only">Titolo</label>
-                            <input id={`edit-title-${ex.id}`} type="text" value={editForm.title}
-                              onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-desc-${ex.id}`} className="sr-only">Descrizione</label>
-                            <input id={`edit-desc-${ex.id}`} type="text" value={editForm.description}
-                              onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none"
-                              placeholder="Opzionale" />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-cat-${ex.id}`} className="sr-only">Categoria</label>
-                            <input id={`edit-cat-${ex.id}`} type="text" value={editForm.category_name}
-                              onChange={e => setEditForm(f => ({ ...f, category_name: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-subcat-${ex.id}`} className="sr-only">Sottocategoria</label>
-                            <input id={`edit-subcat-${ex.id}`} type="text" value={editForm.subcategory_name}
-                              onChange={e => setEditForm(f => ({ ...f, subcategory_name: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-team-${ex.id}`} className="sr-only">Team</label>
-                            <input id={`edit-team-${ex.id}`} type="text" value={editForm.team_name}
-                              onChange={e => setEditForm(f => ({ ...f, team_name: e.target.value }))}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
-                          </td>
-                          <td className="px-3 py-1.5">
-                            <label htmlFor={`edit-priority-${ex.id}`} className="sr-only">Priorità</label>
-                            <select id={`edit-priority-${ex.id}`} value={editForm.priority}
-                              onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}
-                              className={`${selectClass} py-1.5`}>
-                              {PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button onClick={saveEdit}
-                                className="p-1.5 rounded bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-800 transition" aria-label="Salva modifiche">
+      {isLoading ? (
+        <div className="py-16 text-center text-gray-400 text-sm">
+          <Loader2 size={20} className="animate-spin mx-auto mb-2" />
+          Caricamento...
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                <th scope="col" className="px-3 py-2.5 text-left w-8">
+                  <input type="checkbox" checked={filtered.length > 0 && selected.size === filtered.length}
+                    onChange={toggleSelectAll} className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]"
+                    aria-label="Seleziona tutti" />
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-left w-10">Stato</th>
+                <th scope="col" className="px-3 py-2.5 text-left">Titolo</th>
+                <th scope="col" className="px-3 py-2.5 text-left">Descrizione</th>
+                <th scope="col" className="px-3 py-2.5 text-left w-32">Categoria</th>
+                <th scope="col" className="px-3 py-2.5 text-left w-40">Sottocategoria</th>
+                <th scope="col" className="px-3 py-2.5 text-left w-28">Team</th>
+                <th scope="col" className="px-3 py-2.5 text-left w-20">Priorità</th>
+                <th scope="col" className="px-3 py-2.5 text-right w-28">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(ex => (
+                <tr key={ex.id} className={`border-b border-gray-100 ${!ex.is_active ? "opacity-50 bg-gray-50/50" : ""} ${editingId === ex.id ? "bg-blue-50/50" : ""} ${selected.has(ex.id) ? "bg-blue-50/30" : ""}`}>
+                  {editingId === ex.id ? (
+                    <>
+                      <td className="px-3 py-2">
+                        <input type="checkbox" checked={selected.has(ex.id)} onChange={() => toggleSelect(ex.id)}
+                          className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <button onClick={() => doToggle(ex.id)}
+                          aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition">
+                          {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-title-${ex.id}`} className="sr-only">Titolo</label>
+                        <input id={`edit-title-${ex.id}`} type="text" value={editForm.title}
+                          onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-desc-${ex.id}`} className="sr-only">Descrizione</label>
+                        <input id={`edit-desc-${ex.id}`} type="text" value={editForm.description}
+                          onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none"
+                          placeholder="Opzionale" />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-cat-${ex.id}`} className="sr-only">Categoria</label>
+                        <input id={`edit-cat-${ex.id}`} type="text" value={editForm.category_name}
+                          onChange={e => setEditForm(f => ({ ...f, category_name: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-subcat-${ex.id}`} className="sr-only">Sottocategoria</label>
+                        <input id={`edit-subcat-${ex.id}`} type="text" value={editForm.subcategory_name}
+                          onChange={e => setEditForm(f => ({ ...f, subcategory_name: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-team-${ex.id}`} className="sr-only">Team</label>
+                        <input id={`edit-team-${ex.id}`} type="text" value={editForm.team_name}
+                          onChange={e => setEditForm(f => ({ ...f, team_name: e.target.value }))}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-white focus:ring-1 focus:ring-[#2563eb] outline-none" />
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <label htmlFor={`edit-priority-${ex.id}`} className="sr-only">Priorità</label>
+                        <select id={`edit-priority-${ex.id}`} value={editForm.priority}
+                          onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))}
+                          className={`${selectClass} py-1.5`}>
+                          {PRIORITIES.map(p => <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={saveEdit}
+                            className="p-1.5 rounded bg-green-50 text-green-600 hover:bg-green-100 hover:text-green-800 transition" aria-label="Salva modifiche">
+                            {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                          </button>
+                          <button onClick={() => setEditingId(null)}
+                            className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla modifica">
+                            <X size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-3 py-2">
+                        <input type="checkbox" checked={selected.has(ex.id)} onChange={() => toggleSelect(ex.id)}
+                          className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <button onClick={() => doToggle(ex.id)}
+                          aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
+                          className={`p-1.5 rounded transition ${ex.is_active ? "text-green-500 hover:bg-green-50 hover:text-green-700" : "text-gray-300 hover:bg-gray-100 hover:text-gray-500"}`}>
+                          {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </td>
+                      <td className="px-3 py-2 font-medium text-gray-800 truncate max-w-[250px]" title={ex.title}>{ex.title}</td>
+                      <td className="px-3 py-2 text-gray-500 truncate max-w-[200px]" title={ex.description || ""}>{ex.description || "—"}</td>
+                      <td className="px-3 py-2 text-gray-600">{ex.category_name}</td>
+                      <td className="px-3 py-2 text-gray-500">{ex.subcategory_name || "—"}</td>
+                      <td className="px-3 py-2 text-gray-500">{ex.team_name || "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                          ex.priority === "critical" ? "bg-red-100 text-red-700" :
+                          ex.priority === "high" ? "bg-orange-100 text-orange-700" :
+                          ex.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>
+                          {PRIORITY_LABELS[ex.priority] || ex.priority}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => startEdit(ex)}
+                            className="p-1.5 rounded text-gray-400 hover:bg-blue-50 hover:text-[#2563eb] transition" aria-label="Modifica esempio">
+                            <Pencil size={15} />
+                          </button>
+                          {confirmDeleteId === ex.id ? (
+                            <>
+                              <span className="text-[10px] text-red-600 font-medium">Confermi?</span>
+                              <button onClick={() => doDelete(ex.id)}
+                                className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 transition" aria-label="Conferma eliminazione">
                                 {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                               </button>
-                              <button onClick={() => setEditingId(null)}
-                                className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla modifica">
+                              <button onClick={() => setConfirmDeleteId(null)}
+                                className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla eliminazione">
                                 <X size={15} />
                               </button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-3 py-2">
-                            <input type="checkbox" checked={selected.has(ex.id)} onChange={() => toggleSelect(ex.id)}
-                              className="rounded border-gray-300 text-[#1e3a5f] focus:ring-[#2563eb]" aria-label={`Seleziona esempio ${ex.id}`} />
-                          </td>
-                          <td className="px-3 py-2">
-                            <button onClick={() => doToggle(ex.id)}
-                              aria-label={ex.is_active ? "Disattiva esempio" : "Attiva esempio"}
-                              className={`p-1.5 rounded transition ${ex.is_active ? "text-green-500 hover:bg-green-50 hover:text-green-700" : "text-gray-300 hover:bg-gray-100 hover:text-gray-500"}`}>
-                              {ex.is_active ? <Eye size={16} /> : <EyeOff size={16} />}
+                            </>
+                          ) : (
+                            <button onClick={() => setConfirmDeleteId(ex.id)}
+                              className="p-1.5 rounded text-gray-400 hover:bg-red-50 hover:text-red-500 transition" aria-label="Elimina esempio">
+                              <Trash2 size={15} />
                             </button>
-                          </td>
-                          <td className="px-3 py-2 font-medium text-gray-800 truncate max-w-[250px]" title={ex.title}>{ex.title}</td>
-                          <td className="px-3 py-2 text-gray-500 truncate max-w-[200px]" title={ex.description || ""}>{ex.description || "—"}</td>
-                          <td className="px-3 py-2 text-gray-600">{ex.category_name}</td>
-                          <td className="px-3 py-2 text-gray-500">{ex.subcategory_name || "—"}</td>
-                          <td className="px-3 py-2 text-gray-500">{ex.team_name || "—"}</td>
-                          <td className="px-3 py-2">
-                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                              ex.priority === "critical" ? "bg-red-100 text-red-700" :
-                              ex.priority === "high" ? "bg-orange-100 text-orange-700" :
-                              ex.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                              "bg-gray-100 text-gray-600"
-                            }`}>
-                              {PRIORITY_LABELS[ex.priority] || ex.priority}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button onClick={() => startEdit(ex)}
-                                className="p-1.5 rounded text-gray-400 hover:bg-blue-50 hover:text-[#2563eb] transition" aria-label="Modifica esempio">
-                                <Pencil size={15} />
-                              </button>
-                              {confirmDeleteId === ex.id ? (
-                                <>
-                                  <span className="text-[10px] text-red-600 font-medium">Confermi?</span>
-                                  <button onClick={() => doDelete(ex.id)}
-                                    className="p-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-800 transition" aria-label="Conferma eliminazione">
-                                    {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                                  </button>
-                                  <button onClick={() => setConfirmDeleteId(null)}
-                                    className="p-1.5 rounded bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition" aria-label="Annulla eliminazione">
-                                    <X size={15} />
-                                  </button>
-                                </>
-                              ) : (
-                                <button onClick={() => setConfirmDeleteId(ex.id)}
-                                  className="p-1.5 rounded text-gray-400 hover:bg-red-50 hover:text-red-500 transition" aria-label="Elimina esempio">
-                                  <Trash2 size={15} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filtered.length === 0 && !isLoading && (
-                <div className="py-8 text-center text-gray-400 text-sm">Nessun esempio trovato.</div>
-              )}
-            </div>
+                          )}
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filtered.length === 0 && !isLoading && (
+            <div className="py-12 text-center text-gray-400 text-sm">Nessun esempio trovato.</div>
           )}
         </div>
       )}

@@ -1,6 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from datetime import datetime, timedelta, timezone
 import hashlib
 
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     from app.models.ticket_config import TicketTeamMemberModel
     result = await db.execute(
-        select(User).where(User.username == data.username, User.is_active == True)
+        select(User).where(func.lower(User.username) == data.username.lower(), User.is_active == True)
     )
     user = result.scalar_one_or_none()
 
@@ -164,14 +164,14 @@ async def update_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if data.username and data.username != current_user.username:
-        existing = await db.execute(select(User).where(User.username == data.username))
+    if data.username and data.username.lower() != current_user.username.lower():
+        existing = await db.execute(select(User).where(func.lower(User.username) == data.username.lower()))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Username già in uso")
         current_user.username = data.username
 
-    if data.email and data.email != current_user.email:
-        existing = await db.execute(select(User).where(User.email == data.email))
+    if data.email and data.email.lower() != (current_user.email or "").lower():
+        existing = await db.execute(select(User).where(func.lower(User.email) == data.email.lower()))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email già in uso")
         current_user.email = data.email
@@ -203,10 +203,10 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    existing = await db.execute(select(User).where(User.username == data.username))
+    existing = await db.execute(select(User).where(func.lower(User.username) == data.username.lower()))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username già in uso")
-    
+
     user = User(
         username=data.username,
         email=data.email,

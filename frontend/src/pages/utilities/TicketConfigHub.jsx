@@ -1,19 +1,43 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useMemo } from "react"
+import { useNavigate, Navigate } from "react-router-dom"
 import { Database, Settings2, LogOut, Sparkles } from "lucide-react"
 import TicketDatabase from "@/pages/utilities/TicketDatabase"
 import TicketConfig from "@/pages/admin/TicketConfig"
 import AITraining from "@/pages/admin/AITraining"
-
-const TABS = [
-  { id: "database", label: "Gestione Database Ticket", icon: Database },
-  { id: "config",   label: "Configurazione Team e Regole", icon: Settings2 },
-  { id: "training", label: "Training AI", icon: Sparkles },
-]
+import { useAuthStore } from "@/store/authStore"
 
 export default function TicketConfigHub() {
-  const [tab, setTab] = useState("database")
   const navigate = useNavigate()
+  const { user, canView, canManage } = useAuthStore()
+
+  const isAdmin = ["ADMIN", "SUPERUSER", "IT"].includes(user?.department)
+  const isTeamLead = user?.is_team_lead === true
+
+  // Team Leader con canView("ticket_config") vede la tab config
+  const canSeeConfig = isAdmin || (isTeamLead && canView("ticket_config"))
+  // Team Leader con canManage("ticket_config") può modificare le regole
+  const canEditConfig = isAdmin || (isTeamLead && canManage("ticket_config"))
+
+  // Guard: se non è né admin né team leader con permesso, redirect
+  if (!isAdmin && !canSeeConfig) {
+    return <Navigate to="/unauthorized" replace />
+  }
+
+  const tabs = useMemo(() => {
+    const list = []
+    if (isAdmin) {
+      list.push({ id: "database", label: "Gestione Database Ticket", icon: Database })
+    }
+    if (canSeeConfig) {
+      list.push({ id: "config", label: "Configurazione Team e Regole", icon: Settings2 })
+    }
+    if (isAdmin) {
+      list.push({ id: "training", label: "Training AI", icon: Sparkles })
+    }
+    return list
+  }, [isAdmin, canSeeConfig])
+
+  const [tab, setTab] = useState(() => tabs[0]?.id || "config")
 
   return (
     <div className="space-y-4">
@@ -30,7 +54,7 @@ export default function TicketConfigHub() {
 
       {/* Tab bar */}
       <div className="flex gap-0 border-b border-gray-200">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -40,7 +64,7 @@ export default function TicketConfigHub() {
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
-            <Icon size={15} />
+            <Icon size={15} aria-hidden="true" />
             {label}
           </button>
         ))}
@@ -48,9 +72,9 @@ export default function TicketConfigHub() {
 
       {/* Tab content */}
       <div>
-        {tab === "database" && <TicketDatabase />}
-        {tab === "config" && <TicketConfig />}
-        {tab === "training" && <AITraining />}
+        {tab === "database" && isAdmin && <TicketDatabase />}
+        {tab === "config" && canSeeConfig && <TicketConfig readOnly={!canEditConfig} />}
+        {tab === "training" && isAdmin && <AITraining />}
       </div>
     </div>
   )

@@ -643,6 +643,7 @@ async def get_training_tickets(
             LEFT JOIN tickets.ticket_subcategories s ON s.id = t.subcategory_id
             LEFT JOIN tickets.ticket_teams tm ON tm.id = t.team_id
             WHERE t.is_active = true AND t.category_id IS NOT NULL
+              AND t.title NOT IN (SELECT te.title FROM tickets.training_examples te)
         )
         SELECT id, ticket_number, title, description,
                category_id, category_name, subcategory_id, subcategory_name,
@@ -691,12 +692,17 @@ class TrainingSaveRequest(BaseModel):
     dependencies=[Depends(require_permission("tickets", need_manage=True))],
 )
 async def save_training(data: TrainingSaveRequest, db: AsyncSession = Depends(get_db)):
-    """Salva gli esempi di training revisionati nel DB e rigenera il file."""
-    from sqlalchemy import delete as sa_delete
+    """Aggiunge nuovi esempi di training al DB (senza cancellare i precedenti) e rigenera il file."""
 
-    # Cancella vecchi e reinserisci
-    await db.execute(sa_delete(TicketTrainingExampleModel))
+    added = 0
     for ex in data.examples:
+        # Salta duplicati (stesso titolo già presente)
+        existing = await db.execute(
+            select(TicketTrainingExampleModel)
+            .where(TicketTrainingExampleModel.title == ex.title)
+        )
+        if existing.scalar_one_or_none():
+            continue
         db.add(TicketTrainingExampleModel(
             title=ex.title,
             description=ex.description if data.include_description else None,
@@ -706,13 +712,14 @@ async def save_training(data: TrainingSaveRequest, db: AsyncSession = Depends(ge
             priority=ex.priority,
             is_active=True,
         ))
+        added += 1
     await db.commit()
 
-    # Rigenera il file txt
-    count = await _regenerate_training_file(db, include_description=data.include_description)
+    # Rigenera il file txt con tutti gli esempi attivi
+    total = await _regenerate_training_file(db, include_description=data.include_description)
 
     mode = "con descrizione" if data.include_description else "solo titolo"
-    return {"saved": count, "message": f"{count} esempi salvati ({mode}). L'AI li userà immediatamente."}
+    return {"saved": added, "total": total, "message": f"{added} nuovi esempi aggiunti ({total} totali, {mode}). L'AI li userà immediatamente."}
 
 
 # ── Training Examples CRUD ────────────────────────────────────────────────────
