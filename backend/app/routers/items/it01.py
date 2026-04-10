@@ -70,7 +70,7 @@ async def generate_files(
 @router.get("/download-tbl", dependencies=[Depends(_PERM_VIEW)])
 async def download_tbl_xlsm(db: AsyncSession = Depends(get_db)):
     """Scarica il file tbl_ItemM.xlsm generato — usato dal frontend per legacy save."""
-    storage_path = await get_storage_path(db)
+    storage_path = get_storage_path()
     tbl_path = Path(storage_path) / "02_ItemList" / "tbl_ItemM.xlsm"
     if not tbl_path.exists():
         raise HTTPException(status_code=404, detail="File tbl_ItemM.xlsm non trovato")
@@ -84,7 +84,7 @@ async def download_tbl_xlsm(db: AsyncSession = Depends(get_db)):
 @router.get("/tbl-info", dependencies=[Depends(_PERM_VIEW)])
 async def tbl_info(db: AsyncSession = Depends(get_db)):
     """Metadati del file tbl_ItemM.xlsm + info su chi l'ha generato."""
-    storage_path = await get_storage_path(db)
+    storage_path = get_storage_path()
     tbl_path = Path(storage_path) / "02_ItemList" / "tbl_ItemM.xlsm"
     if not tbl_path.exists():
         return {"exists": False}

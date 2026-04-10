@@ -129,7 +129,7 @@ async def generate_itemlist(
     xlsx_bytes = _write_xlsx_bytes(f"ItemList {entity}", headers, data_rows, int_cols, decimal_cols)
 
     # Salva nell'archivio storage
-    storage_path = await get_storage_path(db)
+    storage_path = get_storage_path()
     base = Path(storage_path)
     if not base.exists():
         raise ValueError(f"La cartella FTC HUB Storage non esiste: {storage_path}")

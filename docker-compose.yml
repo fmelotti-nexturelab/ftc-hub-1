@@ -33,6 +33,9 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: 480
       REFRESH_TOKEN_EXPIRE_DAYS: 7
       ENVIRONMENT: development
+      # Path della cartella FTC HUB Storage *visto dal container* (non lato host).
+      # In dev questo path mappa su ./data via il volume sotto, in prod su D:/.
+      FILE_STORAGE_PATH: /mnt/f/FTC_HUB_Archivio
       TICKET_ATTACHMENTS_PATH: /data/attachments
       TICKET_NOTIFY_EMAIL: ""
       SMTP_HOST: ""

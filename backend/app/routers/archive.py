@@ -89,10 +89,10 @@ async def save_file_to_storage(
 ):
     """
     Salva un file nella cartella FTC HUB Storage al percorso relativo indicato.
-    Il percorso assoluto viene costruito come: ftchub_storage_path / relative_path.
+    Il percorso assoluto viene costruito come: FILE_STORAGE_PATH / relative_path.
     """
     try:
-        storage_root = await get_storage_path(db)
+        storage_root = get_storage_path()
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 

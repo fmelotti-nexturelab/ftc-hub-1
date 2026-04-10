@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # Provider: "ollama" | "anthropic" | "auto" (ollama con fallback anthropic)
     AI_PROVIDER: str = "auto"
 
+    # Path della cartella FTC HUB Storage (Stock NAV, ItemList, RetailSalesAnalysis, ecc.)
+    # È sempre il percorso *interno al container*: in dev ed in prod corrisponde a
+    # /mnt/f/FTC_HUB_Archivio, perché il mount Docker dei due ambienti normalizza
+    # qui il disco fisico (./data in dev, D:/ in prod).
+    FILE_STORAGE_PATH: str = "/mnt/f/FTC_HUB_Archivio"
+
     TICKET_NOTIFY_EMAIL: str = ""
     TICKET_ATTACHMENTS_PATH: str = "/data/attachments"
     SMTP_HOST: str = ""

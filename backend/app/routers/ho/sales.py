@@ -119,17 +119,9 @@ async def export_sales_to_excel(
     - Scrive i valori per ogni negozio
     """
     try:
-        storage_root = await get_storage_path(db)
+        storage_root = get_storage_path()
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-
-    # Traduzione path Windows → Linux per container Docker
-    # es. "F:\FTC_HUB_Archivio" → "/mnt/f/FTC_HUB_Archivio"
-    import re
-    drive_match = re.match(r'^([A-Za-z]):[/\\](.*)$', storage_root)
-    if drive_match:
-        storage_root = f"/mnt/{drive_match.group(1).lower()}/{drive_match.group(2)}"
-    storage_root = storage_root.replace("\\", "/")
 
     year = f"20{data.analysis_date.split('.')[-1]}" if len(data.analysis_date.split('.')[-1]) == 2 else data.analysis_date.split('.')[-1]
     file_path = Path(storage_root) / "03_RetailSalesAnalysis" / year / "RetailSalesAnalysis.xlsx"

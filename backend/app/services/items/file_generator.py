@@ -311,7 +311,7 @@ async def generate_itemlist_files(
     Genera i file Excel per una sessione ItemList IT01 e li salva
     nella cartella FTC HUB Storage configurata.
     """
-    storage_path = await get_storage_path(db)
+    storage_path = get_storage_path()
     base = Path(storage_path)
 
     if not base.exists():
