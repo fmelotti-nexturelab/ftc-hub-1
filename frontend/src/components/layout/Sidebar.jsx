@@ -2,10 +2,11 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
 import { ticketsApi } from "@/api/tickets"
-import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck, Tag } from "lucide-react"
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck, Tag, Trash2 } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
+import { operatorCodeApi } from "@/api/ho/operatorCode"
 
 const displayUserType = (user) => {
   const t = user?.department || user?.role
@@ -52,7 +53,7 @@ function TicketSidebarLink({ user }) {
       to="/tickets"
       end
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+        `flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all
         ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
       }
     >
@@ -85,6 +86,148 @@ function TicketSidebarLink({ user }) {
         )}
       </div>
     </NavLink>
+  )
+}
+
+function CodiceOperatoreLink({ user }) {
+  const isIT = ["IT", "ADMIN", "SUPERUSER"].includes(user?.department)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const badgeRef = useRef(null)
+  const queryClient = useQueryClient()
+
+  const { data: badgeData } = useQuery({
+    queryKey: ["sidebar-opcode-badge"],
+    queryFn: () => operatorCodeApi.badgeCount().then(r => r.data),
+    refetchInterval: 30_000,
+  })
+
+  const { data: requestsData, isLoading: requestsLoading } = useQuery({
+    queryKey: ["sidebar-opcode-requests-preview"],
+    queryFn: () => operatorCodeApi.listRequests().then(r => r.data),
+    refetchInterval: 30_000,
+    enabled: popoverOpen,
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => operatorCodeApi.processRequest(id),
+    onSuccess: () => {
+      setConfirmDelete(null)
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-requests-preview"] })
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+    },
+  })
+
+  const count = badgeData?.count || 0
+  const pendingItems = (requestsData?.items ?? []).filter(r => !r.is_evaded)
+
+  const handleBadgeClick = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!popoverOpen && badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect()
+      setPopoverPos({ top: rect.top - 8, left: rect.right + 10 })
+    }
+    setPopoverOpen(v => !v)
+  }
+
+  useEffect(() => {
+    if (!popoverOpen) return
+    const handler = () => setPopoverOpen(false)
+    document.addEventListener("click", handler)
+    return () => document.removeEventListener("click", handler)
+  }, [popoverOpen])
+
+  return (
+    <>
+      <NavLink
+        to="/ho/codice-operatore"
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
+          ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+        }
+      >
+        <UserCheck size={17} aria-hidden="true" />
+        <div className="flex flex-col leading-tight flex-1">
+          <span>Cod.Operatore</span>
+          {!isIT && <span className="text-[10px] text-white/40">Richiesta</span>}
+          {isIT && <span className="text-[10px] text-white/40">Gestione</span>}
+        </div>
+        {count > 0 && (
+          <div className="flex flex-col items-center">
+            <button
+              ref={badgeRef}
+              onClick={handleBadgeClick}
+              aria-label={`${count} richieste codice operatore in attesa — clicca per vedere la lista`}
+              className="bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-bold min-w-[20px] h-[18px] flex items-center justify-center rounded-full px-1 transition focus-visible:ring-2 focus-visible:ring-amber-300"
+            >
+              {count}
+            </button>
+            <span className="text-[8px] text-white/40 mt-0.5">rich.</span>
+          </div>
+        )}
+      </NavLink>
+
+      {popoverOpen && (
+        <div
+          className="fixed z-[200] bg-white rounded-xl shadow-2xl border border-gray-200 w-60 py-2 overflow-hidden"
+          style={{ top: popoverPos.top, left: popoverPos.left }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="px-3 pb-1.5 border-b border-gray-100 mb-1 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-hidden="true" />
+            <span className="text-xs font-semibold text-gray-600">Richieste in attesa</span>
+            <span className="ml-auto text-[10px] font-bold text-amber-600">{pendingItems.length}</span>
+          </div>
+          {requestsLoading ? (
+            <div className="px-3 py-2 text-xs text-gray-400">Caricamento…</div>
+          ) : pendingItems.length === 0 ? (
+            <div className="px-3 py-2 text-xs text-gray-400">Nessuna richiesta pendente</div>
+          ) : (
+            <ul>
+              {pendingItems.map(req => (
+                <li key={req.id} className="px-3 py-1.5 hover:bg-gray-50">
+                  {confirmDelete === req.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-red-600 font-medium flex-1">Eliminare?</span>
+                      <button
+                        onClick={() => deleteMutation.mutate(req.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-[10px] font-semibold px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white rounded transition disabled:opacity-40"
+                      >
+                        {deleteMutation.isPending ? "…" : "Sì"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="text-[10px] font-semibold px-2 py-0.5 border border-gray-200 text-gray-500 hover:bg-gray-100 rounded transition"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group">
+                      <span className="text-xs font-medium text-gray-800 flex-1 truncate">
+                        {req.last_name} {req.first_name}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono shrink-0">{req.store_number}</span>
+                      <button
+                        onClick={() => setConfirmDelete(req.id)}
+                        aria-label={`Elimina richiesta per ${req.first_name} ${req.last_name}`}
+                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition shrink-0 focus-visible:opacity-100"
+                      >
+                        <Trash2 size={12} aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -168,17 +311,17 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 overflow-y-auto">
 
         {user?.department === "SUPERUSER" && (
-          <div className="mt-4">
-            <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+          <div className="mt-2">
+            <div className="px-3 mb-1 text-xs font-semibold text-white/40 tracking-wider">
               SUPPORTO
             </div>
             <NavLink
               to="/admin/support"
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+                `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
                 ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
               }
             >
@@ -188,14 +331,14 @@ export default function Sidebar() {
           </div>
         )}
 
-        <div className="mt-4">
-          <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+        <div className="mt-2">
+          <div className="px-3 mb-1 text-xs font-semibold text-white/40 tracking-wider">
             DATABASE
           </div>
           <NavLink
             to="/utilities"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+              `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
               ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
             }
           >
@@ -206,7 +349,7 @@ export default function Sidebar() {
             <NavLink
               to="/utilities/navision"
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+                `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
                 ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
               }
             >
@@ -217,14 +360,14 @@ export default function Sidebar() {
         </div>
 
         {canView("stampa_etichette") && (
-          <div className="mt-4">
-            <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+          <div className="mt-2">
+            <div className="px-3 mb-1 text-xs font-semibold text-white/40 tracking-wider">
               ETICHETTE
             </div>
             <NavLink
               to="/utilities/stampa-etichette"
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
+                `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
                 ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
               }
             >
@@ -235,25 +378,12 @@ export default function Sidebar() {
         )}
 
         {canView("codici_operatore") && (
-          <NavLink
-            to="/ho/codice-operatore"
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm transition-all
-              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
-            }
-          >
-            <UserCheck size={17} aria-hidden="true" />
-            <div className="flex flex-col leading-tight">
-              <span>Cod.Operatore</span>
-              {user?.department === "HR" && <span className="text-[10px] text-white/40">Richiesta</span>}
-              {["IT", "ADMIN", "SUPERUSER"].includes(user?.department) && <span className="text-[10px] text-white/40">Gestione</span>}
-            </div>
-          </NavLink>
+          <CodiceOperatoreLink user={user} />
         )}
 
         {canView("tickets") && (
-          <div className="mt-4">
-            <div className="px-3 mb-2 text-xs font-semibold text-white/40 tracking-wider">
+          <div className="mt-2">
+            <div className="px-3 mb-1 text-xs font-semibold text-white/40 tracking-wider">
               SUPPORTO
             </div>
             <TicketSidebarLink user={user} />

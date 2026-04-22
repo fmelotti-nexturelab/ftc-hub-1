@@ -12,7 +12,7 @@ const selectClass = "px-3 py-2 border border-gray-300 rounded-lg text-sm focus:r
 const EMPTY_FORM = {
   store_number: "", store_name: "", entity: "IT01", district: "", city: "",
   location_type: "", opening_date: "", address: "", postal_code: "",
-  full_address: "", nav_code: "", phone: "", email: "", dm_name: "", sm_name: "",
+  full_address: "", nav_code: "", phone: "", email: "", dm_name: "", dm_mail: "", sm_name: "", sm_mail: "",
 }
 
 // ── Modal dettaglio ────────────────────────────────────────────────────────────
@@ -47,7 +47,8 @@ function StoreModal({ store, onClose }) {
             <div className="space-y-3">
               <Row icon={<Phone size={14} />} label="Telefono" value={store.phone} />
               <Row icon={<Mail size={14} />} label="Email" value={store.email} />
-              <Row icon={<User size={14} />} label="DM / SM" value={store.dm_name} sub={store.sm_name} />
+              <Row icon={<User size={14} />} label="DM" value={store.dm_name} sub={store.dm_mail} />
+              <Row icon={<User size={14} />} label="SM" value={store.sm_name} sub={store.sm_mail} />
             </div>
           </div>
         </div>
@@ -116,7 +117,9 @@ function StoreFormModal({ initial, onClose, onSaved }) {
           <Field label="Telefono" value={form.phone} onChange={set("phone")} />
           <Field label="Email" type="email" value={form.email} onChange={set("email")} />
           <Field label="DM" value={form.dm_name} onChange={set("dm_name")} />
+          <Field label="Mail DM" value={form.dm_mail} onChange={set("dm_mail")} />
           <Field label="SM" value={form.sm_name} onChange={set("sm_name")} />
+          <Field label="Mail SM" value={form.sm_mail} onChange={set("sm_mail")} />
         </div>
         <div className="flex justify-end gap-2 px-5 pb-5">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition">Annulla</button>
@@ -280,7 +283,9 @@ export default function StoresPage() {
                 <th className="px-3 py-2.5 text-left">Distretto</th>
                 <th className="px-3 py-2.5 text-left">Città</th>
                 <th className="px-3 py-2.5 text-left">DM</th>
+                <th className="px-3 py-2.5 text-left">Mail DM</th>
                 <th className="px-3 py-2.5 text-left">SM</th>
+                <th className="px-3 py-2.5 text-left">Mail SM</th>
                 <th className="px-3 py-2.5 text-left">Telefono</th>
                 <th className="px-3 py-2.5 text-left">Email</th>
                 {isAdmin && <th className="px-3 py-2.5 text-center w-20">Azioni</th>}
@@ -302,7 +307,9 @@ export default function StoresPage() {
                   <td className="px-3 py-2 text-gray-600">{s.district}</td>
                   <td className="px-3 py-2 text-gray-600">{s.city}</td>
                   <td className="px-3 py-2 text-gray-600">{s.dm_name}</td>
+                  <td className="px-3 py-2 text-gray-500">{s.dm_mail}</td>
                   <td className="px-3 py-2 text-gray-600">{s.sm_name}</td>
+                  <td className="px-3 py-2 text-gray-500">{s.sm_mail}</td>
                   <td className="px-3 py-2 text-gray-500">{s.phone}</td>
                   <td className="px-3 py-2 text-gray-500">{s.email}</td>
                   {isAdmin && (
@@ -323,7 +330,7 @@ export default function StoresPage() {
               ))}
               {stores.length === 0 && !isFetching && (
                 <tr>
-                  <td colSpan={isAdmin ? 10 : 9} className="px-4 py-8 text-center text-gray-400">Nessuno store trovato</td>
+                  <td colSpan={isAdmin ? 12 : 11} className="px-4 py-8 text-center text-gray-400">Nessuno store trovato</td>
                 </tr>
               )}
             </tbody>

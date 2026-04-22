@@ -56,7 +56,9 @@ def _serialize(s: Store) -> dict:
         "phone": s.phone,
         "email": s.email,
         "dm_name": s.dm_name,
+        "dm_mail": s.dm_mail,
         "sm_name": s.sm_name,
+        "sm_mail": s.sm_mail,
     }
 
 
@@ -75,7 +77,9 @@ class StorePayload(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     dm_name: Optional[str] = None
+    dm_mail: Optional[str] = None
     sm_name: Optional[str] = None
+    sm_mail: Optional[str] = None
 
 
 @router.get("/filters", dependencies=[Depends(_require_utilities_view)])

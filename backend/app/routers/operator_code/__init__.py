@@ -1,17 +1,117 @@
-from typing import List
+from datetime import datetime, timezone, date
+from typing import List, Optional, Set
+import random
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, cast, String
 
 from app.database import get_db
-from app.models.operator_code import OperatorCode
-from app.schemas.operator_code import OperatorCodeResponse
-from app.core.dependencies import require_permission
+from app.models.operator_code import OperatorCode, OperatorCodeRequest, OperatorCodePool
+from app.models.stores import Store
+from app.models.auth import User
+from app.schemas.operator_code import (
+    OperatorCodeResponse,
+    OperatorCodeCreate,
+    OperatorCodeRequestPayload,
+    OperatorCodeRequestResponse,
+    PendingRequestsResponse,
+    BulkRequestPayload,
+    BulkRowResult,
+    EvadiPayload,
+)
+from app.schemas.tickets import TicketCreate
+from app.models.tickets import TicketPriority, Ticket, TicketStatus
+from app.core.dependencies import require_permission, get_current_user
+from app.services.tickets import ticket_service
+from app.services.nav_export import generate_nav_files
 
 router = APIRouter(prefix="/api/ho/operator-codes", tags=["HO - Codice Operatore"])
 
 _PERM_VIEW = require_permission("codici_operatore")
+
+DOMAIN = "@flyingtigeritalia.com"
+DIGITS_NO_ZERO = "123456789"
+
+
+def _entity_from_store(store_number: str) -> Optional[str]:
+    """Ricava l'entity dal prefisso del negozio (es. IT01055 -> IT01)."""
+    s = (store_number or "").upper().strip()
+    for e in ("IT01", "IT02", "IT03"):
+        if s.startswith(e):
+            return e
+    return None
+
+
+def _generate_password() -> str:
+    """4 cifre casuali, nessuno zero."""
+    return "".join(random.choices(DIGITS_NO_ZERO, k=4))
+
+
+def _suggest_email(first_name: str, last_name: str, existing_emails: Set[str]) -> Optional[str]:
+    fn = first_name.lower().replace(" ", "")
+    ln = last_name.lower().replace(" ", "")
+
+    def _try(prefix: str) -> Optional[str]:
+        if len(prefix) < 2:
+            return None
+        full = prefix + DOMAIN
+        return prefix if full not in existing_emails else None
+
+    # Combinazioni in ordine: 3+3, 4+2, 5+1 — nome prima, poi cognome prima
+    candidates = [
+        fn[:3] + ln[:3],
+        ln[:3] + fn[:3],
+        fn[:4] + ln[:2],
+        ln[:4] + fn[:2],
+        fn[:5] + ln[:1],
+        ln[:5] + fn[:1],
+    ]
+    for candidate in candidates:
+        result = _try(candidate)
+        if result is not None:
+            return result
+    return None
+
+
+def _serialize_code(oc: OperatorCode, requester_name: Optional[str] = None, creator_name: Optional[str] = None) -> dict:
+    return {
+        "id": str(oc.id),
+        "code": oc.code,
+        "first_name": oc.first_name,
+        "last_name": oc.last_name,
+        "email": oc.email,
+        "start_date": oc.start_date.isoformat() if oc.start_date else None,
+        "store_number": oc.store_number,
+        "created_at": oc.created_at.isoformat() if oc.created_at else None,
+        "requested_at": oc.requested_at.isoformat() if oc.requested_at else None,
+        "requester_name": requester_name,
+        "creator_name": creator_name,
+    }
+
+
+async def _get_cumulative_ticket(db: AsyncSession) -> Optional[Ticket]:
+    result = await db.execute(
+        select(Ticket).where(
+            Ticket.title == "Richiesta Codice Operatore",
+            cast(Ticket.status, String) != TicketStatus.CLOSED.value,
+            Ticket.is_active == True,
+        ).order_by(Ticket.created_at.desc()).limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _auto_close_if_all_evaded(db: AsyncSession) -> None:
+    count_result = await db.execute(
+        select(func.count()).select_from(OperatorCodeRequest)
+        .where(OperatorCodeRequest.is_evaded == False)
+    )
+    if (count_result.scalar() or 0) == 0:
+        ticket = await _get_cumulative_ticket(db)
+        if ticket:
+            ticket.status = TicketStatus.CLOSED
+            ticket.closed_at = datetime.now(timezone.utc)
+            await db.commit()
 
 
 @router.get(
@@ -21,6 +121,523 @@ _PERM_VIEW = require_permission("codici_operatore")
 )
 async def list_operator_codes(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(OperatorCode).where(OperatorCode.is_active == True).order_by(OperatorCode.created_at.desc())
+        select(OperatorCode)
+        .where(OperatorCode.is_active == True)
+        .order_by(OperatorCode.last_name, OperatorCode.first_name)
     )
     return result.scalars().all()
+
+
+@router.get(
+    "/badge-count",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def badge_count(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(func.count()).select_from(OperatorCodeRequest)
+        .where(OperatorCodeRequest.is_evaded == False)
+    )
+    return {"count": result.scalar() or 0}
+
+
+@router.get(
+    "/requests",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def list_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    reqs_result = await db.execute(
+        select(OperatorCodeRequest).order_by(
+            OperatorCodeRequest.store_number,
+            OperatorCodeRequest.last_name,
+            OperatorCodeRequest.first_name,
+        )
+    )
+    requests = reqs_result.scalars().all()
+
+    # Carica tutte le email esistenti per il suggest
+    emails_result = await db.execute(
+        select(OperatorCode.email).where(
+            OperatorCode.email.isnot(None),
+            OperatorCode.is_active == True,
+        )
+    )
+    existing_emails: Set[str] = {row[0].lower() for row in emails_result.all() if row[0]}
+
+    items = []
+    for req in requests:
+        requester_name = None
+        if req.requested_by:
+            u = await db.execute(select(User).where(User.id == req.requested_by))
+            user_obj = u.scalar_one_or_none()
+            if user_obj:
+                requester_name = user_obj.full_name
+        suggested = _suggest_email(req.first_name, req.last_name, existing_emails)
+        if suggested:
+            # riserva l'email per le righe successive nella stessa batch
+            existing_emails.add((suggested + DOMAIN).lower())
+        items.append(OperatorCodeRequestResponse(
+            id=req.id,
+            first_name=req.first_name,
+            last_name=req.last_name,
+            store_number=req.store_number,
+            start_date=req.start_date,
+            notes=req.notes,
+            requested_by=req.requested_by,
+            requester_name=requester_name,
+            created_at=req.created_at,
+            is_evaded=req.is_evaded,
+            evaded_at=req.evaded_at,
+            suggested_email=suggested,
+            assigned_code=req.assigned_code,
+            assigned_password=req.assigned_password,
+            assigned_email=req.assigned_email,
+            exported_at=req.exported_at,
+        ))
+
+    ticket = await _get_cumulative_ticket(db)
+    ticket_status = ticket.status.value if ticket else None
+
+    return PendingRequestsResponse(items=items, ticket_status=ticket_status)
+
+
+@router.post(
+    "/requests/take-over",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def take_over_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    ticket = await _get_cumulative_ticket(db)
+    if not ticket:
+        raise HTTPException(404, "Nessuna richiesta in attesa")
+
+    if ticket.status == TicketStatus.OPEN:
+        ticket.status = TicketStatus.IN_PROGRESS
+        await db.commit()
+
+    return {"message": "Preso in carico"}
+
+
+@router.delete(
+    "/requests/{request_id}",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def process_request(
+    request_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    result = await db.execute(
+        select(OperatorCodeRequest).where(OperatorCodeRequest.id == request_id)
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Richiesta non trovata")
+
+    await db.delete(req)
+    await db.commit()
+
+    await _auto_close_if_all_evaded(db)
+
+    return {"message": "Richiesta eliminata"}
+
+
+@router.patch(
+    "/requests/{request_id}/evadi",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def evadi_request(
+    request_id: str,
+    body: EvadiPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    result = await db.execute(
+        select(OperatorCodeRequest).where(OperatorCodeRequest.id == request_id)
+    )
+    req = result.scalar_one_or_none()
+    if not req:
+        raise HTTPException(404, "Richiesta non trovata")
+
+    # Determina entity dal negozio
+    entity = _entity_from_store(req.store_number)
+    if not entity:
+        raise HTTPException(400, f"Impossibile determinare l'entity dal negozio '{req.store_number}'")
+
+    # Calcola prossimo codice (max 4 cifre + 1)
+    max_result = await db.execute(
+        select(func.max(OperatorCodePool.code)).where(
+            OperatorCodePool.entity == entity,
+            OperatorCodePool.code >= 1000,
+            OperatorCodePool.code <= 9999,
+        )
+    )
+    max_code = max_result.scalar() or 1000
+    next_code = max_code + 1
+
+    # Genera password
+    password = _generate_password()
+
+    # Gestione email
+    email_prefix = (body.email or "").strip()
+    full_email = (email_prefix + DOMAIN) if email_prefix and not email_prefix.endswith(DOMAIN) else (email_prefix or None)
+
+    # Aggiorna operator_codes se esiste
+    if full_email:
+        op_result = await db.execute(
+            select(OperatorCode).where(
+                func.lower(OperatorCode.first_name) == req.first_name.lower(),
+                func.lower(OperatorCode.last_name) == req.last_name.lower(),
+                OperatorCode.is_active == True,
+            )
+        )
+        op = op_result.scalar_one_or_none()
+        if op:
+            op.email = full_email
+            op.code = str(next_code)
+
+    # Aggiungi codice al pool
+    db.add(OperatorCodePool(entity=entity, code=next_code))
+
+    # Marca richiesta come evasa con i dati assegnati
+    req.is_evaded = True
+    req.evaded_at = datetime.now(timezone.utc)
+    req.assigned_code = next_code
+    req.assigned_password = password
+    req.assigned_email = full_email
+
+    await db.commit()
+    await _auto_close_if_all_evaded(db)
+
+    return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
+
+
+@router.post(
+    "/bulk-request",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def bulk_request(
+    data: BulkRequestPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date as date_type
+    results: list[BulkRowResult] = []
+    any_inserted = False
+
+    for row in data.rows:
+        fn = (row.first_name or "").strip()
+        ln = (row.last_name or "").strip()
+        sn = (row.store_number or "").strip().upper()
+        sd_str = (row.start_date or "").strip()
+
+        # Valida campi obbligatori
+        if not fn or not ln or not sn or not sd_str:
+            results.append(BulkRowResult(
+                first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+                status="error", note="Dati incompleti",
+            ))
+            continue
+
+        # Valida e converti data
+        try:
+            sd = date_type.fromisoformat(sd_str)
+        except ValueError:
+            results.append(BulkRowResult(
+                first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+                status="error", note="Data non valida",
+            ))
+            continue
+
+        # Valida negozio
+        store_res = await db.execute(
+            select(Store).where(func.lower(Store.store_number) == sn.lower(), Store.is_active == True)
+        )
+        if not store_res.scalar_one_or_none():
+            results.append(BulkRowResult(
+                first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+                status="error", note=f"Negozio '{sn}' non trovato",
+            ))
+            continue
+
+        # Controlla operator_codes
+        exact_res = await db.execute(
+            select(OperatorCode).where(
+                func.lower(OperatorCode.first_name) == fn.lower(),
+                func.lower(OperatorCode.last_name) == ln.lower(),
+                OperatorCode.is_active == True,
+            )
+        )
+        exact = exact_res.scalar_one_or_none()
+        if exact:
+            note = f"Già presente nel sistema"
+            if exact.code:
+                note += f" (codice: {exact.code})"
+            results.append(BulkRowResult(
+                first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+                status="exists", note=note,
+            ))
+            continue
+
+        # Controlla operator_code_requests
+        pending_res = await db.execute(
+            select(OperatorCodeRequest).where(
+                func.lower(OperatorCodeRequest.first_name) == fn.lower(),
+                func.lower(OperatorCodeRequest.last_name) == ln.lower(),
+            )
+        )
+        if pending_res.scalar_one_or_none():
+            results.append(BulkRowResult(
+                first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+                status="pending", note="Richiesta già in attesa di gestione",
+            ))
+            continue
+
+        # Inserisci
+        db.add(OperatorCodeRequest(
+            first_name=fn, last_name=ln, store_number=sn,
+            start_date=sd, requested_by=current_user.id,
+        ))
+        any_inserted = True
+        results.append(BulkRowResult(
+            first_name=fn, last_name=ln, store_number=sn, start_date=sd_str,
+            status="inserted", note="Richiesta inserita",
+        ))
+
+    if any_inserted:
+        await db.commit()
+        existing_ticket = await _get_cumulative_ticket(db)
+        if not existing_ticket:
+            requester_name = current_user.full_name or current_user.username
+            inserted_count = sum(1 for r in results if r.status == "inserted")
+            try:
+                ticket_data = TicketCreate(
+                    title="Richiesta Codice Operatore",
+                    description=(
+                        f"Import massivo: {inserted_count} nuove richieste codice operatore in attesa di gestione.\n"
+                        f"Inoltrate da: {requester_name}"
+                    ),
+                    category_id=7,
+                    subcategory_id=17,
+                    priority=TicketPriority.MEDIUM,
+                    requester_name=requester_name,
+                    requester_email=current_user.email or "",
+                    requester_phone="",
+                    teamviewer_code="",
+                )
+                await ticket_service.create_ticket(db, ticket_data, current_user)
+            except Exception:
+                pass
+
+    return {"results": [r.model_dump() for r in results]}
+
+
+@router.post(
+    "/generate-nav-files",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def generate_nav_files_endpoint(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    # Carica richieste evase non ancora esportate
+    result = await db.execute(
+        select(OperatorCodeRequest).where(
+            OperatorCodeRequest.is_evaded == True,
+            OperatorCodeRequest.exported_at.is_(None),
+            OperatorCodeRequest.assigned_code.isnot(None),
+        ).order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
+    )
+    to_export = result.scalars().all()
+
+    if not to_export:
+        raise HTTPException(404, "Nessuna richiesta evasa da esportare")
+
+    # Raggruppa per entity
+    by_entity: dict = {}
+    for req in to_export:
+        entity = _entity_from_store(req.store_number)
+        if not entity:
+            continue
+        by_entity.setdefault(entity, []).append({
+            "assigned_code": req.assigned_code,
+            "last_name": req.last_name,
+            "first_name": req.first_name,
+            "assigned_password": req.assigned_password,
+        })
+
+    if not by_entity:
+        raise HTTPException(400, "Impossibile determinare l'entity per le richieste selezionate")
+
+    # Genera file in memoria per ogni entity
+    generated: list[dict] = []
+    try:
+        for entity, rows in by_entity.items():
+            files = generate_nav_files(entity, rows)
+            generated.extend(files)
+    except Exception as e:
+        raise HTTPException(500, f"Errore generazione file: {str(e)}")
+
+    # Marca come esportate
+    now = datetime.now(timezone.utc)
+    for req in to_export:
+        req.exported_at = now
+    await db.commit()
+
+    return {"files": generated, "count": len(to_export)}
+
+
+@router.post(
+    "/request",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def request_operator_code(
+    data: OperatorCodeRequestPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Valida store_number
+    store_result = await db.execute(
+        select(Store).where(
+            func.lower(Store.store_number) == data.store_number.lower(),
+            Store.is_active == True,
+        )
+    )
+    if not store_result.scalar_one_or_none():
+        raise HTTPException(404, f"Negozio '{data.store_number}' non trovato")
+
+    # Cerca match esatto in operator_codes
+    exact_result = await db.execute(
+        select(OperatorCode).where(
+            func.lower(OperatorCode.first_name) == data.first_name.strip().lower(),
+            func.lower(OperatorCode.last_name) == data.last_name.strip().lower(),
+            OperatorCode.is_active == True,
+        )
+    )
+    exact = exact_result.scalar_one_or_none()
+
+    if exact:
+        requester_name = creator_name = None
+        if exact.requested_by:
+            r = await db.execute(select(User).where(User.id == exact.requested_by))
+            u = r.scalar_one_or_none()
+            if u:
+                requester_name = u.full_name
+        if exact.created_by:
+            r = await db.execute(select(User).where(User.id == exact.created_by))
+            u = r.scalar_one_or_none()
+            if u:
+                creator_name = u.full_name
+        return {"found": True, "pending": False, "code": _serialize_code(exact, requester_name, creator_name), "similar": [], "ticket_number": None}
+
+    # Cerca match esatto in operator_code_requests (già in attesa)
+    pending_result = await db.execute(
+        select(OperatorCodeRequest).where(
+            func.lower(OperatorCodeRequest.first_name) == data.first_name.strip().lower(),
+            func.lower(OperatorCodeRequest.last_name) == data.last_name.strip().lower(),
+        )
+    )
+    pending = pending_result.scalar_one_or_none()
+
+    if pending:
+        requester_name = None
+        if pending.requested_by:
+            r = await db.execute(select(User).where(User.id == pending.requested_by))
+            u = r.scalar_one_or_none()
+            if u:
+                requester_name = u.full_name
+        return {
+            "found": False,
+            "pending": True,
+            "pending_request": {
+                "first_name": pending.first_name,
+                "last_name": pending.last_name,
+                "store_number": pending.store_number,
+                "start_date": pending.start_date.isoformat(),
+                "created_at": pending.created_at.isoformat() if pending.created_at else None,
+                "requester_name": requester_name,
+            },
+            "code": None,
+            "similar": [],
+            "ticket_number": None,
+        }
+
+    # Cerca candidati con stesso cognome (nomi simili / omonimia)
+    similar_candidates = []
+    if not data.force:
+        sim_result = await db.execute(
+            select(OperatorCode).where(
+                func.lower(OperatorCode.last_name) == data.last_name.strip().lower(),
+                OperatorCode.is_active == True,
+            )
+        )
+        similar_candidates = sim_result.scalars().all()
+
+    if similar_candidates:
+        return {
+            "found": False,
+            "pending": False,
+            "code": None,
+            "similar": [_serialize_code(c) for c in similar_candidates],
+            "ticket_number": None,
+        }
+
+    # Nessun match → inserisci in operator_code_requests e commita subito
+    new_request = OperatorCodeRequest(
+        first_name=data.first_name.strip(),
+        last_name=data.last_name.strip(),
+        store_number=data.store_number.strip().upper(),
+        start_date=data.start_date,
+        requested_by=current_user.id,
+    )
+    db.add(new_request)
+    await db.commit()
+
+    # Crea ticket cumulativo solo se non esiste uno aperto (operazione separata)
+    ticket_number = None
+    existing_ticket = await _get_cumulative_ticket(db)
+    if not existing_ticket:
+        requester_name = current_user.full_name or current_user.username
+        days_to_start = (data.start_date - date.today()).days
+        priority = TicketPriority.HIGH if days_to_start < 2 else TicketPriority.MEDIUM
+
+        ticket_data = TicketCreate(
+            title="Richiesta Codice Operatore",
+            description=(
+                f"Nuove richieste di codice operatore in attesa di gestione.\n\n"
+                f"Prima richiesta: {data.first_name} {data.last_name} — {data.store_number}\n"
+                f"Data inizio: {data.start_date.strftime('%d/%m/%Y')}\n"
+                f"Inoltrata da: {requester_name}"
+            ),
+            category_id=7,
+            subcategory_id=17,
+            priority=priority,
+            requester_name=requester_name,
+            requester_email=current_user.email or "",
+            requester_phone="",
+            teamviewer_code="",
+        )
+        try:
+            ticket = await ticket_service.create_ticket(db, ticket_data, current_user)
+            ticket_number = ticket.ticket_number
+        except Exception:
+            pass  # il new_request è già committato, il ticket è best-effort
+
+    return {"found": False, "pending": False, "code": None, "similar": [], "ticket_number": ticket_number}

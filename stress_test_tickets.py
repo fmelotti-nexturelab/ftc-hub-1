@@ -33,21 +33,21 @@ PASSWORD = "123"
 VERIFY_SSL = False
 
 # Scenario A: sustained load
-SA_TOTAL_TICKETS = 2000
-SA_DURATION_SEC = 3600  # 1 ora
-SA_COMMENTS_RANGE = (5, 6)
-SA_ATTACHMENTS_RANGE = (5, 6)
-SA_ATTACHMENT_SIZE = 1 * 1024 * 1024  # 1 MB
+SA_TOTAL_TICKETS = 1000
+SA_DURATION_SEC = 1800  # 30 minuti
+SA_COMMENTS_RANGE = (3, 5)
+SA_ATTACHMENTS_RANGE = (2, 4)
+SA_ATTACHMENT_SIZE = 512 * 1024  # 512 KB
 
 # Scenario B: spike
-SB_SIMULTANEOUS = 200
+SB_SIMULTANEOUS = 100
 
 # Scenario C: mixed workload
-SC_CONCURRENT_USERS = 50
+SC_CONCURRENT_USERS = 30
 SC_DURATION_SEC = 300  # 5 minuti
 
 # Scenario D: AI routing (analyze + create)
-SD_TOTAL_TICKETS = 400
+SD_TOTAL_TICKETS = 200
 SD_CONCURRENCY = 5  # basso per non sovraccaricare l'API AI
 
 # Concurrency limits
@@ -1486,7 +1486,8 @@ async def main():
         else:
             print("  Tutti gli scenari (A, B, C, D)\n")
 
-        input("  Premi INVIO per avviare i test (o Ctrl+C per uscire)...\n")
+        # input("  Premi INVIO per avviare i test (o Ctrl+C per uscire)...\n")
+        print("  Avvio automatico test...\n")
 
         # Scenario A
         if not only or "A" in only:

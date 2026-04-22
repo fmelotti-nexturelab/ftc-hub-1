@@ -221,13 +221,19 @@ export default function SettingsPage() {
 
       {STOCK_DEPTS.includes(user?.department) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-5">
-          <h2 className="text-sm font-bold text-gray-700">Cartelle Stock</h2>
+          <h2 className="text-sm font-bold text-gray-700">Cartelle OneDrive Zebra A S</h2>
           <StockFolderSettings />
           <div className="border-t border-gray-100" />
           <FolderRow
             folderKey="stock_folder_commercial"
             label="One Italy Commercial - Files"
             hint={`Cartella COMMERCIAL — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy Commercial - Files\\`}
+          />
+          <div className="border-t border-gray-100" />
+          <FolderRow
+            folderKey="onedrive_folder_it"
+            label="One Italy IT - Files"
+            hint={`Cartella IT — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy IT - Files\\`}
           />
         </div>
       )}
