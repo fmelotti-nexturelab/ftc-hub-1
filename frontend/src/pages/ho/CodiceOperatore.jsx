@@ -1358,7 +1358,8 @@ function GestioneView() {
                 <th scope="col" className="px-4 py-3 text-left">Codice</th>
                 <th scope="col" className="px-4 py-3 text-left">PWD</th>
                 <th scope="col" className="px-4 py-3 text-left">Evasa il</th>
-                <th scope="col" className="px-4 py-3 text-left">Notifica</th>
+                <th scope="col" className="px-4 py-3 text-left">NAV</th>
+                <th scope="col" className="px-4 py-3 text-left">Notifica SM/DM</th>
               </tr>
             </thead>
             <tbody>
@@ -1379,6 +1380,19 @@ function GestioneView() {
                   <td className="px-4 py-2.5 font-mono font-bold text-amber-700">{req.assigned_password ?? "—"}</td>
                   <td className="px-4 py-2.5 text-gray-400">
                     {req.evaded_at ? new Date(req.evaded_at).toLocaleDateString("it-IT") : "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {req.exported_at ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <FileDown size={11} aria-hidden="true" />
+                        {new Date(req.exported_at).toLocaleDateString("it-IT")}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">
+                        <FileDown size={11} aria-hidden="true" />
+                        Da esportare
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     {req.notification_sent_at ? (
