@@ -18,7 +18,7 @@ def _build_retail_staff(entity: str, rows: list, today: date) -> tuple[str, byte
     rb = xlrd.open_workbook(str(TEMPLATE_RETAIL), formatting_info=True)
     wb = xl_copy(rb)
     ws = wb.get_sheet(0)
-    base_row = rb.sheet_by_index(0).nrows
+    base_row = 3  # riga 4 (0-indexed)
 
     for i, row in enumerate(rows):
         code = str(int(row["assigned_code"])) if row["assigned_code"] else ""
@@ -39,7 +39,7 @@ def _build_pos_staff(entity: str, rows: list, today: date) -> tuple[str, bytes]:
     rb = xlrd.open_workbook(str(TEMPLATE_POS), formatting_info=True)
     wb = xl_copy(rb)
     ws = wb.get_sheet(0)
-    base_row = rb.sheet_by_index(0).nrows
+    base_row = 3  # riga 4 (0-indexed)
 
     for i, row in enumerate(rows):
         code = str(int(row["assigned_code"])) if row["assigned_code"] else ""
@@ -65,6 +65,7 @@ def generate_nav_files(entity: str, rows: list) -> List[dict]:
     ]:
         results.append({
             "filename": filename,
+            "entity": entity,
             "content_b64": base64.b64encode(content).decode("ascii"),
         })
     return results

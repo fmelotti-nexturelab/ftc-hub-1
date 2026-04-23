@@ -1184,17 +1184,18 @@ function GestioneView() {
       const res = await operatorCodeApi.generateNavFiles()
       const files = res.data.files ?? []
 
-      // 3. Scrivi ogni file nella cartella OneDrive
+      // 3. Scrivi ogni file nella sottocartella dedicata all'entity
       const written = []
-      for (const { filename, content_b64 } of files) {
+      for (const { filename, entity, content_b64 } of files) {
         const binary = atob(content_b64)
         const bytes = new Uint8Array(binary.length)
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-        const fileHandle = await folderHandle.getFileHandle(filename, { create: true })
+        const subFolder = await folderHandle.getDirectoryHandle(entity, { create: true })
+        const fileHandle = await subFolder.getFileHandle(filename, { create: true })
         const writable = await fileHandle.createWritable()
         await writable.write(bytes)
         await writable.close()
-        written.push(filename)
+        written.push(`${entity}/${filename}`)
       }
       return written
     },
@@ -1299,26 +1300,6 @@ function GestioneView() {
             >
               <MailPlus size={13} aria-hidden="true" />
               Genera Casella Mail
-            </button>
-          )}
-          {evaded.filter(r => !r.exported_at).length > 0 && (
-            <button
-              onClick={() => { setGeneratedFiles([]); generateMutation.mutate() }}
-              disabled={generateMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-emerald-500"
-            >
-              <FileDown size={13} aria-hidden="true" />
-              {generateMutation.isPending ? "Generazione…" : "Genera file NAV"}
-            </button>
-          )}
-          {evaded.filter(r => !r.notification_sent_at).length > 0 && (
-            <button
-              onClick={() => notifyMutation.mutate()}
-              disabled={notifyMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
-            >
-              <Mail size={13} aria-hidden="true" />
-              {notifyMutation.isPending ? "Invio…" : `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`}
             </button>
           )}
         </div>
@@ -1446,9 +1427,33 @@ function GestioneView() {
       {/* Tabella EVASE */}
       {evaded.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
-            <CheckCircle size={13} className="text-green-500" aria-hidden="true" />
-            <span className="text-xs font-semibold text-gray-600">{evaded.length} {evaded.length === 1 ? "richiesta evasa" : "richieste evase"}</span>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={13} className="text-green-500" aria-hidden="true" />
+              <span className="text-xs font-semibold text-gray-600">{evaded.length} {evaded.length === 1 ? "richiesta evasa" : "richieste evase"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {evaded.filter(r => !r.exported_at).length > 0 && (
+                <button
+                  onClick={() => { setGeneratedFiles([]); generateMutation.mutate() }}
+                  disabled={generateMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <FileDown size={13} aria-hidden="true" />
+                  {generateMutation.isPending ? "Generazione…" : `Genera file NAV (${evaded.filter(r => !r.exported_at).length})`}
+                </button>
+              )}
+              {evaded.filter(r => !r.notification_sent_at).length > 0 && (
+                <button
+                  onClick={() => notifyMutation.mutate()}
+                  disabled={notifyMutation.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <Mail size={13} aria-hidden="true" />
+                  {notifyMutation.isPending ? "Invio…" : `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`}
+                </button>
+              )}
+            </div>
           </div>
           <table className="w-full text-xs">
             <thead>
