@@ -25,6 +25,7 @@ class OperatorCodeRequest(Base):
     assigned_password = Column(String(10), nullable=True)
     assigned_email = Column(String(200), nullable=True)
     exported_at = Column(DateTime(timezone=True), nullable=True)
+    notification_sent_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class OperatorCodePool(Base):

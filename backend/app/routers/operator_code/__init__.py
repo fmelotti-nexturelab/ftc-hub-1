@@ -23,6 +23,8 @@ from app.schemas.operator_code import (
     BulkRequestPayload,
     BulkRowResult,
     EvadiPayload,
+    NotifyResultItem,
+    NotifyResponse,
 )
 from app.schemas.tickets import TicketCreate
 from app.models.tickets import TicketPriority, Ticket, TicketStatus
@@ -327,8 +329,42 @@ async def evadi_request(
     await db.commit()
     await _auto_close_if_all_evaded(db)
 
-    # Notifica SM e DM del negozio
-    try:
+    return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
+
+
+@router.post(
+    "/notify",
+    response_model=NotifyResponse,
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def notify_operators(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    from app.services.tickets.notification_service import notify_operator_code_assigned
+
+    # Solo evase e non ancora notificate
+    result = await db.execute(
+        select(OperatorCodeRequest).where(
+            OperatorCodeRequest.is_evaded == True,
+            OperatorCodeRequest.notification_sent_at.is_(None),
+            OperatorCodeRequest.assigned_code.isnot(None),
+        ).order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
+    )
+    to_notify = result.scalars().all()
+
+    if not to_notify:
+        return NotifyResponse(sent=0, skipped=0, results=[])
+
+    sender_name = current_user.full_name or current_user.username
+    sender_email = current_user.email
+    results: list[NotifyResultItem] = []
+    sent_count = 0
+
+    for req in to_notify:
         store_res = await db.execute(
             select(Store).where(
                 func.lower(Store.store_number) == req.store_number.lower(),
@@ -336,8 +372,24 @@ async def evadi_request(
             )
         )
         store = store_res.scalar_one_or_none()
-        if store:
-            from app.services.tickets.notification_service import notify_operator_code_assigned
+
+        item = NotifyResultItem(
+            request_id=str(req.id),
+            first_name=req.first_name,
+            last_name=req.last_name,
+            store_number=req.store_number,
+            sm_name=store.sm_name if store else None,
+            sm_mail=store.sm_mail if store else None,
+            dm_name=store.dm_name if store else None,
+            dm_mail=store.dm_mail if store else None,
+        )
+
+        if not store:
+            item.error = "Negozio non trovato"
+            results.append(item)
+            continue
+
+        try:
             await notify_operator_code_assigned(
                 store_number=req.store_number,
                 store_name=store.store_name or req.store_number,
@@ -347,17 +399,26 @@ async def evadi_request(
                 dm_mail=store.dm_mail,
                 first_name=req.first_name,
                 last_name=req.last_name,
-                assigned_code=next_code,
-                assigned_password=password,
-                assigned_email=full_email,
+                assigned_code=req.assigned_code,
+                assigned_password=req.assigned_password or "",
+                assigned_email=req.assigned_email,
                 start_date=req.start_date,
-                sender_name=current_user.full_name or current_user.username,
-                sender_email=current_user.email,
+                sender_name=sender_name,
+                sender_email=sender_email,
             )
-    except Exception as exc:
-        logger.warning(f"Notifica operatore fallita per {req.store_number}: {exc}")
+            item.sm_sent = bool(store.sm_mail)
+            item.dm_sent = bool(store.dm_mail)
+            req.notification_sent_at = datetime.now(timezone.utc)
+            sent_count += 1
+        except Exception as exc:
+            item.error = str(exc)
+            logger.warning(f"Notifica fallita per {req.store_number} / {req.last_name}: {exc}")
 
-    return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
+        results.append(item)
+
+    await db.commit()
+    skipped = len(to_notify) - sent_count
+    return NotifyResponse(sent=sent_count, skipped=skipped, results=results)
 
 
 @router.post(

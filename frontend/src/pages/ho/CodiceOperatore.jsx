@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore"
 import {
   LogOut, UserCheck, X, CheckCircle, AlertCircle, AlertTriangle,
   User, Building2, Calendar, Mail, Hash, Search, Clock, PlayCircle, FileDown,
-  Upload, XCircle, Info, ChevronRight, ChevronLeft, Columns, MailPlus, MailCheck, MailX,
+  Upload, XCircle, Info, ChevronRight, ChevronLeft, Columns, MailPlus, MailCheck, MailX, Send,
 } from "lucide-react"
 import { operatorCodeApi } from "@/api/ho/operatorCode"
 import { getFolderHandle } from "@/utils/folderStorage"
@@ -937,6 +937,86 @@ function ArubaTmModal({ pendingCount, onClose, onGo }) {
   )
 }
 
+// ── Modal risultati invio mail ────────────────────────────────────────────────
+function NotifyResultModal({ results, sent, skipped, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()} role="button" tabIndex={0} aria-label="Chiudi">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Mail size={15} className="text-blue-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800 text-sm">Riepilogo invio notifiche</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                <span className="text-green-600 font-semibold">{sent} inviate</span>
+                {skipped > 0 && <span className="text-amber-600 font-semibold ml-2">{skipped} con problemi</span>}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0">
+              <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                <th scope="col" className="px-4 py-3 text-left">Negozio</th>
+                <th scope="col" className="px-4 py-3 text-left">Operatore</th>
+                <th scope="col" className="px-4 py-3 text-left">SM</th>
+                <th scope="col" className="px-4 py-3 text-left">DM</th>
+                <th scope="col" className="px-4 py-3 text-left">Esito</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r, i) => (
+                <tr key={r.request_id} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                  <td className="px-4 py-2.5 font-mono text-gray-500">{r.store_number}</td>
+                  <td className="px-4 py-2.5 font-medium text-gray-800">{r.last_name} {r.first_name}</td>
+                  <td className="px-4 py-2.5">
+                    {r.sm_mail ? (
+                      r.sm_sent
+                        ? <span className="flex items-center gap-1 text-green-600"><CheckCircle size={12} aria-hidden="true" />{r.sm_mail}</span>
+                        : <span className="flex items-center gap-1 text-red-500"><XCircle size={12} aria-hidden="true" />{r.sm_mail}</span>
+                    ) : (
+                      <span className="text-gray-300">no email</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {r.dm_mail ? (
+                      r.dm_sent
+                        ? <span className="flex items-center gap-1 text-green-600"><CheckCircle size={12} aria-hidden="true" />{r.dm_mail}</span>
+                        : <span className="flex items-center gap-1 text-red-500"><XCircle size={12} aria-hidden="true" />{r.dm_mail}</span>
+                    ) : (
+                      <span className="text-gray-300">no email</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {r.error
+                      ? <span className="text-red-600 font-semibold">{r.error}</span>
+                      : (r.sm_sent || r.dm_sent)
+                        ? <span className="text-green-600 font-semibold">✓ Inviata</span>
+                        : <span className="text-amber-600 font-semibold">⚠ Nessun destinatario</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+          <button onClick={onClose} className="w-full py-2 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold rounded-xl shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Vista IT/Admin: gestione richieste ────────────────────────────────────────
 function GestioneView() {
   const queryClient = useQueryClient()
@@ -945,6 +1025,7 @@ function GestioneView() {
   const [showArubaTm, setShowArubaTm] = useState(false)
   const [sentMailboxIds, setSentMailboxIds] = useState(new Set())
   const [mailboxResults, setMailboxResults] = useState({}) // { [requestId]: 'created'|'exists'|'error'|'unknown' }
+  const [notifyResult, setNotifyResult] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -999,6 +1080,14 @@ function GestioneView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
       queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+    },
+  })
+
+  const notifyMutation = useMutation({
+    mutationFn: () => operatorCodeApi.notifyOperators(),
+    onSuccess: (res) => {
+      setNotifyResult(res.data)
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
     },
   })
 
@@ -1080,6 +1169,14 @@ function GestioneView() {
 
   return (
     <>
+      {notifyResult && (
+        <NotifyResultModal
+          results={notifyResult.results}
+          sent={notifyResult.sent}
+          skipped={notifyResult.skipped}
+          onClose={() => setNotifyResult(null)}
+        />
+      )}
       {showArubaTm && (
         <ArubaTmModal
           pendingCount={pending.length}
@@ -1127,6 +1224,16 @@ function GestioneView() {
             >
               <FileDown size={13} aria-hidden="true" />
               {generateMutation.isPending ? "Generazione…" : "Genera file NAV"}
+            </button>
+          )}
+          {evaded.filter(r => !r.notification_sent_at).length > 0 && (
+            <button
+              onClick={() => notifyMutation.mutate()}
+              disabled={notifyMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <Mail size={13} aria-hidden="true" />
+              {notifyMutation.isPending ? "Invio…" : `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`}
             </button>
           )}
         </div>
@@ -1251,6 +1358,7 @@ function GestioneView() {
                 <th scope="col" className="px-4 py-3 text-left">Codice</th>
                 <th scope="col" className="px-4 py-3 text-left">PWD</th>
                 <th scope="col" className="px-4 py-3 text-left">Evasa il</th>
+                <th scope="col" className="px-4 py-3 text-left">Notifica</th>
               </tr>
             </thead>
             <tbody>
@@ -1271,6 +1379,19 @@ function GestioneView() {
                   <td className="px-4 py-2.5 font-mono font-bold text-amber-700">{req.assigned_password ?? "—"}</td>
                   <td className="px-4 py-2.5 text-gray-400">
                     {req.evaded_at ? new Date(req.evaded_at).toLocaleDateString("it-IT") : "—"}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {req.notification_sent_at ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                        <MailCheck size={11} aria-hidden="true" />
+                        {new Date(req.notification_sent_at).toLocaleDateString("it-IT")}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-400">
+                        <Mail size={11} aria-hidden="true" />
+                        Da inviare
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

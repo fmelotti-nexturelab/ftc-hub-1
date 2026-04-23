@@ -22,6 +22,7 @@ class OperatorCodeRequestResponse(BaseModel):
     assigned_password: Optional[str] = None
     assigned_email: Optional[str] = None
     exported_at: Optional[datetime] = None
+    notification_sent_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +70,26 @@ class BulkRowResult(BaseModel):
 
 class EvadiPayload(BaseModel):
     email: Optional[str] = None
+
+
+class NotifyResultItem(BaseModel):
+    request_id: str
+    first_name: str
+    last_name: str
+    store_number: str
+    sm_name: Optional[str] = None
+    sm_mail: Optional[str] = None
+    sm_sent: bool = False
+    dm_name: Optional[str] = None
+    dm_mail: Optional[str] = None
+    dm_sent: bool = False
+    error: Optional[str] = None
+
+
+class NotifyResponse(BaseModel):
+    sent: int
+    skipped: int
+    results: List[NotifyResultItem]
 
 
 class OperatorCodeCreate(BaseModel):
