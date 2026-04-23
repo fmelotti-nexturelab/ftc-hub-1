@@ -11,5 +11,5 @@ export const operatorCodeApi = {
   evadiRequest: (id, email) => apiClient.patch(`/api/ho/operator-codes/requests/${id}/evadi`, { email }),
   generateNavFiles: () => apiClient.post("/api/ho/operator-codes/generate-nav-files"),
   bulkEvadi: (rows) => apiClient.post("/api/ho/operator-codes/requests/bulk-evadi", { rows }),
-  notifyOperators: () => apiClient.post("/api/ho/operator-codes/notify"),
+  notifyOperators: (preview = false) => apiClient.post(`/api/ho/operator-codes/notify${preview ? "?preview=true" : ""}`),
 }

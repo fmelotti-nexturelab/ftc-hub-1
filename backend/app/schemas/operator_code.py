@@ -105,6 +105,7 @@ class NotifyResultItem(BaseModel):
     dm_mail: Optional[str] = None
     dm_sent: bool = False
     error: Optional[str] = None
+    html_preview: Optional[str] = None  # popolato solo in modalità preview
 
 
 class NotifyResponse(BaseModel):

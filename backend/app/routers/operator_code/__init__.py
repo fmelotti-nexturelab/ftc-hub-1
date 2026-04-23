@@ -433,13 +433,16 @@ async def bulk_evadi_requests(
 async def notify_operators(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    preview: bool = False,
 ):
     if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
         raise HTTPException(403, "Accesso riservato alla gestione IT")
 
-    from app.services.tickets.notification_service import notify_operator_code_assigned
+    from app.services.tickets.notification_service import (
+        notify_operator_code_assigned,
+        _build_operator_code_email,
+    )
 
-    # Solo evase e non ancora notificate
     result = await db.execute(
         select(OperatorCodeRequest).where(
             OperatorCodeRequest.is_evaded == True,
@@ -479,6 +482,25 @@ async def notify_operators(
 
         if not store:
             item.error = "Negozio non trovato"
+            results.append(item)
+            continue
+
+        if preview:
+            # Genera solo HTML, non spedisce e non aggiorna il DB
+            recipient_name = store.sm_name or store.dm_name or "Store Manager"
+            item.html_preview = _build_operator_code_email(
+                recipient_name=recipient_name,
+                store_number=req.store_number,
+                store_name=store.store_name or req.store_number,
+                first_name=req.first_name,
+                last_name=req.last_name,
+                assigned_code=req.assigned_code,
+                assigned_password=req.assigned_password or "",
+                assigned_email=req.assigned_email,
+                start_date=req.start_date,
+            )
+            item.sm_sent = bool(store.sm_mail)
+            item.dm_sent = bool(store.dm_mail)
             results.append(item)
             continue
 

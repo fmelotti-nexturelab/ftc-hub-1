@@ -937,6 +937,103 @@ function ArubaTmModal({ pendingCount, onClose, onGo }) {
   )
 }
 
+// ── Modal anteprima email ─────────────────────────────────────────────────────
+function EmailPreviewModal({ results, onClose, onConfirm, isSending }) {
+  const [selected, setSelected] = useState(0)
+  const current = results[selected]
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onKeyDown={e => e.key === "Escape" && onClose()} role="dialog" aria-modal="true" aria-label="Anteprima email">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Mail size={15} className="text-amber-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800 text-sm">Anteprima email — {results.length} operatori</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Verifica il contenuto prima di spedire</p>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="flex flex-1 min-h-0">
+          {/* Lista operatori a sinistra */}
+          <div className="w-56 shrink-0 border-r border-gray-100 overflow-y-auto">
+            {results.map((r, i) => (
+              <button
+                key={r.request_id}
+                onClick={() => setSelected(i)}
+                className={`w-full text-left px-4 py-3 border-b border-gray-50 transition ${i === selected ? "bg-blue-50 border-l-2 border-l-blue-500" : "hover:bg-gray-50"}`}
+              >
+                <div className="text-xs font-semibold text-gray-800 truncate">{r.last_name} {r.first_name}</div>
+                <div className="text-[10px] font-mono text-gray-400 mt-0.5">{r.store_number}</div>
+                <div className="flex gap-1 mt-1">
+                  {r.sm_mail
+                    ? <span className="text-[9px] bg-green-100 text-green-700 px-1 rounded">SM ✓</span>
+                    : <span className="text-[9px] bg-gray-100 text-gray-400 px-1 rounded">SM —</span>
+                  }
+                  {r.dm_mail
+                    ? <span className="text-[9px] bg-green-100 text-green-700 px-1 rounded">DM ✓</span>
+                    : <span className="text-[9px] bg-gray-100 text-gray-400 px-1 rounded">DM —</span>
+                  }
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Anteprima HTML a destra */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 shrink-0 flex items-center gap-4 text-xs text-gray-500">
+              <span><strong>A:</strong> {[current.sm_mail, current.dm_mail].filter(Boolean).join(", ") || "Nessun destinatario"}</span>
+              <span><strong>Oggetto:</strong> [FTC HUB] Nuovo operatore assegnato — {current.store_number}</span>
+            </div>
+            {current.html_preview ? (
+              <iframe
+                srcDoc={current.html_preview}
+                title="Anteprima email"
+                className="flex-1 w-full border-0"
+                sandbox="allow-same-origin"
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-xs text-red-500">
+                {current.error || "Nessuna anteprima disponibile"}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0 flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Le email verranno inviate a SM e DM di ogni negozio
+          </p>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+              Annulla
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isSending}
+              className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <Send size={14} aria-hidden="true" />
+              {isSending ? "Invio in corso…" : `Conferma e invia (${results.length})`}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
 // ── Modal risultati bulk evadi ────────────────────────────────────────────────
 function BulkEvadiResultModal({ results, ok, errors, onClose }) {
   return (
@@ -1094,6 +1191,8 @@ function GestioneView() {
   const [mailboxResults, setMailboxResults] = useState({}) // { [requestId]: 'created'|'exists'|'error'|'unknown' }
   const [notifyResult, setNotifyResult] = useState(null)
   const [bulkEvadiResult, setBulkEvadiResult] = useState(null)
+  const [emailSendEnabled, setEmailSendEnabled] = useState(false)
+  const [emailPreview, setEmailPreview] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1161,10 +1260,15 @@ function GestioneView() {
   })
 
   const notifyMutation = useMutation({
-    mutationFn: () => operatorCodeApi.notifyOperators(),
-    onSuccess: (res) => {
-      setNotifyResult(res.data)
-      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+    mutationFn: (preview) => operatorCodeApi.notifyOperators(preview),
+    onSuccess: (res, preview) => {
+      if (preview) {
+        setEmailPreview(res.data)
+      } else {
+        setEmailPreview(null)
+        setNotifyResult(res.data)
+        queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      }
     },
   })
 
@@ -1247,6 +1351,14 @@ function GestioneView() {
 
   return (
     <>
+      {emailPreview && (
+        <EmailPreviewModal
+          results={emailPreview.results}
+          isSending={notifyMutation.isPending}
+          onClose={() => setEmailPreview(null)}
+          onConfirm={() => notifyMutation.mutate(false)}
+        />
+      )}
       {bulkEvadiResult && (
         <BulkEvadiResultModal
           results={bulkEvadiResult.results}
@@ -1427,12 +1539,30 @@ function GestioneView() {
       {/* Tabella EVASE */}
       {evaded.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
               <CheckCircle size={13} className="text-green-500" aria-hidden="true" />
               <span className="text-xs font-semibold text-gray-600">{evaded.length} {evaded.length === 1 ? "richiesta evasa" : "richieste evase"}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
+
+              {/* Toggle invio mail */}
+              <label className="flex items-center gap-2 cursor-pointer select-none" htmlFor="toggle-send-mail">
+                <span className="text-xs text-gray-500">Abilita invio mail</span>
+                <button
+                  id="toggle-send-mail"
+                  role="switch"
+                  aria-checked={emailSendEnabled}
+                  onClick={() => setEmailSendEnabled(v => !v)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-[#2563eb] ${emailSendEnabled ? "bg-blue-600" : "bg-gray-200"}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${emailSendEnabled ? "translate-x-4" : "translate-x-0"}`} />
+                </button>
+                <span className={`text-[10px] font-bold ${emailSendEnabled ? "text-blue-600" : "text-gray-400"}`}>
+                  {emailSendEnabled ? "ON" : "OFF"}
+                </span>
+              </label>
+
               {evaded.filter(r => !r.exported_at).length > 0 && (
                 <button
                   onClick={() => { setGeneratedFiles([]); generateMutation.mutate() }}
@@ -1445,12 +1575,17 @@ function GestioneView() {
               )}
               {evaded.filter(r => !r.notification_sent_at).length > 0 && (
                 <button
-                  onClick={() => notifyMutation.mutate()}
+                  onClick={() => notifyMutation.mutate(!emailSendEnabled)}
                   disabled={notifyMutation.isPending}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 ${emailSendEnabled ? "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500" : "bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-400"}`}
                 >
-                  <Mail size={13} aria-hidden="true" />
-                  {notifyMutation.isPending ? "Invio…" : `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`}
+                  {emailSendEnabled ? <Send size={13} aria-hidden="true" /> : <Mail size={13} aria-hidden="true" />}
+                  {notifyMutation.isPending
+                    ? (emailSendEnabled ? "Invio…" : "Caricamento…")
+                    : emailSendEnabled
+                      ? `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`
+                      : `Anteprima Mail (${evaded.filter(r => !r.notification_sent_at).length})`
+                  }
                 </button>
               )}
             </div>
