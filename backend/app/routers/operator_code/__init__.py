@@ -23,6 +23,9 @@ from app.schemas.operator_code import (
     BulkRequestPayload,
     BulkRowResult,
     EvadiPayload,
+    BulkEvadiRow,
+    BulkEvadiPayload,
+    BulkEvadiResult,
     NotifyResultItem,
     NotifyResponse,
 )
@@ -330,6 +333,96 @@ async def evadi_request(
     await _auto_close_if_all_evaded(db)
 
     return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
+
+
+@router.post(
+    "/requests/bulk-evadi",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def bulk_evadi_requests(
+    body: BulkEvadiPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    results: list[dict] = []
+
+    for row in body.rows:
+        req_res = await db.execute(
+            select(OperatorCodeRequest).where(OperatorCodeRequest.id == row.id)
+        )
+        req = req_res.scalar_one_or_none()
+
+        if not req:
+            results.append(BulkEvadiResult(
+                id=row.id, first_name="?", last_name="?", store_number="?",
+                status="error", note="Richiesta non trovata",
+            ).model_dump())
+            continue
+
+        if req.is_evaded:
+            results.append(BulkEvadiResult(
+                id=row.id, first_name=req.first_name, last_name=req.last_name,
+                store_number=req.store_number, status="error", note="Già evasa",
+            ).model_dump())
+            continue
+
+        entity = _entity_from_store(req.store_number)
+        if not entity:
+            results.append(BulkEvadiResult(
+                id=row.id, first_name=req.first_name, last_name=req.last_name,
+                store_number=req.store_number, status="error",
+                note=f"Entity non determinabile da '{req.store_number}'",
+            ).model_dump())
+            continue
+
+        max_result = await db.execute(
+            select(func.max(OperatorCodePool.code)).where(
+                OperatorCodePool.entity == entity,
+                OperatorCodePool.code >= 1000,
+                OperatorCodePool.code <= 9999,
+            )
+        )
+        max_code = max_result.scalar() or 1000
+        next_code = max_code + 1
+        password = _generate_password()
+
+        email_prefix = (row.email or "").strip()
+        full_email = (email_prefix + DOMAIN) if email_prefix and not email_prefix.endswith(DOMAIN) else (email_prefix or None)
+
+        if full_email:
+            op_result = await db.execute(
+                select(OperatorCode).where(
+                    func.lower(OperatorCode.first_name) == req.first_name.lower(),
+                    func.lower(OperatorCode.last_name) == req.last_name.lower(),
+                    OperatorCode.is_active == True,
+                )
+            )
+            op = op_result.scalar_one_or_none()
+            if op:
+                op.email = full_email
+                op.code = str(next_code)
+
+        db.add(OperatorCodePool(entity=entity, code=next_code))
+        req.is_evaded = True
+        req.evaded_at = datetime.now(timezone.utc)
+        req.assigned_code = next_code
+        req.assigned_password = password
+        req.assigned_email = full_email
+
+        results.append(BulkEvadiResult(
+            id=row.id, first_name=req.first_name, last_name=req.last_name,
+            store_number=req.store_number, assigned_code=next_code,
+            assigned_email=full_email, assigned_password=password, status="ok",
+        ).model_dump())
+
+    await db.commit()
+    await _auto_close_if_all_evaded(db)
+
+    ok = sum(1 for r in results if r["status"] == "ok")
+    return {"results": results, "ok": ok, "errors": len(results) - ok}
 
 
 @router.post(

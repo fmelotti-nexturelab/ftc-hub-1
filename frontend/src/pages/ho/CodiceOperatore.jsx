@@ -937,6 +937,73 @@ function ArubaTmModal({ pendingCount, onClose, onGo }) {
   )
 }
 
+// ── Modal risultati bulk evadi ────────────────────────────────────────────────
+function BulkEvadiResultModal({ results, ok, errors, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()} role="button" tabIndex={0} aria-label="Chiudi">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle size={15} className="text-green-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800 text-sm">Riepilogo evasione massiva</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                <span className="text-green-600 font-semibold">{ok} evase</span>
+                {errors > 0 && <span className="text-red-500 font-semibold ml-2">{errors} errori</span>}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Chiudi" className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0">
+              <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                <th scope="col" className="px-4 py-3 text-left">Negozio</th>
+                <th scope="col" className="px-4 py-3 text-left">Operatore</th>
+                <th scope="col" className="px-4 py-3 text-left">Codice</th>
+                <th scope="col" className="px-4 py-3 text-left">PWD</th>
+                <th scope="col" className="px-4 py-3 text-left">Email</th>
+                <th scope="col" className="px-4 py-3 text-left">Esito</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r, i) => (
+                <tr key={r.id} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                  <td className="px-4 py-2.5 font-mono text-gray-500">{r.store_number}</td>
+                  <td className="px-4 py-2.5 font-medium text-gray-800">{r.last_name} {r.first_name}</td>
+                  <td className="px-4 py-2.5 font-mono font-bold text-[#1e3a5f]">{r.assigned_code ?? "—"}</td>
+                  <td className="px-4 py-2.5 font-mono font-bold text-amber-700">{r.assigned_password ?? "—"}</td>
+                  <td className="px-4 py-2.5 font-mono text-gray-500 text-[11px]">
+                    {r.assigned_email?.replace("@flyingtigeritalia.com", "") ?? "—"}
+                    {r.assigned_email && <span className="text-gray-300">@flyingtigeritalia.com</span>}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {r.status === "ok"
+                      ? <span className="flex items-center gap-1 text-green-600 font-semibold"><CheckCircle size={12} aria-hidden="true" /> OK</span>
+                      : <span className="flex items-center gap-1 text-red-500 font-semibold"><XCircle size={12} aria-hidden="true" /> {r.note}</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+          <button onClick={onClose} className="w-full py-2 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold rounded-xl shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+            Chiudi
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Modal risultati invio mail ────────────────────────────────────────────────
 function NotifyResultModal({ results, sent, skipped, onClose }) {
   return (
@@ -1026,6 +1093,7 @@ function GestioneView() {
   const [sentMailboxIds, setSentMailboxIds] = useState(new Set())
   const [mailboxResults, setMailboxResults] = useState({}) // { [requestId]: 'created'|'exists'|'error'|'unknown' }
   const [notifyResult, setNotifyResult] = useState(null)
+  const [bulkEvadiResult, setBulkEvadiResult] = useState(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1078,6 +1146,15 @@ function GestioneView() {
   const evadiMutation = useMutation({
     mutationFn: ({ id, email }) => operatorCodeApi.evadiRequest(id, email),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+    },
+  })
+
+  const bulkEvadiMutation = useMutation({
+    mutationFn: (rows) => operatorCodeApi.bulkEvadi(rows),
+    onSuccess: (res) => {
+      setBulkEvadiResult(res.data)
       queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
       queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
     },
@@ -1169,6 +1246,14 @@ function GestioneView() {
 
   return (
     <>
+      {bulkEvadiResult && (
+        <BulkEvadiResultModal
+          results={bulkEvadiResult.results}
+          ok={bulkEvadiResult.ok}
+          errors={bulkEvadiResult.errors}
+          onClose={() => setBulkEvadiResult(null)}
+        />
+      )}
       {notifyResult && (
         <NotifyResultModal
           results={notifyResult.results}
@@ -1263,6 +1348,25 @@ function GestioneView() {
       {/* Tabella IN ATTESA */}
       {pending.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-600">
+              {pending.length} {pending.length === 1 ? "richiesta in attesa" : "richieste in attesa"}
+            </span>
+            <button
+              onClick={() => {
+                const rows = pending.map(req => ({
+                  id: req.id,
+                  email: (emailMap[req.id] || req.suggested_email || "").replace(/@.*$/, "").trim() || null,
+                }))
+                bulkEvadiMutation.mutate(rows)
+              }}
+              disabled={bulkEvadiMutation.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-green-500"
+            >
+              <CheckCircle size={13} aria-hidden="true" />
+              {bulkEvadiMutation.isPending ? "Evasione…" : `Evadi tutte (${pending.length})`}
+            </button>
+          </div>
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">

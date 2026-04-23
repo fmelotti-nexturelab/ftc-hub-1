@@ -72,6 +72,27 @@ class EvadiPayload(BaseModel):
     email: Optional[str] = None
 
 
+class BulkEvadiRow(BaseModel):
+    id: str
+    email: Optional[str] = None
+
+
+class BulkEvadiPayload(BaseModel):
+    rows: List[BulkEvadiRow]
+
+
+class BulkEvadiResult(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    store_number: str
+    assigned_code: Optional[int] = None
+    assigned_email: Optional[str] = None
+    assigned_password: Optional[str] = None
+    status: str   # "ok" | "error"
+    note: Optional[str] = None
+
+
 class NotifyResultItem(BaseModel):
     request_id: str
     first_name: str
