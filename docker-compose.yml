@@ -37,12 +37,12 @@ services:
       # In dev questo path mappa su ./data via il volume sotto, in prod su D:/.
       FILE_STORAGE_PATH: /mnt/f/FTC_HUB_Archivio
       TICKET_ATTACHMENTS_PATH: /data/attachments
-      TICKET_NOTIFY_EMAIL: ""
-      SMTP_HOST: ""
-      SMTP_PORT: "587"
-      SMTP_USER: ""
-      SMTP_PASSWORD: ""
-      SMTP_FROM: ""
+      TICKET_NOTIFY_EMAIL: ${TICKET_NOTIFY_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       AI_PROVIDER: anthropic
     volumes:

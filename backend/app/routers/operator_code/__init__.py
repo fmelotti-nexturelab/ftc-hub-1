@@ -2,9 +2,13 @@ from datetime import datetime, timezone, date
 from typing import List, Optional, Set
 import random
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, String
+
+logger = logging.getLogger(__name__)
 
 from app.database import get_db
 from app.models.operator_code import OperatorCode, OperatorCodeRequest, OperatorCodePool
@@ -322,6 +326,36 @@ async def evadi_request(
 
     await db.commit()
     await _auto_close_if_all_evaded(db)
+
+    # Notifica SM e DM del negozio
+    try:
+        store_res = await db.execute(
+            select(Store).where(
+                func.lower(Store.store_number) == req.store_number.lower(),
+                Store.is_active == True,
+            )
+        )
+        store = store_res.scalar_one_or_none()
+        if store:
+            from app.services.tickets.notification_service import notify_operator_code_assigned
+            await notify_operator_code_assigned(
+                store_number=req.store_number,
+                store_name=store.store_name or req.store_number,
+                sm_name=store.sm_name,
+                sm_mail=store.sm_mail,
+                dm_name=store.dm_name,
+                dm_mail=store.dm_mail,
+                first_name=req.first_name,
+                last_name=req.last_name,
+                assigned_code=next_code,
+                assigned_password=password,
+                assigned_email=full_email,
+                start_date=req.start_date,
+                sender_name=current_user.full_name or current_user.username,
+                sender_email=current_user.email,
+            )
+    except Exception as exc:
+        logger.warning(f"Notifica operatore fallita per {req.store_number}: {exc}")
 
     return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
 
