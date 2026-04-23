@@ -26,9 +26,15 @@ def _send_sync(to: str, subject: str, body: str, from_header: Optional[str] = No
     msg["To"] = to
     msg.attach(MIMEText(body, "html"))
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.ehlo()
-        server.starttls()
+    use_ssl = int(settings.SMTP_PORT) == 465
+    if use_ssl:
+        ctx = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+    else:
+        ctx = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
+    with ctx as server:
+        if not use_ssl:
+            server.ehlo()
+            server.starttls()
         if settings.SMTP_USER:
             server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
         server.sendmail(settings.SMTP_FROM, [to], msg.as_string())

@@ -9,7 +9,16 @@ export const operatorCodeApi = {
   processRequest: (id) => apiClient.delete(`/api/ho/operator-codes/requests/${id}`),
   bulkRequest: (rows) => apiClient.post("/api/ho/operator-codes/bulk-request", { rows }),
   evadiRequest: (id, email) => apiClient.patch(`/api/ho/operator-codes/requests/${id}/evadi`, { email }),
-  generateNavFiles: () => apiClient.post("/api/ho/operator-codes/generate-nav-files"),
   bulkEvadi: (rows) => apiClient.post("/api/ho/operator-codes/requests/bulk-evadi", { rows }),
-  notifyOperators: (preview = false) => apiClient.post(`/api/ho/operator-codes/notify${preview ? "?preview=true" : ""}`),
+  notifyOperators: (preview = false, ids = null, overrides = []) => {
+    const params = new URLSearchParams()
+    if (preview) params.set("preview", "true")
+    if (ids?.length) params.set("ids", ids.join(","))
+    const qs = params.toString()
+    return apiClient.post(`/api/ho/operator-codes/notify${qs ? "?" + qs : ""}`, { overrides })
+  },
+  generateNavFiles: (ids = null) => {
+    const qs = ids?.length ? `?ids=${ids.join(",")}` : ""
+    return apiClient.post(`/api/ho/operator-codes/generate-nav-files${qs}`)
+  },
 }

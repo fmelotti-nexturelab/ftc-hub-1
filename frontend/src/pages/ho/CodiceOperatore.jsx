@@ -940,7 +940,31 @@ function ArubaTmModal({ pendingCount, onClose, onGo }) {
 // ── Modal anteprima email ─────────────────────────────────────────────────────
 function EmailPreviewModal({ results, onClose, onConfirm, isSending }) {
   const [selected, setSelected] = useState(0)
+  const [recipientOverrides, setRecipientOverrides] = useState(() =>
+    Object.fromEntries(results.map(r => [r.request_id, { sm_mail: r.sm_mail ?? "", dm_mail: r.dm_mail ?? "" }]))
+  )
   const current = results[selected]
+
+  const setOverride = (requestId, field, value) =>
+    setRecipientOverrides(prev => ({ ...prev, [requestId]: { ...prev[requestId], [field]: value } }))
+
+  if (!results || results.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+        onClick={onClose} onKeyDown={e => e.key === "Escape" && onClose()} role="button" tabIndex={0} aria-label="Chiudi">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-4" onClick={e => e.stopPropagation()}>
+          <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center">
+            <MailX size={22} className="text-amber-500" aria-hidden="true" />
+          </div>
+          <p className="text-sm font-semibold text-gray-700">Nessun operatore da notificare</p>
+          <p className="text-xs text-gray-400 text-center">Tutte le richieste selezionate sono già state notificate o non hanno un codice assegnato.</p>
+          <button onClick={onClose} className="w-full py-2 text-sm bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold rounded-xl shadow transition">
+            Chiudi
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
@@ -990,9 +1014,36 @@ function EmailPreviewModal({ results, onClose, onConfirm, isSending }) {
 
           {/* Anteprima HTML a destra */}
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="px-4 py-2 bg-gray-50 border-b border-gray-100 shrink-0 flex items-center gap-4 text-xs text-gray-500">
-              <span><strong>A:</strong> {[current.sm_mail, current.dm_mail].filter(Boolean).join(", ") || "Nessun destinatario"}</span>
-              <span><strong>Oggetto:</strong> [FTC HUB] Nuovo operatore assegnato — {current.store_number}</span>
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0 flex flex-col gap-1.5 text-xs">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="font-semibold text-gray-600 shrink-0">A:</span>
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor={`sm-mail-${current.request_id}`} className="text-gray-400 shrink-0">SM</label>
+                  <input
+                    id={`sm-mail-${current.request_id}`}
+                    type="email"
+                    value={recipientOverrides[current.request_id]?.sm_mail ?? ""}
+                    onChange={e => setOverride(current.request_id, "sm_mail", e.target.value)}
+                    placeholder="nessuna email SM"
+                    className="px-2 py-0.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-[#2563eb] focus:border-transparent outline-none transition w-52"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor={`dm-mail-${current.request_id}`} className="text-gray-400 shrink-0">DM</label>
+                  <input
+                    id={`dm-mail-${current.request_id}`}
+                    type="email"
+                    value={recipientOverrides[current.request_id]?.dm_mail ?? ""}
+                    onChange={e => setOverride(current.request_id, "dm_mail", e.target.value)}
+                    placeholder="nessuna email DM"
+                    className="px-2 py-0.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-[#2563eb] focus:border-transparent outline-none transition w-52"
+                  />
+                </div>
+              </div>
+              <div className="text-gray-400">
+                <strong className="text-gray-500">Oggetto:</strong>{" "}
+                [FTC HUB] Nuovo operatore assegnato — {current.store_number}
+              </div>
             </div>
             {current.html_preview ? (
               <iframe
@@ -1019,7 +1070,14 @@ function EmailPreviewModal({ results, onClose, onConfirm, isSending }) {
               Annulla
             </button>
             <button
-              onClick={onConfirm}
+              onClick={() => {
+                const overridesList = Object.entries(recipientOverrides).map(([request_id, { sm_mail, dm_mail }]) => ({
+                  request_id,
+                  sm_mail: sm_mail || null,
+                  dm_mail: dm_mail || null,
+                }))
+                onConfirm(overridesList)
+              }}
               disabled={isSending}
               className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-blue-500"
             >
@@ -1193,6 +1251,7 @@ function GestioneView() {
   const [bulkEvadiResult, setBulkEvadiResult] = useState(null)
   const [emailSendEnabled, setEmailSendEnabled] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
+  const [selectedEvaded, setSelectedEvaded] = useState(new Set())
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1260,12 +1319,13 @@ function GestioneView() {
   })
 
   const notifyMutation = useMutation({
-    mutationFn: (preview) => operatorCodeApi.notifyOperators(preview),
-    onSuccess: (res, preview) => {
+    mutationFn: ({ preview, ids, overrides = [] }) => operatorCodeApi.notifyOperators(preview, ids, overrides),
+    onSuccess: (res, { preview }) => {
       if (preview) {
         setEmailPreview(res.data)
       } else {
         setEmailPreview(null)
+        setSelectedEvaded(new Set())
         setNotifyResult(res.data)
         queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
       }
@@ -1273,7 +1333,7 @@ function GestioneView() {
   })
 
   const generateMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (ids = null) => {
       // 1. Verifica cartella configurata
       const folderHandle = await getFolderHandle("onedrive_folder_it")
       if (!folderHandle) {
@@ -1285,7 +1345,7 @@ function GestioneView() {
       }
 
       // 2. Genera i file dal backend (ritorna base64)
-      const res = await operatorCodeApi.generateNavFiles()
+      const res = await operatorCodeApi.generateNavFiles(ids)
       const files = res.data.files ?? []
 
       // 3. Scrivi ogni file nella sottocartella dedicata all'entity
@@ -1356,7 +1416,11 @@ function GestioneView() {
           results={emailPreview.results}
           isSending={notifyMutation.isPending}
           onClose={() => setEmailPreview(null)}
-          onConfirm={() => notifyMutation.mutate(false)}
+          onConfirm={(overridesList) => notifyMutation.mutate({
+            preview: false,
+            ids: emailPreview.results.map(r => r.request_id),
+            overrides: overridesList,
+          })}
         />
       )}
       {bulkEvadiResult && (
@@ -1563,19 +1627,28 @@ function GestioneView() {
                 </span>
               </label>
 
-              {evaded.filter(r => !r.exported_at).length > 0 && (
+              {(selectedEvaded.size > 0 || evaded.filter(r => !r.exported_at).length > 0) && (
                 <button
-                  onClick={() => { setGeneratedFiles([]); generateMutation.mutate() }}
+                  onClick={() => {
+                    setGeneratedFiles([])
+                    generateMutation.mutate(selectedEvaded.size > 0 ? [...selectedEvaded] : null)
+                  }}
                   disabled={generateMutation.isPending}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <FileDown size={13} aria-hidden="true" />
-                  {generateMutation.isPending ? "Generazione…" : `Genera file NAV (${evaded.filter(r => !r.exported_at).length})`}
+                  {generateMutation.isPending
+                    ? "Generazione…"
+                    : `Genera file NAV (${selectedEvaded.size > 0 ? selectedEvaded.size : evaded.filter(r => !r.exported_at).length})`
+                  }
                 </button>
               )}
-              {evaded.filter(r => !r.notification_sent_at).length > 0 && (
+              {(selectedEvaded.size > 0 || evaded.filter(r => !r.notification_sent_at).length > 0) && (
                 <button
-                  onClick={() => notifyMutation.mutate(!emailSendEnabled)}
+                  onClick={() => notifyMutation.mutate({
+                    preview: !emailSendEnabled,
+                    ids: selectedEvaded.size > 0 ? [...selectedEvaded] : null,
+                  })}
                   disabled={notifyMutation.isPending}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 ${emailSendEnabled ? "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500" : "bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-400"}`}
                 >
@@ -1583,8 +1656,8 @@ function GestioneView() {
                   {notifyMutation.isPending
                     ? (emailSendEnabled ? "Invio…" : "Caricamento…")
                     : emailSendEnabled
-                      ? `Invia Mail (${evaded.filter(r => !r.notification_sent_at).length})`
-                      : `Anteprima Mail (${evaded.filter(r => !r.notification_sent_at).length})`
+                      ? `Invia Mail (${selectedEvaded.size > 0 ? selectedEvaded.size : evaded.filter(r => !r.notification_sent_at).length})`
+                      : `Anteprima Mail (${selectedEvaded.size > 0 ? selectedEvaded.size : evaded.filter(r => !r.notification_sent_at).length})`
                   }
                 </button>
               )}
@@ -1593,6 +1666,15 @@ function GestioneView() {
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-green-50/60 border-b border-gray-200 text-gray-600 font-semibold">
+                <th scope="col" className="px-2 py-3 text-center w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Seleziona tutte"
+                    checked={evaded.length > 0 && selectedEvaded.size === evaded.length}
+                    onChange={e => setSelectedEvaded(e.target.checked ? new Set(evaded.map(r => r.id)) : new Set())}
+                    className="rounded border-gray-300 accent-[#1e3a5f] focus:ring-[#2563eb]"
+                  />
+                </th>
                 <th scope="col" className="px-4 py-3 text-left">Negozio</th>
                 <th scope="col" className="px-4 py-3 text-left">Cognome</th>
                 <th scope="col" className="px-4 py-3 text-left">Nome</th>
@@ -1608,7 +1690,21 @@ function GestioneView() {
             </thead>
             <tbody>
               {evaded.map((req, i) => (
-                <tr key={req.id} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                <tr key={req.id} className={`border-b border-gray-100 ${selectedEvaded.has(req.id) ? "bg-blue-50/40" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                  <td className="px-2 py-2.5 text-center">
+                    <input
+                      type="checkbox"
+                      aria-label={`Seleziona ${req.first_name} ${req.last_name}`}
+                      checked={selectedEvaded.has(req.id)}
+                      onChange={e => setSelectedEvaded(prev => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(req.id)
+                        else next.delete(req.id)
+                        return next
+                      })}
+                      className="rounded border-gray-300 accent-[#1e3a5f] focus:ring-[#2563eb]"
+                    />
+                  </td>
                   <td className="px-4 py-2.5 font-mono text-gray-500">{req.store_number}</td>
                   <td className="px-4 py-2.5 font-medium text-gray-800">{req.last_name}</td>
                   <td className="px-4 py-2.5 text-gray-700">{req.first_name}</td>

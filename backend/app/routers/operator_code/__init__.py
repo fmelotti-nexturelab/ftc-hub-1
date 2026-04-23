@@ -28,6 +28,7 @@ from app.schemas.operator_code import (
     BulkEvadiResult,
     NotifyResultItem,
     NotifyResponse,
+    NotifyPayload,
 )
 from app.schemas.tickets import TicketCreate
 from app.models.tickets import TicketPriority, Ticket, TicketStatus
@@ -431,9 +432,11 @@ async def bulk_evadi_requests(
     dependencies=[Depends(_PERM_VIEW)],
 )
 async def notify_operators(
+    body: NotifyPayload = NotifyPayload(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     preview: bool = False,
+    ids: Optional[str] = None,  # lista UUID separati da virgola
 ):
     if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
         raise HTTPException(403, "Accesso riservato alla gestione IT")
@@ -443,12 +446,18 @@ async def notify_operators(
         _build_operator_code_email,
     )
 
+    filters = [
+        OperatorCodeRequest.is_evaded == True,
+        OperatorCodeRequest.notification_sent_at.is_(None),
+        OperatorCodeRequest.assigned_code.isnot(None),
+    ]
+    if ids:
+        id_list = [i.strip() for i in ids.split(",") if i.strip()]
+        filters.append(cast(OperatorCodeRequest.id, String).in_(id_list))
+
     result = await db.execute(
-        select(OperatorCodeRequest).where(
-            OperatorCodeRequest.is_evaded == True,
-            OperatorCodeRequest.notification_sent_at.is_(None),
-            OperatorCodeRequest.assigned_code.isnot(None),
-        ).order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
+        select(OperatorCodeRequest).where(*filters)
+        .order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
     )
     to_notify = result.scalars().all()
 
@@ -457,6 +466,7 @@ async def notify_operators(
 
     sender_name = current_user.full_name or current_user.username
     sender_email = current_user.email
+    override_map = {o.request_id: o for o in body.overrides}
     results: list[NotifyResultItem] = []
     sent_count = 0
 
@@ -469,15 +479,22 @@ async def notify_operators(
         )
         store = store_res.scalar_one_or_none()
 
+        # Applica override destinatari se presenti
+        ov = override_map.get(str(req.id))
+        sm_mail = (ov.sm_mail if ov and ov.sm_mail is not None else (store.sm_mail if store else None)) or None
+        dm_mail = (ov.dm_mail if ov and ov.dm_mail is not None else (store.dm_mail if store else None)) or None
+        sm_name = store.sm_name if store else None
+        dm_name = store.dm_name if store else None
+
         item = NotifyResultItem(
             request_id=str(req.id),
             first_name=req.first_name,
             last_name=req.last_name,
             store_number=req.store_number,
-            sm_name=store.sm_name if store else None,
-            sm_mail=store.sm_mail if store else None,
-            dm_name=store.dm_name if store else None,
-            dm_mail=store.dm_mail if store else None,
+            sm_name=sm_name,
+            sm_mail=sm_mail,
+            dm_name=dm_name,
+            dm_mail=dm_mail,
         )
 
         if not store:
@@ -487,7 +504,7 @@ async def notify_operators(
 
         if preview:
             # Genera solo HTML, non spedisce e non aggiorna il DB
-            recipient_name = store.sm_name or store.dm_name or "Store Manager"
+            recipient_name = sm_name or dm_name or "Store Manager"
             item.html_preview = _build_operator_code_email(
                 recipient_name=recipient_name,
                 store_number=req.store_number,
@@ -499,8 +516,8 @@ async def notify_operators(
                 assigned_email=req.assigned_email,
                 start_date=req.start_date,
             )
-            item.sm_sent = bool(store.sm_mail)
-            item.dm_sent = bool(store.dm_mail)
+            item.sm_sent = bool(sm_mail)
+            item.dm_sent = bool(dm_mail)
             results.append(item)
             continue
 
@@ -508,10 +525,10 @@ async def notify_operators(
             await notify_operator_code_assigned(
                 store_number=req.store_number,
                 store_name=store.store_name or req.store_number,
-                sm_name=store.sm_name,
-                sm_mail=store.sm_mail,
-                dm_name=store.dm_name,
-                dm_mail=store.dm_mail,
+                sm_name=sm_name,
+                sm_mail=sm_mail,
+                dm_name=dm_name,
+                dm_mail=dm_mail,
                 first_name=req.first_name,
                 last_name=req.last_name,
                 assigned_code=req.assigned_code,
@@ -521,8 +538,8 @@ async def notify_operators(
                 sender_name=sender_name,
                 sender_email=sender_email,
             )
-            item.sm_sent = bool(store.sm_mail)
-            item.dm_sent = bool(store.dm_mail)
+            item.sm_sent = bool(sm_mail)
+            item.dm_sent = bool(dm_mail)
             req.notification_sent_at = datetime.now(timezone.utc)
             sent_count += 1
         except Exception as exc:
@@ -663,17 +680,23 @@ async def bulk_request(
 async def generate_nav_files_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    ids: Optional[str] = None,  # lista UUID separati da virgola
 ):
     if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
         raise HTTPException(403, "Accesso riservato alla gestione IT")
 
-    # Carica richieste evase non ancora esportate
+    nav_filters = [
+        OperatorCodeRequest.is_evaded == True,
+        OperatorCodeRequest.exported_at.is_(None),
+        OperatorCodeRequest.assigned_code.isnot(None),
+    ]
+    if ids:
+        id_list = [i.strip() for i in ids.split(",") if i.strip()]
+        nav_filters.append(cast(OperatorCodeRequest.id, String).in_(id_list))
+
     result = await db.execute(
-        select(OperatorCodeRequest).where(
-            OperatorCodeRequest.is_evaded == True,
-            OperatorCodeRequest.exported_at.is_(None),
-            OperatorCodeRequest.assigned_code.isnot(None),
-        ).order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
+        select(OperatorCodeRequest).where(*nav_filters)
+        .order_by(OperatorCodeRequest.store_number, OperatorCodeRequest.last_name)
     )
     to_export = result.scalars().all()
 

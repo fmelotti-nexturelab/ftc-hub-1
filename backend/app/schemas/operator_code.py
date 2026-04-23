@@ -93,6 +93,16 @@ class BulkEvadiResult(BaseModel):
     note: Optional[str] = None
 
 
+class NotifyOverrideRow(BaseModel):
+    request_id: str
+    sm_mail: Optional[str] = None
+    dm_mail: Optional[str] = None
+
+
+class NotifyPayload(BaseModel):
+    overrides: List[NotifyOverrideRow] = []
+
+
 class NotifyResultItem(BaseModel):
     request_id: str
     first_name: str
