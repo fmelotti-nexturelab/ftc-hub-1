@@ -1253,6 +1253,46 @@ function _formatDateDMY(isoStr) {
   return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`
 }
 
+// ── Checklist avanzamento workflow ───────────────────────────────────────────
+function WorkflowChecklist({ isInProgress, pending, evaded, generatedFiles, dynamicCopied }) {
+  if (!isInProgress && evaded.length === 0) return null
+
+  const steps = [
+    { label: "Presa in carico",   done: isInProgress || evaded.length > 0 },
+    { label: "Evasione",          done: evaded.length > 0 && pending.length === 0 },
+    { label: "File NAV",          done: generatedFiles.length > 0 },
+    { label: "Notifiche SM/DM",   done: evaded.some(r => r.notification_sent_at) },
+    { label: "Dynamic.xlsx",      done: dynamicCopied },
+  ]
+  const doneCount = steps.filter(s => s.done).length
+  const allDone = doneCount === steps.length
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${allDone ? "bg-emerald-50 border-emerald-200" : "bg-white border-gray-200 shadow-sm"}`}>
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Avanzamento workflow</span>
+        <span className={`text-xs font-bold ${allDone ? "text-emerald-700" : "text-gray-500"}`}>{doneCount}/{steps.length}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-1 min-w-0 ${step.done ? "bg-emerald-100 border border-emerald-200" : "bg-gray-50 border border-gray-200"}`}>
+              {step.done
+                ? <CheckCircle size={11} className="text-emerald-600 shrink-0" aria-hidden="true" />
+                : <div className="w-2.5 h-2.5 rounded-full border-2 border-gray-300 shrink-0" aria-hidden="true" />
+              }
+              <span className={`text-xs font-medium truncate ${step.done ? "text-emerald-700" : "text-gray-400"}`}>{step.label}</span>
+            </div>
+            {i < steps.length - 1 && (
+              <ChevronRight size={10} className="text-gray-300 shrink-0" aria-hidden="true" />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Vista IT/Admin: gestione richieste ────────────────────────────────────────
 function GestioneView() {
   const queryClient = useQueryClient()
@@ -1543,6 +1583,15 @@ function GestioneView() {
           )}
         </div>
       </div>
+
+      {/* Checklist workflow */}
+      <WorkflowChecklist
+        isInProgress={isInProgress}
+        pending={pending}
+        evaded={evaded}
+        generatedFiles={generatedFiles}
+        dynamicCopied={dynamicCopied}
+      />
 
       {/* Errore generazione */}
       {generateMutation.isError && (

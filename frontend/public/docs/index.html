@@ -85,6 +85,16 @@
           <h3>Navision</h3>
           <p>Accesso al gestionale NAV</p>
         </a>
+        <a href="CodiceOperatore_Richiesta.html" class="card hidden" data-module="codici_operatore">
+          <div class="card-icon">🪪</div>
+          <h3>Codice Operatore — Richiesta</h3>
+          <p>Come inserire una nuova richiesta di codice operatore per un nuovo assunto</p>
+        </a>
+        <a href="CodiceOperatore_Gestione.html" class="card hidden" data-module="codici_operatore" data-admin>
+          <div class="card-icon">🪪</div>
+          <h3>Codice Operatore — Gestione</h3>
+          <p>Workflow completo IT: evasione, file NAV, notifiche SM/DM, Dynamic.xlsx, chiusura ticket</p>
+        </a>
       </div>
       <div id="no-access" class="hidden">Nessun modulo disponibile per il tuo profilo.</div>
     </div>
@@ -134,7 +144,7 @@
 
       try {
         const [accessRes, meRes] = await Promise.all([
-          fetch("/api/utilities/my-access", { headers }).catch(() => null),
+          fetch("/api/auth/my-modules", { headers }).catch(() => null),
           fetch("/api/auth/me", { headers }).catch(() => null),
         ])
         if (accessRes?.ok) access = await accessRes.json()
