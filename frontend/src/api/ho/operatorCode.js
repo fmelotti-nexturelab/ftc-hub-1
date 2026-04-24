@@ -21,4 +21,5 @@ export const operatorCodeApi = {
     const qs = ids?.length ? `?ids=${ids.join(",")}` : ""
     return apiClient.post(`/api/ho/operator-codes/generate-nav-files${qs}`)
   },
+  closeTicket: () => apiClient.post("/api/ho/operator-codes/requests/close-ticket"),
 }

@@ -231,9 +231,9 @@ export default function SettingsPage() {
           />
           <div className="border-t border-gray-100" />
           <FolderRow
-            folderKey="onedrive_folder_it"
+            folderKey="onedrive_nav_migration"
             label="One Italy IT - Files"
-            hint={`Cartella IT — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy IT - Files\\`}
+            hint={`Cartella root IT Files (contiene NAV - MigrationTool e Dynamic.xlsx) — es: C:\\Users\\nomeutente\\Zebra A S\\One Italy IT - Files\\`}
           />
         </div>
       )}

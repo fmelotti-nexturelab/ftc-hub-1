@@ -231,9 +231,34 @@ async def take_over_requests(
 
     if ticket.status == TicketStatus.OPEN:
         ticket.status = TicketStatus.IN_PROGRESS
+        ticket.assigned_to = current_user.id
+        ticket.taken_at = datetime.now(timezone.utc)
         await db.commit()
 
     return {"message": "Preso in carico"}
+
+
+@router.post(
+    "/requests/close-ticket",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def close_ticket(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    ticket = await _get_cumulative_ticket(db)
+    if not ticket:
+        raise HTTPException(404, "Nessun ticket aperto trovato")
+
+    from app.schemas.tickets import TicketStatusUpdate
+    await ticket_service.update_status(
+        db, ticket.id, TicketStatusUpdate(status=TicketStatus.CLOSED), current_user
+    )
+
+    return {"message": "Ticket chiuso"}
 
 
 @router.delete(

@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore"
 import {
   LogOut, UserCheck, X, CheckCircle, AlertCircle, AlertTriangle,
   User, Building2, Calendar, Mail, Hash, Search, Clock, PlayCircle, FileDown,
-  Upload, XCircle, Info, ChevronRight, ChevronLeft, Columns, MailPlus, MailCheck, MailX, Send,
+  Upload, XCircle, Info, ChevronRight, ChevronLeft, Columns, MailPlus, MailCheck, MailX, Send, Trash2,
 } from "lucide-react"
 import { operatorCodeApi } from "@/api/ho/operatorCode"
 import { getFolderHandle } from "@/utils/folderStorage"
@@ -1239,6 +1239,20 @@ function NotifyResultModal({ results, sent, skipped, onClose }) {
   )
 }
 
+// IT01001 → IT101  (IT + entity_digit_senza_zero + ultime_2_store)
+function _formatStoreShort(storeNumber) {
+  const m = (storeNumber || "").toUpperCase().match(/^IT(\d{2})(\d+)$/)
+  if (!m) return storeNumber
+  return `IT${parseInt(m[1], 10)}${m[2].slice(-2)}`
+}
+
+// ISO date → dd-mm-yyyy
+function _formatDateDMY(isoStr) {
+  if (!isoStr) return ""
+  const d = new Date(isoStr)
+  return `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`
+}
+
 // ── Vista IT/Admin: gestione richieste ────────────────────────────────────────
 function GestioneView() {
   const queryClient = useQueryClient()
@@ -1252,6 +1266,9 @@ function GestioneView() {
   const [emailSendEnabled, setEmailSendEnabled] = useState(false)
   const [emailPreview, setEmailPreview] = useState(null)
   const [selectedEvaded, setSelectedEvaded] = useState(new Set())
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [dynamicRows, setDynamicRows] = useState(null)
+  const [dynamicCopied, setDynamicCopied] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -1328,14 +1345,59 @@ function GestioneView() {
         setSelectedEvaded(new Set())
         setNotifyResult(res.data)
         queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+        const toExport = evaded.filter(r => r.assigned_email && !r.notification_sent_at)
+        if (toExport.length > 0) {
+          prepareDynamicRows(toExport)
+        }
       }
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => operatorCodeApi.processRequest(id),
+    onSuccess: () => {
+      setConfirmDeleteId(null)
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+    },
+  })
+
+  const closeTicketMutation = useMutation({
+    mutationFn: () => operatorCodeApi.closeTicket(),
+    onSuccess: () => {
+      setNotifyResult(null)
+      setDynamicRows(null)
+      setDynamicCopied(false)
+      setGeneratedFiles([])
+      setSelectedEvaded(new Set())
+      setEmailPreview(null)
+      setBulkEvadiResult(null)
+      setEmailSendEnabled(false)
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+    },
+  })
+
+  const prepareDynamicRows = useCallback((items) => {
+    const rows = items
+      .filter(req => req.assigned_email)
+      .map(req => ({
+        prefix: req.assigned_email.split("@")[0],
+        fullName: `${req.last_name} ${req.first_name}`,
+        email: req.assigned_email,
+        date: _formatDateDMY(req.evaded_at),
+        store: _formatStoreShort(req.store_number),
+      }))
+    if (rows.length > 0) {
+      setDynamicRows(rows)
+      setDynamicCopied(false)
+    }
+  }, [])
+
   const generateMutation = useMutation({
     mutationFn: async (ids = null) => {
       // 1. Verifica cartella configurata
-      const folderHandle = await getFolderHandle("onedrive_folder_it")
+      const folderHandle = await getFolderHandle("onedrive_nav_migration")
       if (!folderHandle) {
         throw new Error('Cartella "One Italy IT - Files" non collegata. Configurala in Impostazioni.')
       }
@@ -1348,18 +1410,19 @@ function GestioneView() {
       const res = await operatorCodeApi.generateNavFiles(ids)
       const files = res.data.files ?? []
 
-      // 3. Scrivi ogni file nella sottocartella dedicata all'entity
+      // 3. Scrivi ogni file nella sottocartella NAV - MigrationTool/{entity}
+      const navFolder = await folderHandle.getDirectoryHandle("NAV - MigrationTool")
       const written = []
       for (const { filename, entity, content_b64 } of files) {
         const binary = atob(content_b64)
         const bytes = new Uint8Array(binary.length)
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-        const subFolder = await folderHandle.getDirectoryHandle(entity, { create: true })
+        const subFolder = await navFolder.getDirectoryHandle(entity, { create: true })
         const fileHandle = await subFolder.getFileHandle(filename, { create: true })
         const writable = await fileHandle.createWritable()
         await writable.write(bytes)
         await writable.close()
-        written.push(`${entity}/${filename}`)
+        written.push(`NAV - MigrationTool/${entity}/${filename}`)
       }
       return written
     },
@@ -1494,11 +1557,79 @@ function GestioneView() {
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex flex-col gap-1">
           <div className="flex items-center gap-2 mb-1">
             <FileDown size={13} className="text-emerald-600" aria-hidden="true" />
-            <span className="text-xs font-semibold text-emerald-700">File salvati in One Italy IT - Files</span>
+            <span className="text-xs font-semibold text-emerald-700">File salvati in One Italy IT - NAV - MigrationTool</span>
           </div>
           {generatedFiles.map(f => (
             <span key={f} className="text-xs font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded w-fit">{f}</span>
           ))}
+        </div>
+      )}
+
+      {/* Righe da incollare in Dynamic.xlsx */}
+      {dynamicRows && (
+        <div className="bg-white rounded-xl border border-blue-200 shadow-sm p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-blue-700">Righe da incollare in Dynamic.xlsx — seleziona e copia</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const tsv = dynamicRows.map(r => `\t${r.prefix}\t${r.fullName}\t${r.email}\t${r.date}\t${r.store}`).join("\n")
+                  navigator.clipboard.writeText(tsv).then(() => {
+                    setDynamicCopied(true)
+                    setTimeout(() => setDynamicCopied(false), 2500)
+                  })
+                }}
+                className="flex items-center gap-1.5 text-xs bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold px-3 py-1.5 rounded-lg transition"
+              >
+                {dynamicCopied ? <CheckCircle size={12} aria-hidden="true" /> : <FileDown size={12} aria-hidden="true" />}
+                {dynamicCopied ? "Copiato!" : "Copia negli appunti"}
+              </button>
+              <button onClick={() => setDynamicRows(null)} aria-label="Chiudi" className="p-1 rounded hover:bg-gray-100 transition">
+                <X size={13} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500 w-6">A</th>
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500">B — Prefisso</th>
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500">C — Cognome Nome</th>
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500">D — Email</th>
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500">E — Data</th>
+                  <th scope="col" className="px-3 py-1.5 text-left font-semibold text-gray-500">F — Negozio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dynamicRows.map((r, i) => (
+                  <tr key={i} className="odd:bg-white even:bg-gray-50/50 border-b border-gray-100 last:border-0">
+                    <td className="px-3 py-1.5 text-gray-300 font-mono"></td>
+                    <td className="px-3 py-1.5 font-mono text-gray-700">{r.prefix}</td>
+                    <td className="px-3 py-1.5 font-mono text-gray-700">{r.fullName}</td>
+                    <td className="px-3 py-1.5 font-mono text-gray-700">{r.email}</td>
+                    <td className="px-3 py-1.5 font-mono text-gray-700">{r.date}</td>
+                    <td className="px-3 py-1.5 font-mono text-gray-700">{r.store}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[11px] text-gray-400">Copia negli appunti e incolla in Excel — la colonna A è vuota.</p>
+        </div>
+      )}
+
+      {/* Chiudi ticket */}
+      {dynamicRows && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => closeTicketMutation.mutate()}
+            disabled={closeTicketMutation.isPending}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition"
+          >
+            <CheckCircle size={16} aria-hidden="true" />
+            {closeTicketMutation.isPending ? "Chiusura…" : "Chiudi ticket"}
+          </button>
         </div>
       )}
 
@@ -1590,6 +1721,31 @@ function GestioneView() {
                         >
                           {isPending ? "…" : "Evadi"}
                         </button>
+                        {confirmDeleteId === req.id ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              onClick={() => deleteMutation.mutate(req.id)}
+                              disabled={deleteMutation.isPending}
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-40"
+                            >
+                              {deleteMutation.isPending ? "…" : "Sì"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-lg transition"
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(req.id)}
+                            aria-label={`Elimina richiesta per ${req.first_name} ${req.last_name}`}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition focus-visible:ring-2 focus-visible:ring-red-400"
+                          >
+                            <Trash2 size={13} aria-hidden="true" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1686,6 +1842,7 @@ function GestioneView() {
                 <th scope="col" className="px-4 py-3 text-left">Evasa il</th>
                 <th scope="col" className="px-4 py-3 text-left">NAV</th>
                 <th scope="col" className="px-4 py-3 text-left">Notifica SM/DM</th>
+                <th scope="col" className="px-2 py-3 text-center w-20"></th>
               </tr>
             </thead>
             <tbody>
@@ -1745,6 +1902,33 @@ function GestioneView() {
                         <Mail size={11} aria-hidden="true" />
                         Da inviare
                       </span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2.5 text-center">
+                    {confirmDeleteId === req.id ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => deleteMutation.mutate(req.id)}
+                          disabled={deleteMutation.isPending}
+                          className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-40"
+                        >
+                          {deleteMutation.isPending ? "…" : "Sì"}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-lg transition"
+                        >
+                          No
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(req.id)}
+                        aria-label={`Elimina richiesta per ${req.first_name} ${req.last_name}`}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition focus-visible:ring-2 focus-visible:ring-red-400"
+                      >
+                        <Trash2 size={13} aria-hidden="true" />
+                      </button>
                     )}
                   </td>
                 </tr>

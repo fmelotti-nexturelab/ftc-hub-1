@@ -451,7 +451,11 @@ async def get_tickets(
 
         if user_team_ids:
             stmt = stmt.where(
-                or_(Ticket.team_id.in_(user_team_ids), Ticket.assigned_to == current_user.id)
+                or_(
+                    Ticket.team_id.in_(user_team_ids),
+                    Ticket.assigned_to == current_user.id,
+                    Ticket.created_by == current_user.id,
+                )
             )
         else:
             # Nessun team trovato: solo ticket creati o assegnati all'utente
