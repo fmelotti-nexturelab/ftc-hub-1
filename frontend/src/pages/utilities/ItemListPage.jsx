@@ -276,20 +276,22 @@ export default function ItemListPage() {
     }
   }
 
+  const [downloadingIT01, setDownloadingIT01] = useState(false)
+
   async function handleDownloadIT01() {
-    const entry = await loadItem("IT01")
-    if (!entry?.text) return
-    const lines = entry.text.split(/\r?\n/).filter(l => l.length > 0)
-    if (!lines.length) return
-    const parsed = lines.map(l => l.split("\t"))
-    const headers = parsed[0]
-    let startIdx = 1
-    if (parsed.length > 2 && (parsed[0][0] || "").trim().toLowerCase() === (parsed[1][0] || "").trim().toLowerCase()) startIdx = 2
-    const rows = parsed.slice(startIdx)
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, "ItemList IT01")
-    XLSX.writeFile(wb, "IT01_ItemList.xlsx")
+    setDownloadingIT01(true)
+    try {
+      const { data: items } = await itemsApi.exportCurrentIT01()
+      if (!items.length) return
+      const FIELDS = ["item_no","description","description_local","warehouse","last_cost","unit_price","item_cat","net_weight","barcode","vat_code","units_per_pack","model_store","batteries","first_rp","category","barcode_ext","vat_pct","gm_pct","description1","description2","modulo","model_store_portale","modulo_numerico","model_store_portale_num"]
+      const HEADERS = ["Nr.","Descrizione","Description Local","Magazzino","Ultimo costo","Prezzo unitario","Cat. articolo","Peso netto","Barcode","Cod. IVA","Unità/collo","Model Store","Batterie","First RP","Category","Barcode ext.","IVA %","GM %","Descrizione1","Descrizione2","Modulo","Model Store Portale","Modulo numerico","Model Store Portale Num."]
+      const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...items.map(i => FIELDS.map(f => i[f] ?? ""))])
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "ItemList IT01")
+      XLSX.writeFile(wb, "IT01_ItemList.xlsx")
+    } finally {
+      setDownloadingIT01(false)
+    }
   }
 
   async function handleImporta() {
@@ -551,9 +553,10 @@ export default function ItemListPage() {
                     </a>
                     <button
                       onClick={handleDownloadIT01}
-                      className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm"
+                      disabled={downloadingIT01}
+                      className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm disabled:opacity-50"
                     >
-                      <Download size={15} aria-hidden="true" />
+                      {downloadingIT01 ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
                       Download ItemList
                     </button>
                     <button

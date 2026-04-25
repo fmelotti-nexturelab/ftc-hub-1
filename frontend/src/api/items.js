@@ -24,6 +24,7 @@ export const itemsApi = {
     apiClient.get("/api/items/it01/download-tbl", { responseType: "arraybuffer" }),
 
   getTblInfoIT01: () => apiClient.get("/api/items/it01/tbl-info"),
+  exportCurrentIT01: () => apiClient.get("/api/items/it01/current/export"),
 
   generateItemList: (entity, rows) =>
     apiClient.post(`/api/items/${entity}/generate`, { rows }, { responseType: "arraybuffer" }),

@@ -179,8 +179,12 @@ def _serialize_item_full(i):
         "barcode_ext":       i.barcode_ext,
         "vat_pct":           _f(i.vat_pct),
         "gm_pct":            _f(i.gm_pct),
-        "description1":      i.description1,
-        "description2":      i.description2,
+        "description1":          i.description1,
+        "description2":          i.description2,
+        "modulo":                i.modulo,
+        "model_store_portale":   i.model_store_portale,
+        "modulo_numerico":       _f(i.modulo_numerico),
+        "model_store_portale_num": _f(i.model_store_portale_num),
     }
 
 
@@ -236,6 +240,20 @@ async def export_items(
         page=1,
         page_size=100_000,
     )
+    return [_serialize_item_full(i) for i in result["items"]]
+
+
+@router.get("/current/export", dependencies=[Depends(_PERM_VIEW)])
+async def export_current_items(db: AsyncSession = Depends(get_db)):
+    """Export completo della sessione IT01 corrente — tutti i 24 campi."""
+    session_result = await db.execute(
+        select(ItemImportSession.id)
+        .where(ItemImportSession.entity == "IT01", ItemImportSession.is_current.is_(True))
+    )
+    session_id = session_result.scalar_one_or_none()
+    if not session_id:
+        raise HTTPException(status_code=404, detail="Nessuna sessione IT01 corrente")
+    result = await get_items_it01(db=db, session_id=session_id, page=1, page_size=200_000)
     return [_serialize_item_full(i) for i in result["items"]]
 
 
