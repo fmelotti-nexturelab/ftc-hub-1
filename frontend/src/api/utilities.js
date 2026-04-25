@@ -7,4 +7,5 @@ export const utilitiesApi = {
   createStore: (data) => apiClient.post("/api/utilities/stores", data),
   updateStore: (id, data) => apiClient.put(`/api/utilities/stores/${id}`, data),
   deleteStore: (id) => apiClient.delete(`/api/utilities/stores/${id}`),
+  replaceStores: (stores) => apiClient.post("/api/utilities/stores/replace", { stores }),
 }

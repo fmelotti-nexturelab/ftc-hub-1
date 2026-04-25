@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_, func, update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -122,6 +122,31 @@ async def list_stores(
         ))
     result = await db.execute(q.order_by(Store.store_number))
     return [_serialize(s) for s in result.scalars().all()]
+
+
+class ReplacePayload(BaseModel):
+    stores: list[StorePayload]
+
+
+@router.post("/replace", dependencies=[Depends(_require_utilities_manage)])
+async def replace_stores(data: ReplacePayload, db: AsyncSession = Depends(get_db)):
+    from datetime import date as date_type
+    await db.execute(sql_update(Store).where(Store.is_active == True).values(is_active=False))
+    for row in data.stores:
+        opening = None
+        if row.opening_date:
+            try:
+                opening = date_type.fromisoformat(row.opening_date)
+            except ValueError:
+                pass
+        db.add(Store(
+            id=uuid.uuid4(),
+            **row.model_dump(exclude={"opening_date"}),
+            opening_date=opening,
+            is_active=True,
+        ))
+    await db.commit()
+    return {"message": f"{len(data.stores)} store importati"}
 
 
 @router.post("", dependencies=[Depends(_require_utilities_manage)])

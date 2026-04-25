@@ -1,9 +1,14 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { Store, Search, X, MapPin, Phone, Mail, User, Calendar, Building2, Plus, Pencil, Trash2, LogOut } from "lucide-react"
+import { Store, Search, X, MapPin, Phone, Mail, User, Calendar, Building2, Plus, Pencil, Trash2, LogOut, Download, Upload, FileSpreadsheet, Loader2, AlertCircle } from "lucide-react"
+import * as XLSX from "xlsx/dist/xlsx.full.min.js"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
+
+const STORE_FIELDS = ["store_number", "store_name", "entity", "district", "city", "location_type", "opening_date", "address", "postal_code", "full_address", "nav_code", "phone", "email", "dm_name", "dm_mail", "sm_name", "sm_mail"]
+const STORE_HEADERS = ["Codice", "Nome", "Entity", "Distretto", "Città", "Tipo", "Data Apertura", "Indirizzo", "CAP", "Indirizzo Completo", "Cod NAV", "Telefono", "Email", "DM Nome", "DM Mail", "SM Nome", "SM Mail"]
+const STORE_HEADER_TO_FIELD = Object.fromEntries(STORE_HEADERS.map((h, i) => [h, STORE_FIELDS[i]]))
 
 const ENTITIES = ["IT01", "IT02", "IT03"]
 const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
@@ -159,6 +164,67 @@ export default function StoresPage() {
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
+  const [importedStores, setImportedStores] = useState(null)
+  const [importFileName, setImportFileName] = useState(null)
+  const [replacing, setReplacing] = useState(false)
+  const [replaceError, setReplaceError] = useState(null)
+  const fileInputRef = useRef(null)
+
+  function handleDownload() {
+    if (!stores.length) return
+    const ws = XLSX.utils.aoa_to_sheet([
+      STORE_HEADERS,
+      ...stores.map(s => STORE_FIELDS.map(f => s[f] ?? "")),
+    ])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Info Stores")
+    XLSX.writeFile(wb, "InfoStores.xlsx")
+  }
+
+  function handleImportFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setReplaceError(null)
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const wb = XLSX.read(new Uint8Array(evt.target.result), { type: "array", raw: true })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" })
+      let hi = 0
+      for (let i = 0; i < Math.min(rows.length, 5); i++) {
+        if (String(rows[i]?.[0] ?? "").trim() === "Codice") { hi = i; break }
+      }
+      const headers = rows[hi] || []
+      const colMap = headers.map(h => STORE_HEADER_TO_FIELD[String(h ?? "").trim()] || null)
+      const parsed = rows.slice(hi + 1)
+        .filter(r => r.some(c => c !== "" && c != null))
+        .map(row => {
+          const obj = {}
+          row.forEach((v, ci) => { const f = colMap[ci]; if (f) obj[f] = v === "" ? null : String(v) })
+          return obj
+        })
+        .filter(r => r.store_number)
+      setImportedStores(parsed)
+      setImportFileName(file.name)
+    }
+    reader.readAsArrayBuffer(file)
+    e.target.value = ""
+  }
+
+  async function handleReplace() {
+    if (!importedStores?.length) return
+    if (!confirm(`Sei sicuro? Questa operazione sostituirà tutti i ${stores.length} store con i ${importedStores.length} store del file.`)) return
+    setReplacing(true); setReplaceError(null)
+    try {
+      await utilitiesApi.replaceStores(importedStores)
+      setImportedStores(null); setImportFileName(null)
+      qc.invalidateQueries({ queryKey: ["stores"] })
+      qc.invalidateQueries({ queryKey: ["store-filters"] })
+    } catch (err) {
+      setReplaceError(err.response?.data?.detail || err.message || "Errore")
+    } finally { setReplacing(false) }
+  }
+
   const { data: filters } = useQuery({
     queryKey: ["store-filters"],
     queryFn: () => utilitiesApi.getStoreFilters().then(r => r.data),
@@ -222,11 +288,29 @@ export default function StoresPage() {
             <p className="text-xs text-gray-400 mt-0.5">Consulta l'anagrafica stores OneItaly</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {stores.length > 0 && (
+            <button onClick={handleDownload} className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm">
+              <Download size={15} aria-hidden="true" /> Download
+            </button>
+          )}
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xlsm,.xls" onChange={handleImportFile} className="hidden" />
+          {isAdmin && (
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold py-2 px-5 rounded-xl transition text-sm">
+              <Upload size={15} aria-hidden="true" /> Sovrascrivi da file
+            </button>
+          )}
+          {isAdmin && (
+            <button onClick={handleReplace} disabled={!importedStores?.length || replacing}
+              className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2 px-5 rounded-xl shadow transition text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+              {replacing ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <FileSpreadsheet size={15} aria-hidden="true" />}
+              Sovrascrivi tabella
+            </button>
+          )}
           {isAdmin && (
             <button onClick={() => { setEditStore(null); setShowForm(true) }}
               className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white text-sm font-semibold px-4 py-2 rounded-xl shadow transition">
-              <Plus size={15} /> Nuovo store
+              <Plus size={15} aria-hidden="true" /> Nuovo store
             </button>
           )}
           <button
@@ -238,6 +322,26 @@ export default function StoresPage() {
           </button>
         </div>
       </div>
+
+      {/* Banner anteprima file importato */}
+      {importFileName && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs">
+          <FileSpreadsheet size={14} className="text-blue-500 shrink-0" aria-hidden="true" />
+          <span className="text-blue-700 font-medium">{importFileName}</span>
+          <span className="text-blue-500">— {importedStores?.length ?? 0} store pronti all'importazione</span>
+          <button onClick={() => { setImportedStores(null); setImportFileName(null) }} className="ml-auto text-blue-400 hover:text-blue-600" aria-label="Rimuovi file">
+            <X size={14} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {/* Errore replace */}
+      {replaceError && (
+        <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">
+          <AlertCircle size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{replaceError}</span>
+        </div>
+      )}
 
       {/* Filtri */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4">

@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { BarChart3, Package, ShoppingCart, LogOut, Database, ChevronRight, List, Ban, Store } from "lucide-react"
+import { BarChart3, Package, ShoppingCart, LogOut, Database, ChevronRight, List, Ban, Store, Building2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { utilitiesApi } from "@/api/utilities"
 import NavEntityLauncher from "@/components/shared/NavEntityLauncher"
@@ -75,6 +75,16 @@ const GROUPS = [
     label: "STOCK - Analisi & Estrazioni",
     desc: "Operazioni cross-entity: Genera tutti, StockSplit, Estrai ADM",
     directPath: "/utilities/genera-tabelle/stock",
+    items: [],
+  },
+  {
+    id: "anagrafe-negozi",
+    moduleCode: "utilities_stores",
+    icon: Building2,
+    color: "bg-sky-500",
+    label: "Anagrafe Negozi",
+    desc: "Gestione della tabella Info Stores, assegnazioni negozi - SM - DM",
+    directPath: "/utilities/stores",
     items: [],
   },
   {
