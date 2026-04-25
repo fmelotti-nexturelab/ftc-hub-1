@@ -36,6 +36,7 @@ services:
       # Path della cartella FTC HUB Storage *visto dal container* (non lato host).
       # In dev questo path mappa su ./data via il volume sotto, in prod su D:/.
       FILE_STORAGE_PATH: /mnt/f/FTC_HUB_Archivio
+      BACKUP_PATH: /mnt/backup
       TICKET_ATTACHMENTS_PATH: /data/attachments
       TICKET_NOTIFY_EMAIL: ${TICKET_NOTIFY_EMAIL:-}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -49,6 +50,7 @@ services:
       - ./backend:/app
       - attachments_data:/data/attachments
       - ${STORAGE_MOUNT:-./data}:/mnt/f/FTC_HUB_Archivio
+      - ./data/backups:/mnt/backup
       # Montato read-only: il router /api/ho/navision/agent-installer
       # serve i file da /navision_agent leggendoli da qui
       - ./navision_agent:/navision_agent:ro

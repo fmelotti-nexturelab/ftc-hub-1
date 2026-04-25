@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # qui il disco fisico (./data in dev, D:/ in prod).
     FILE_STORAGE_PATH: str = "/mnt/f/FTC_HUB_Archivio"
 
+    # Path cartella backup DB (visto dal container). Dev: ./data/backups, prod: OneDrive mount
+    BACKUP_PATH: str = "/mnt/backup"
+
     TICKET_NOTIFY_EMAIL: str = ""
     TICKET_ATTACHMENTS_PATH: str = "/data/attachments"
     SMTP_HOST: str = ""

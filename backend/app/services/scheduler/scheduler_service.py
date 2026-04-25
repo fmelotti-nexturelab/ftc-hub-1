@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionLocal
 from app.models.scheduler import ScheduledJob, ScheduledJobLog
-from app.services.scheduler import digest_service
+from app.services.scheduler import digest_service, backup_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,12 @@ JOB_REGISTRY: list[dict] = [
         "description": "Riepilogo giornaliero ticket aperti per ogni utente assegnato",
         "cron": "0 12 * * *",  # ogni giorno alle 12:00
         "fn": digest_service.run_digest,
+    },
+    {
+        "name": "db_backup",
+        "description": "Backup giornaliero del database PostgreSQL (ftc_hub.dump nella cartella BACKUP_PATH)",
+        "cron": "0 2 * * *",  # ogni giorno alle 02:00
+        "fn": backup_service.run_backup,
     },
 ]
 
