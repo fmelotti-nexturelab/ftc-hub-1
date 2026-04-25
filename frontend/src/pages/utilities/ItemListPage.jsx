@@ -276,6 +276,22 @@ export default function ItemListPage() {
     }
   }
 
+  async function handleDownloadIT01() {
+    const entry = await loadItem("IT01")
+    if (!entry?.text) return
+    const lines = entry.text.split(/\r?\n/).filter(l => l.length > 0)
+    if (!lines.length) return
+    const parsed = lines.map(l => l.split("\t"))
+    const headers = parsed[0]
+    let startIdx = 1
+    if (parsed.length > 2 && (parsed[0][0] || "").trim().toLowerCase() === (parsed[1][0] || "").trim().toLowerCase()) startIdx = 2
+    const rows = parsed.slice(startIdx)
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "ItemList IT01")
+    XLSX.writeFile(wb, "IT01_ItemList.xlsx")
+  }
+
   async function handleImporta() {
     if (!fileObj) return
     setImporting(true)
@@ -533,6 +549,13 @@ export default function ItemListPage() {
                       <ExternalLink size={15} aria-hidden="true" />
                       Carica su portale fatture
                     </a>
+                    <button
+                      onClick={handleDownloadIT01}
+                      className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm"
+                    >
+                      <Download size={15} aria-hidden="true" />
+                      Download ItemList
+                    </button>
                     <button
                       onClick={resetFile}
                       className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
