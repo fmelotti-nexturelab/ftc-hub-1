@@ -541,31 +541,10 @@ export default function ItemListPage() {
                   </>
                 )}
                 {importDone && (
-                  <>
-                    <a
-                      href="http://ddt.tigeritalia.com/Account/Login?ReturnUrl=%2F"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold px-5 py-2.5 rounded-xl shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
-                    >
-                      <ExternalLink size={15} aria-hidden="true" />
-                      Carica su portale fatture
-                    </a>
-                    <button
-                      onClick={handleDownloadIT01}
-                      disabled={downloadingIT01}
-                      className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold px-5 py-2.5 rounded-xl transition text-sm disabled:opacity-50"
-                    >
-                      {downloadingIT01 ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
-                      Download ItemList
-                    </button>
-                    <button
-                      onClick={resetFile}
-                      className="px-4 py-2.5 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
-                    >
-                      Nuova importazione
-                    </button>
-                  </>
+                  <div className="text-xs text-green-600 font-semibold flex items-center gap-1.5">
+                    <CheckCircle size={13} aria-hidden="true" />
+                    Importazione completata
+                  </div>
                 )}
               </div>
             )}
@@ -643,7 +622,7 @@ export default function ItemListPage() {
           </div>
 
           {/* ── Tabella anagrafe ITEM IT01 da Check Prices ── */}
-          <ItemListTable entity="IT01" session={!loadingSessions && sessions.length > 0 ? (sessions.find(s => s.is_current) ?? sessions[0]) : null} loadingSession={loadingSessions} tblInfo={tblInfo} loadingTbl={loadingTbl} />
+          <ItemListTable entity="IT01" session={!loadingSessions && sessions.length > 0 ? (sessions.find(s => s.is_current) ?? sessions[0]) : null} loadingSession={loadingSessions} tblInfo={tblInfo} loadingTbl={loadingTbl} onDownload={handleDownloadIT01} downloading={downloadingIT01} onNewImport={resetFile} />
         </>
       )}
 
@@ -678,7 +657,7 @@ export default function ItemListPage() {
 }
 
 // ── Componente tabella anagrafe ITEM generico (IT01, IT02, ...) ──────────────
-export function ItemListTable({ entity, session = null, loadingSession = false, tblInfo = null, loadingTbl = false }) {
+export function ItemListTable({ entity, session = null, loadingSession = false, tblInfo = null, loadingTbl = false, onDownload = null, downloading = false, onNewImport = null }) {
   const [loading, setLoading] = useState(true)
   const [entry, setEntry] = useState(null)
   const [search, setSearch] = useState("")
@@ -829,8 +808,9 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
           </div>
         )}
         {!loadingSession && !session && entity === "IT01" && (
-          <div className="border-t border-gray-100 pt-1.5 text-gray-400">
-            Nessuna importazione effettuata.
+          <div className="flex items-center gap-1.5 border-t border-gray-100 pt-1.5 text-gray-400">
+            <span className="text-[9px] font-semibold uppercase tracking-wider">Ultimo caricamento DB</span>
+            <span>Nessun caricamento effettuato</span>
           </div>
         )}
         {/* Riga 3: Ultima creazione tbl_ItemM (solo IT01) */}
@@ -871,7 +851,7 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
         )}
       </div>
 
-      {/* Search + Genera button */}
+      {/* Search + bottoni */}
       <div className="flex items-center gap-3 flex-wrap justify-between">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <label htmlFor={searchId} className="sr-only">Cerca articolo</label>
@@ -885,24 +865,38 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
             className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
           />
           {search && (
-            <button
-              onClick={() => setSearch("")}
-              aria-label="Cancella ricerca"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
+            <button onClick={() => setSearch("")} aria-label="Cancella ricerca" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               <X size={14} aria-hidden="true" />
             </button>
           )}
         </div>
-        {showGenerate && rows.length > 0 && (
-          <button
-            onClick={handleDownloadXlsx}
-            className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm"
-          >
-            <FileSpreadsheet size={15} aria-hidden="true" />
-            Download ItemList
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {showGenerate && rows.length > 0 && (
+            <button onClick={handleDownloadXlsx} className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm">
+              <FileSpreadsheet size={15} aria-hidden="true" />
+              Download ItemList
+            </button>
+          )}
+          {onDownload && (
+            <a href="http://ddt.tigeritalia.com/Account/Login?ReturnUrl=%2F" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold px-5 py-2 rounded-xl shadow transition text-sm focus-visible:ring-2 focus-visible:ring-[#2563eb]">
+              <ExternalLink size={15} aria-hidden="true" />
+              Carica su portale fatture
+            </a>
+          )}
+          {onDownload && (
+            <button onClick={onDownload} disabled={downloading}
+              className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm disabled:opacity-50">
+              {downloading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
+              Download ItemList
+            </button>
+          )}
+          {onNewImport && (
+            <button onClick={onNewImport} className="px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition">
+              Nuova importazione
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
