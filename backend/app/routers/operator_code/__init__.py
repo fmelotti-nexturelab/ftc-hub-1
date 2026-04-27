@@ -4,7 +4,10 @@ import random
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+import io
+import openpyxl
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, String
 
@@ -136,6 +139,57 @@ async def list_operator_codes(db: AsyncSession = Depends(get_db)):
         .order_by(OperatorCode.last_name, OperatorCode.first_name)
     )
     return result.scalars().all()
+
+
+@router.post(
+    "/overwrite",
+    dependencies=[Depends(require_permission("codici_operatore"))],
+)
+async def overwrite_operator_codes(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sovrascrive ho.operator_codes con il contenuto di un file Excel."""
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "File non valido: carica un file .xlsx")
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        ws = wb.active
+    except Exception:
+        raise HTTPException(400, "Impossibile leggere il file Excel")
+
+    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+    col = {h: i for i, h in enumerate(headers)}
+
+    required = {"codice", "nome", "cognome"}
+    missing = required - col.keys()
+    if missing:
+        raise HTTPException(400, f"Colonne mancanti nel file: {', '.join(missing)}")
+
+    rows = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        codice    = str(row[col["codice"]]).strip() if row[col["codice"]] is not None else None
+        nome      = str(row[col["nome"]]).strip()   if row[col["nome"]] is not None else None
+        cognome   = str(row[col["cognome"]]).strip() if row[col["cognome"]] is not None else None
+        email     = str(row[col["email"]]).strip()   if "email" in col and row[col["email"]] else None
+        store     = str(row[col["store"]]).strip()   if "store" in col and row[col["store"]] else None
+        if not nome and not cognome:
+            continue
+        rows.append(OperatorCode(
+            code=codice,
+            first_name=nome,
+            last_name=cognome,
+            email=email,
+            store_number=store,
+            is_active=True,
+        ))
+
+    await db.execute(delete(OperatorCode))
+    db.add_all(rows)
+    await db.commit()
+    return {"inserted": len(rows)}
 
 
 @router.get(

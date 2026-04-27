@@ -1,18 +1,61 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
-import { LogOut, Search, Users } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { LogOut, Search, Users, Download, Upload, FileSpreadsheet } from "lucide-react"
+import * as XLSX from "xlsx"
 import { apiClient } from "@/api/client"
 
 export default function OperatorCodesConsultPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const fileInputRef = useRef(null)
   const [search, setSearch] = useState("")
+  const [stagedFile, setStagedFile] = useState(null)
 
   const { data: operators = [], isLoading } = useQuery({
     queryKey: ["operator-codes-consult"],
     queryFn: () => apiClient.get("/api/ho/operator-codes").then((r) => r.data),
     staleTime: 60_000,
   })
+
+  const overwriteMutation = useMutation({
+    mutationFn: (file) => {
+      const form = new FormData()
+      form.append("file", file)
+      return apiClient.post("/api/ho/operator-codes/overwrite", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["operator-codes-consult"] })
+      setStagedFile(null)
+      alert(`Tabella aggiornata: ${res.data.inserted} operatori importati.`)
+    },
+    onError: (e) => {
+      alert(e.response?.data?.detail || "Errore durante l'importazione.")
+    },
+  })
+
+  function handleDownload() {
+    const rows = operators.map((o) => ({
+      Codice: o.code ?? "",
+      Nome: o.first_name ?? "",
+      Cognome: o.last_name ?? "",
+      Email: o.email ?? "",
+      Store: o.store_number ?? "",
+      "Data Inizio": o.start_date ? new Date(o.start_date).toLocaleDateString("it-IT") : "",
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Operatori")
+    XLSX.writeFile(wb, "operator_codes.xlsx")
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (file) setStagedFile(file)
+    e.target.value = ""
+  }
 
   const filtered = operators.filter((o) => {
     const q = search.toLowerCase()
@@ -45,6 +88,46 @@ export default function OperatorCodesConsultPage() {
         >
           <LogOut size={15} aria-hidden="true" />
           Esci
+        </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleDownload}
+          disabled={operators.length === 0}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
+          aria-label="Download Excel"
+        >
+          <Download size={15} aria-hidden="true" />
+          Download
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={handleFileChange}
+          aria-label="Seleziona file Excel"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+          aria-label="Sovrascrivi da file"
+        >
+          <Upload size={15} aria-hidden="true" />
+          {stagedFile ? stagedFile.name : "Sovrascrivi da file"}
+        </button>
+
+        <button
+          onClick={() => overwriteMutation.mutate(stagedFile)}
+          disabled={!stagedFile || overwriteMutation.isPending}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-label="Sovrascrivi tabella"
+        >
+          <FileSpreadsheet size={15} aria-hidden="true" />
+          {overwriteMutation.isPending ? "Importazione…" : "Sovrascrivi tabella"}
         </button>
       </div>
 
