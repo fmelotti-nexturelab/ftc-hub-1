@@ -8,6 +8,9 @@ services:
       BACKUP_DESTINATION_LABEL: "Google Drive (G:\\Il mio Drive\\FTC_HUB_Backup)"
       SMTP_HOST: smtp.aruba.it
       SMTP_PORT: "465"
+      SMTP_USER: "ftc_hub@flyingtigeritalia.com"
+      SMTP_PASSWORD: "2CandidoCannavo!"
+      SMTP_FROM: "ftc_hub@flyingtigeritalia.com"
     volumes:
       - ./backend:/app
       - attachments_data:/data/attachments
