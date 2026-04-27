@@ -5,6 +5,7 @@ services:
       - ./backend:/app
       - attachments_data:/data/attachments
       - D:/:/mnt/f
+      - D:/FTC_HUB_Backup:/mnt/backup
       # Vedi nota nel base: il router agent-installer legge da /navision_agent
       - ./navision_agent:/navision_agent:ro
 
