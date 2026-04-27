@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Store, LogOut, Database, Package, List } from "lucide-react"
+import { Store, LogOut, Database, Package, List, Users } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 
 const CARDS = [
@@ -27,6 +27,14 @@ const CARDS = [
     label: "ItemList",
     desc: "Consulta tutte le tabelle relative all'ItemList",
     moduleCode: "items_view",
+  },
+  {
+    path: "/ho/codice-operatore",
+    icon: Users,
+    color: "bg-violet-500",
+    label: "Codici Operatore",
+    desc: "Gestione e consultazione codici operatore NAV",
+    moduleCode: "codici_operatore",
   },
 ]
 

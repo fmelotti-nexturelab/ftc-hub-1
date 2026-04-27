@@ -33,6 +33,7 @@ const UTILITY_TABLES = [
   { code: "items_view",          name: "ItemList",       module: "items_view" },
   { code: "ordini",              name: "Ordini",         module: "ordini" },
   { code: "check_prezzi",        name: "Check Prezzi",   module: "check_prezzi" },
+  { code: "codici_operatore",    name: "Codici Operatore", module: "codici_operatore" },
   { code: "ticket_config",       name: "Ticket Config",  module: "ticket_config" },
 ]
 
