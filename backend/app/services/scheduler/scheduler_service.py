@@ -58,7 +58,7 @@ async def _run_job(name: str, fn: Callable[[AsyncSession], Awaitable[dict]]):
             logger.info(f"Job '{name}' avviato")
             job_result = await fn(db)
             duration_ms = int((time.perf_counter() - t0) * 1000)
-            detail = str(job_result) if job_result else "OK"
+            detail = (job_result.get("message") if isinstance(job_result, dict) else None) or str(job_result) or "OK"
 
             # Logga
             log = ScheduledJobLog(

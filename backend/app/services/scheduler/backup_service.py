@@ -48,6 +48,8 @@ async def run_backup(db: AsyncSession) -> dict:
         raise RuntimeError(f"pg_dump fallito (exit {proc.returncode}): {msg}")
 
     size_mb = round(Path(output_file).stat().st_size / (1024 * 1024), 2)
-    logger.info(f"Backup completato: {output_file} ({size_mb} MB)")
+    destination_label = os.environ.get("BACKUP_DESTINATION_LABEL", "/mnt/backup")
+    msg = f"ftc_hub.dump salvato in {output_file} ({size_mb} MB) — destinazione host: {destination_label}"
+    logger.info(msg)
 
-    return {"file": output_file, "size_mb": size_mb}
+    return {"file": output_file, "size_mb": size_mb, "message": msg}

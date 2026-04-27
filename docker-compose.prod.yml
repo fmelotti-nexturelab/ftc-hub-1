@@ -1,6 +1,8 @@
 services:
   backend:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    environment:
+      BACKUP_DESTINATION_LABEL: "D:\\FTC_HUB_Backup"
     volumes:
       - ./backend:/app
       - attachments_data:/data/attachments
