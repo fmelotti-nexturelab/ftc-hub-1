@@ -92,7 +92,7 @@ export default function OperatorCodesConsultPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap justify-end">
         <button
           onClick={handleDownload}
           disabled={operators.length === 0}
