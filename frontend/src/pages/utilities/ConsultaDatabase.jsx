@@ -33,7 +33,7 @@ const CARDS = [
     icon: Users,
     color: "bg-violet-500",
     label: "Codici Operatore",
-    desc: "Gestione e consultazione codici operatore NAV",
+    desc: "Consulta la tabella con i codici operatori @flyingtigeritalia",
     moduleCode: "codici_operatore",
   },
 ]
