@@ -6,6 +6,8 @@ services:
       - 8.8.4.4
     environment:
       BACKUP_DESTINATION_LABEL: "Google Drive (G:\\Il mio Drive\\FTC_HUB_Backup)"
+      SMTP_HOST: smtp.aruba.it
+      SMTP_PORT: "465"
     volumes:
       - ./backend:/app
       - attachments_data:/data/attachments
