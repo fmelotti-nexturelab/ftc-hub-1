@@ -38,6 +38,7 @@ import ItemListConsultPage from "@/pages/utilities/ItemListConsultPage"
 import ItemListHub from "@/pages/utilities/ItemListHub"
 import CodiceOperatore from "@/pages/ho/CodiceOperatore"
 import CheckPrezziPage from "@/pages/utilities/CheckPrezziPage"
+import OperatorCodesConsultPage from "@/pages/utilities/OperatorCodesConsultPage"
 import StampaEtichettePage from "@/pages/utilities/StampaEtichettePage"
 
 
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="utilities/consulta-database/item-list/it01" element={<ItemListConsultPage />} />
         <Route path="utilities/consulta-database/item-list/it02" element={<ItemListConsultPage />} />
         <Route path="utilities/consulta-database/item-list/it03" element={<ItemListConsultPage />} />
+        <Route path="utilities/consulta-database/operator-codes" element={<OperatorCodesConsultPage />} />
         <Route path="tickets" element={<TicketList />} />
         <Route path="tickets/dashboard" element={<TicketDashboard />} />
         <Route path="tickets/history" element={<TicketHistory />} />

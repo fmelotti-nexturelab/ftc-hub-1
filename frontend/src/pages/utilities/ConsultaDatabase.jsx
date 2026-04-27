@@ -29,7 +29,7 @@ const CARDS = [
     moduleCode: "items_view",
   },
   {
-    path: "/ho/codice-operatore",
+    path: "/utilities/consulta-database/operator-codes",
     icon: Users,
     color: "bg-violet-500",
     label: "Codici Operatore",
