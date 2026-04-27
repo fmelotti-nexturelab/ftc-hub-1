@@ -123,6 +123,17 @@ async def tbl_info(db: AsyncSession = Depends(get_db)):
 @router.get("/sessions", dependencies=[Depends(_PERM_VIEW)])
 async def list_sessions(db: AsyncSession = Depends(get_db)):
     sessions = await get_sessions_it01(db)
+
+    user_ids = list({s.imported_by for s in sessions if s.imported_by})
+    users: dict = {}
+    if user_ids:
+        rows = await db.execute(
+            select(User.id, User.first_name, User.last_name, User.email)
+            .where(User.id.in_(user_ids))
+        )
+        for row in rows:
+            users[row.id] = f"{row.first_name} {row.last_name}".strip() or row.email
+
     return [
         {
             "id": s.id,
@@ -132,6 +143,7 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
             "row_count": s.row_count,
             "source_filename": s.source_filename,
             "is_current": s.is_current,
+            "imported_by_name": users.get(s.imported_by) if s.imported_by else None,
         }
         for s in sessions
     ]

@@ -95,6 +95,14 @@ export default function ItemListPage() {
     staleTime: 30_000,
   })
 
+  // Cache the last known good session — prevents flash-to-empty during refetch/re-render
+  const sessionCacheRef = useRef(null)
+  const currentSession = useMemo(() => {
+    const s = sessions.find(s => s.is_current) ?? sessions[0] ?? null
+    if (s !== null) sessionCacheRef.current = s
+    return s ?? sessionCacheRef.current
+  }, [sessions])
+
   function setStep(i, status, message = null) {
     setStepStatus(s => s.map((v, idx) => idx === i ? status : v))
     if (message) setStepMessages(s => s.map((v, idx) => idx === i ? message : v))
@@ -322,8 +330,9 @@ export default function ItemListPage() {
       setImportResult({ row_count: data.row_count })
       setFileObj(null)
       setFileInfo(null)
+      await queryClient.refetchQueries({ queryKey: ["items-sessions", "IT01"] })
+      queryClient.invalidateQueries({ queryKey: ["items-tbl-info"] })
       setImportDone(true)
-      queryClient.invalidateQueries({ queryKey: ["items-sessions", "IT01"] })
 
     } catch (e) {
       const msg = e.response?.data?.detail || e.message || "Errore durante l'importazione."
@@ -622,7 +631,7 @@ export default function ItemListPage() {
           </div>
 
           {/* ── Tabella anagrafe ITEM IT01 da Check Prices ── */}
-          <ItemListTable entity="IT01" session={!loadingSessions && sessions.length > 0 ? (sessions.find(s => s.is_current) ?? sessions[0]) : null} loadingSession={loadingSessions} tblInfo={tblInfo} loadingTbl={loadingTbl} onDownload={handleDownloadIT01} downloading={downloadingIT01} onNewImport={resetFile} />
+          <ItemListTable entity="IT01" session={currentSession} loadingSession={loadingSessions} tblInfo={tblInfo} loadingTbl={loadingTbl} onDownload={handleDownloadIT01} downloading={downloadingIT01} onNewImport={resetFile} />
         </>
       )}
 
@@ -774,46 +783,7 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
             </div>
           )}
         </div>
-        {/* Riga 2: Ultima importazione (solo se session disponibile) */}
-        {loadingSession && (
-          <div className="flex items-center gap-1.5 text-gray-400 border-t border-gray-100 pt-1.5">
-            <Loader2 size={11} className="animate-spin" aria-hidden="true" />
-            <span>Caricamento ultima importazione...</span>
-          </div>
-        )}
-        {!loadingSession && session && (
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-gray-100 pt-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Ultima importazione</span>
-              <span className="text-gray-700 font-mono">{formatDate(session.imported_at)}</span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">File</span>
-              <span className="text-gray-600 truncate" title={session.source_filename || "—"}>{session.source_filename || "—"}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Articoli DB</span>
-              <span className="text-gray-700 font-semibold tabular-nums">{session.row_count.toLocaleString("it-IT")}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">Batch</span>
-              <span className="text-gray-500 font-mono">{session.batch_id}</span>
-              {session.is_current && (
-                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">
-                  <CheckCircle size={8} aria-hidden="true" />
-                  Corrente
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        {!loadingSession && !session && entity === "IT01" && (
-          <div className="flex items-center gap-1.5 border-t border-gray-100 pt-1.5 text-gray-400">
-            <span className="text-[9px] font-semibold uppercase tracking-wider">Ultimo caricamento DB</span>
-            <span>Nessun caricamento effettuato</span>
-          </div>
-        )}
-        {/* Riga 3: Ultima creazione tbl_ItemM (solo IT01) */}
+        {/* Riga 2: Ultima creazione tbl_ItemM (solo IT01) */}
         {loadingTbl && entity === "IT01" && (
           <div className="flex items-center gap-1.5 text-gray-400 border-t border-gray-100 pt-1.5">
             <Loader2 size={11} className="animate-spin" aria-hidden="true" />
@@ -850,6 +820,34 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
           </div>
         )}
       </div>
+
+      {/* Strip: Ultimo caricamento DB (solo IT01) */}
+      {entity === "IT01" && (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs bg-gray-50 rounded-lg px-4 py-2.5 border border-gray-200">
+          <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider shrink-0">Ultimo caricamento DB</span>
+          {session ? (
+            <>
+              <span className="text-gray-700 font-mono">{formatDate(session.imported_at)}</span>
+              <span className="text-gray-600 truncate max-w-[260px]" title={session.source_filename}>{session.source_filename || "—"}</span>
+              <span className="text-gray-700 font-semibold tabular-nums">{session.row_count?.toLocaleString("it-IT")} articoli</span>
+              {session.imported_by_name && (
+                <span className="text-gray-500">{session.imported_by_name}</span>
+              )}
+              {session.is_current && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-green-100 text-green-700">
+                  <CheckCircle size={8} aria-hidden="true" /> Corrente
+                </span>
+              )}
+            </>
+          ) : loadingSession ? (
+            <span className="flex items-center gap-1 text-gray-400">
+              <Loader2 size={10} className="animate-spin" aria-hidden="true" /> Caricamento...
+            </span>
+          ) : (
+            <span className="text-gray-400">Nessun caricamento effettuato</span>
+          )}
+        </div>
+      )}
 
       {/* Search + bottoni */}
       <div className="flex items-center gap-3 flex-wrap justify-between">
