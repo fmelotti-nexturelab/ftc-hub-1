@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { LogOut, Search, Users, Download, Upload, FileSpreadsheet } from "lucide-react"
+import { LogOut, Search, Users, Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { apiClient } from "@/api/client"
 
@@ -71,65 +71,66 @@ export default function OperatorCodesConsultPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center">
-          <Users size={18} className="text-violet-600" aria-hidden="true" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center">
+            <Users size={18} className="text-violet-600" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Codici Operatore</h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Consulta la tabella con i codici operatori @flyingtigeritalia
+            </p>
+          </div>
         </div>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Codici Operatore</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Consulta la tabella con i codici operatori @flyingtigeritalia
-          </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {operators.length > 0 && (
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm"
+              aria-label="Download Excel"
+            >
+              <Download size={15} aria-hidden="true" /> Download
+            </button>
+          )}
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold py-2 px-5 rounded-xl transition text-sm"
+            aria-label="Sovrascrivi da file"
+          >
+            <Upload size={15} aria-hidden="true" /> Sovrascrivi da file
+          </button>
+          <button
+            onClick={() => overwriteMutation.mutate(stagedFile)}
+            disabled={!stagedFile || overwriteMutation.isPending}
+            className="flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2563eb] text-white font-semibold py-2 px-5 rounded-xl shadow transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Sovrascrivi tabella"
+          >
+            {overwriteMutation.isPending
+              ? <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+              : <FileSpreadsheet size={15} aria-hidden="true" />}
+            Sovrascrivi tabella
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            aria-label="Esci"
+          >
+            <LogOut size={15} aria-hidden="true" />
+            Esci
+          </button>
         </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
-          aria-label="Esci"
-        >
-          <LogOut size={15} aria-hidden="true" />
-          Esci
-        </button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        <button
-          onClick={handleDownload}
-          disabled={operators.length === 0}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition disabled:opacity-40"
-          aria-label="Download Excel"
-        >
-          <Download size={15} aria-hidden="true" />
-          Download
-        </button>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          className="hidden"
-          onChange={handleFileChange}
-          aria-label="Seleziona file Excel"
-        />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-          aria-label="Sovrascrivi da file"
-        >
-          <Upload size={15} aria-hidden="true" />
-          {stagedFile ? stagedFile.name : "Sovrascrivi da file"}
-        </button>
-
-        <button
-          onClick={() => overwriteMutation.mutate(stagedFile)}
-          disabled={!stagedFile || overwriteMutation.isPending}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-xl text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 transition disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Sovrascrivi tabella"
-        >
-          <FileSpreadsheet size={15} aria-hidden="true" />
-          {overwriteMutation.isPending ? "Importazione…" : "Sovrascrivi tabella"}
-        </button>
-      </div>
+      {/* Banner file staged */}
+      {stagedFile && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs">
+          <FileSpreadsheet size={14} className="text-blue-500 shrink-0" aria-hidden="true" />
+          <span className="text-blue-700 font-medium">{stagedFile.name}</span>
+          <span className="text-blue-500">— pronto per l'importazione</span>
+        </div>
+      )}
 
       {/* Search + counter */}
       <div className="flex items-center gap-3 flex-wrap">
