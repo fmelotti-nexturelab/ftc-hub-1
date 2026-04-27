@@ -2,12 +2,12 @@ services:
   backend:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     environment:
-      BACKUP_DESTINATION_LABEL: "D:\\FTC_HUB_Backup"
+      BACKUP_DESTINATION_LABEL: "G:\\Il mio Drive\\FTC_HUB_Backup"
     volumes:
       - ./backend:/app
       - attachments_data:/data/attachments
       - D:/:/mnt/f
-      - D:/FTC_HUB_Backup:/mnt/backup
+      - "G:/Il mio Drive/FTC_HUB_Backup:/mnt/backup"
       # Vedi nota nel base: il router agent-installer legge da /navision_agent
       - ./navision_agent:/navision_agent:ro
 
