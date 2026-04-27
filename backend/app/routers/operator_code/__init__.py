@@ -32,6 +32,9 @@ from app.schemas.operator_code import (
     NotifyResultItem,
     NotifyResponse,
     NotifyPayload,
+    PoolPreviewRow,
+    PoolPreviewResponse,
+    PoolImportPayload,
 )
 from app.schemas.tickets import TicketCreate
 from app.models.tickets import TicketPriority, Ticket, TicketStatus
@@ -814,6 +817,191 @@ async def generate_nav_files_endpoint(
     await db.commit()
 
     return {"files": generated, "count": len(to_export)}
+
+
+@router.delete(
+    "/clear",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def clear_operator_codes(db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(OperatorCode))
+    await db.commit()
+    return {"message": "Tabella operator_codes svuotata"}
+
+
+@router.delete(
+    "/pool/clear",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def clear_pool(db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(OperatorCodePool))
+    await db.commit()
+    return {"message": "Tabella operator_code_pool svuotata"}
+
+
+@router.get(
+    "/pool",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def list_pool(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(OperatorCodePool).order_by(OperatorCodePool.entity, OperatorCodePool.code)
+    )
+    rows = result.scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "entity": r.entity,
+            "code": r.code,
+            "full_name": r.full_name,
+            "imported_at": r.imported_at.isoformat() if r.imported_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.post(
+    "/pool/preview",
+    response_model=PoolPreviewResponse,
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def pool_preview(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "File non valido: carica un file .xlsx")
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        ws = wb.active
+    except Exception:
+        raise HTTPException(400, "Impossibile leggere il file Excel")
+
+    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+    col = {h: i for i, h in enumerate(headers)}
+
+    entity_col = next((col[k] for k in ["entity", "entità", "entita"] if k in col), None)
+    code_col = next((col[k] for k in ["code", "codice", "cod"] if k in col), None)
+    name_col = next((col[k] for k in ["name", "nome", "nominativo", "full_name", "nominative"] if k in col), None)
+
+    if entity_col is None or code_col is None or name_col is None:
+        raise HTTPException(
+            400,
+            f"Colonne non trovate. Attese: entity, code, name. Trovate: {list(col.keys())}",
+        )
+
+    rows = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        entity_val = row[entity_col]
+        code_val = row[code_col]
+        name_val = row[name_col]
+
+        if entity_val is None and code_val is None and name_val is None:
+            continue
+
+        entity_str = str(entity_val).strip().upper() if entity_val else None
+        full_name = str(name_val).strip() if name_val else None
+
+        if not entity_str or not code_val or not full_name:
+            continue
+
+        try:
+            code_int = int(code_val)
+        except (ValueError, TypeError):
+            continue
+
+        rows.append(PoolPreviewRow(entity=entity_str, code=code_int, full_name=full_name))
+
+    return PoolPreviewResponse(rows=rows)
+
+
+@router.post(
+    "/pool/overwrite",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def pool_overwrite(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Sovrascrive ho.operator_code_pool con il contenuto di un file Excel."""
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "File non valido: carica un file .xlsx")
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        ws = wb.active
+    except Exception:
+        raise HTTPException(400, "Impossibile leggere il file Excel")
+
+    headers = [str(c.value).strip().lower() if c.value else "" for c in ws[1]]
+    col = {h: i for i, h in enumerate(headers)}
+
+    entity_col = next((col[k] for k in ["entity", "entità", "entita"] if k in col), None)
+    code_col = next((col[k] for k in ["code", "codice", "cod"] if k in col), None)
+    name_col = next((col[k] for k in ["name", "nome", "nominativo", "full_name", "nominative"] if k in col), None)
+
+    if entity_col is None or code_col is None or name_col is None:
+        raise HTTPException(
+            400,
+            f"Colonne non trovate. Attese: entity, code, name. Trovate: {list(col.keys())}",
+        )
+
+    rows = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        entity_val = row[entity_col]
+        code_val = row[code_col]
+        name_val = row[name_col]
+
+        if entity_val is None and code_val is None and name_val is None:
+            continue
+
+        entity_str = str(entity_val).strip().upper() if entity_val else None
+        full_name = str(name_val).strip() if name_val else None
+
+        if not entity_str or not code_val or not full_name:
+            continue
+
+        try:
+            code_int = int(code_val)
+        except (ValueError, TypeError):
+            continue
+
+        rows.append(OperatorCodePool(entity=entity_str, code=code_int, full_name=full_name))
+
+    # Deduplica per (entity, code) — in caso di righe doppie nel file tiene l'ultima
+    seen: dict = {}
+    for r in rows:
+        seen[(r.entity, r.code)] = r
+    rows = list(seen.values())
+
+    await db.execute(delete(OperatorCodePool))
+    await db.commit()
+    db.add_all(rows)
+    await db.commit()
+    return {"inserted": len(rows)}
+
+
+@router.post(
+    "/pool/import",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def pool_import(body: PoolImportPayload, db: AsyncSession = Depends(get_db)):
+    existing_result = await db.execute(
+        select(OperatorCodePool.entity, OperatorCodePool.code)
+    )
+    existing_keys = {(r.entity, r.code) for r in existing_result.all()}
+
+    inserted = 0
+    skipped = 0
+
+    for row in body.rows:
+        if (row.entity, row.code) in existing_keys:
+            skipped += 1
+            continue
+
+        db.add(OperatorCodePool(entity=row.entity, code=row.code, full_name=row.full_name))
+        existing_keys.add((row.entity, row.code))
+        inserted += 1
+
+    await db.commit()
+    return {"inserted": inserted, "skipped": skipped}
 
 
 @router.post(

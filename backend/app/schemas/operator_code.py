@@ -135,3 +135,23 @@ class OperatorCodeRequestPayload(BaseModel):
     store_number: str
     start_date: date
     force: bool = False
+
+
+class PoolPreviewRow(BaseModel):
+    entity: str
+    code: int
+    full_name: str
+
+
+class PoolPreviewResponse(BaseModel):
+    rows: List[PoolPreviewRow]
+
+
+class PoolImportRow(BaseModel):
+    entity: str
+    code: int
+    full_name: str
+
+
+class PoolImportPayload(BaseModel):
+    rows: List[PoolImportRow]

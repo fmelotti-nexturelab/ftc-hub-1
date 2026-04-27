@@ -22,4 +22,18 @@ export const operatorCodeApi = {
     return apiClient.post(`/api/ho/operator-codes/generate-nav-files${qs}`)
   },
   closeTicket: () => apiClient.post("/api/ho/operator-codes/requests/close-ticket"),
+  clearTable: () => apiClient.delete("/api/ho/operator-codes/clear"),
+  clearPool: () => apiClient.delete("/api/ho/operator-codes/pool/clear"),
+  listPool: () => apiClient.get("/api/ho/operator-codes/pool"),
+  poolOverwrite: (file) => {
+    const form = new FormData()
+    form.append("file", file)
+    return apiClient.post("/api/ho/operator-codes/pool/overwrite", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  },
+  poolPreview: (formData) => apiClient.post("/api/ho/operator-codes/pool/preview", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }),
+  poolImport: (rows) => apiClient.post("/api/ho/operator-codes/pool/import", { rows }),
 }

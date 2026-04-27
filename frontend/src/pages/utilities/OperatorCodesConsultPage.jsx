@@ -1,9 +1,10 @@
 import { useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { LogOut, Search, Users, Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react"
+import { LogOut, Search, Users, Download, Upload, FileSpreadsheet, Loader2, Trash2, AlertTriangle } from "lucide-react"
 import * as XLSX from "xlsx"
 import { apiClient } from "@/api/client"
+import { operatorCodeApi } from "@/api/ho/operatorCode"
 
 export default function OperatorCodesConsultPage() {
   const navigate = useNavigate()
@@ -11,12 +12,33 @@ export default function OperatorCodesConsultPage() {
   const fileInputRef = useRef(null)
   const [search, setSearch] = useState("")
   const [stagedFile, setStagedFile] = useState(null)
+  const [step, setStep] = useState(null)
+  const [password, setPassword] = useState("")
+  const [pwError, setPwError] = useState("")
 
   const { data: operators = [], isLoading } = useQuery({
     queryKey: ["operator-codes-consult"],
     queryFn: () => apiClient.get("/api/ho/operator-codes").then((r) => r.data),
     staleTime: 60_000,
   })
+
+  const clearMutation = useMutation({
+    mutationFn: () => operatorCodeApi.clearTable(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator-codes-consult"] })
+      setStep(null)
+      setPassword("")
+    },
+    onError: () => alert("Errore durante lo svuotamento della tabella."),
+  })
+
+  const handlePasswordSubmit = () => {
+    if (password !== "admink") { setPwError("Password non corretta"); return }
+    setPwError("")
+    setStep("confirm")
+  }
+
+  const handleCancel = () => { setStep(null); setPassword(""); setPwError("") }
 
   const overwriteMutation = useMutation({
     mutationFn: (file) => {
@@ -69,6 +91,7 @@ export default function OperatorCodesConsultPage() {
   })
 
   return (
+    <>
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -84,20 +107,27 @@ export default function OperatorCodesConsultPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {operators.length > 0 && (
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm"
-              aria-label="Download Excel"
-            >
-              <Download size={15} aria-hidden="true" /> Download
-            </button>
-          )}
-          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" />
+          <button
+            onClick={handleDownload}
+            disabled={operators.length === 0}
+            className="flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-5 rounded-xl transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Download Excel"
+          >
+            <Download size={15} aria-hidden="true" /> Download
+          </button>
+
+          <label htmlFor="consult-file-input" className="sr-only">Sovrascrivi da file</label>
+          <input
+            id="consult-file-input"
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileChange}
+            className="hidden"
+          />
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold py-2 px-5 rounded-xl transition text-sm"
-            aria-label="Sovrascrivi da file"
           >
             <Upload size={15} aria-hidden="true" /> Sovrascrivi da file
           </button>
@@ -112,6 +142,15 @@ export default function OperatorCodesConsultPage() {
               : <FileSpreadsheet size={15} aria-hidden="true" />}
             Sovrascrivi tabella
           </button>
+
+          <button
+            onClick={() => setStep("password")}
+            disabled={operators.length === 0}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-5 rounded-xl shadow transition text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Trash2 size={15} aria-hidden="true" /> Svuota tabella
+          </button>
+
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
@@ -201,5 +240,66 @@ export default function OperatorCodesConsultPage() {
         )}
       </div>
     </div>
+
+    {/* Modal password */}
+    {step === "password" && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+              <Trash2 size={18} className="text-red-600" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800">Svuota tabella operatori</h2>
+              <p className="text-xs text-gray-500">Inserisci la password di conferma</p>
+            </div>
+          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={e => { setPassword(e.target.value); setPwError("") }}
+            onKeyDown={e => e.key === "Enter" && handlePasswordSubmit()}
+            placeholder="Password..."
+            autoFocus
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition text-sm mb-1"
+          />
+          {pwError && <p className="text-red-600 text-xs mb-3">{pwError}</p>}
+          {!pwError && <div className="mb-3" />}
+          <div className="flex gap-2">
+            <button onClick={handleCancel} className="flex-1 border border-gray-300 text-gray-600 font-semibold py-2 rounded-xl hover:bg-gray-50 transition text-sm">Annulla</button>
+            <button onClick={handlePasswordSubmit} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition text-sm">Continua</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Modal conferma */}
+    {step === "confirm" && (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+              <AlertTriangle size={18} className="text-red-600" />
+            </div>
+            <div>
+              <h2 className="font-bold text-gray-800">Conferma eliminazione</h2>
+              <p className="text-xs text-gray-500">Questa operazione è irreversibile</p>
+            </div>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+            <p className="text-red-700 text-sm font-medium">
+              Stai per eliminare <span className="font-bold">{operators.length} operatori</span> dalla tabella.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={handleCancel} disabled={clearMutation.isPending} className="flex-1 border border-gray-300 text-gray-600 font-semibold py-2 rounded-xl hover:bg-gray-50 transition text-sm disabled:opacity-50">Annulla</button>
+            <button onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition text-sm disabled:opacity-50">
+              {clearMutation.isPending ? "Eliminazione…" : "Elimina tutto"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

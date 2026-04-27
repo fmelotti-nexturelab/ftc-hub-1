@@ -35,6 +35,7 @@ class OperatorCodePool(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     entity = Column(String(10), nullable=False)
     code = Column(Integer, nullable=False)
+    full_name = Column(String(200), nullable=True)
     imported_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

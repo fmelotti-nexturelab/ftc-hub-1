@@ -33,8 +33,9 @@ const CARDS = [
     icon: Users,
     color: "bg-violet-500",
     label: "Codici Operatore",
-    desc: "Consulta la tabella con i codici operatori @flyingtigeritalia",
+    desc: "Consulta le tabelle relative ai codici operatore",
     moduleCode: "codici_operatore",
+    requireManage: true,
   },
 ]
 
@@ -46,7 +47,11 @@ export default function ConsultaDatabase() {
     queryFn: () => utilitiesApi.getMyAccess().then((r) => r.data),
   })
 
-  const visibleCards = CARDS.filter((c) => access?.[c.moduleCode]?.can_view ?? false)
+  const visibleCards = CARDS.filter((c) => {
+    const mod = access?.[c.moduleCode]
+    if (!mod) return false
+    return c.requireManage ? mod.can_manage : mod.can_view
+  })
 
   return (
     <div className="space-y-5">
