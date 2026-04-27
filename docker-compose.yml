@@ -50,7 +50,7 @@ services:
       - ./backend:/app
       - attachments_data:/data/attachments
       - ${STORAGE_MOUNT:-./data}:/mnt/f/FTC_HUB_Archivio
-      - "C:/Users/fmelo/OneDrive - Zebra A S/FTCHUB-BACKUP-DEV:/mnt/backup"
+      - "${BACKUP_MOUNT:-./data/backups}:/mnt/backup"
       # Montato read-only: il router /api/ho/navision/agent-installer
       # serve i file da /navision_agent leggendoli da qui
       - ./navision_agent:/navision_agent:ro
