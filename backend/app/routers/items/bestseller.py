@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_permission
@@ -63,6 +63,15 @@ class AppendRowsRequest(BaseModel):
 
 class DeleteIdsRequest(BaseModel):
     ids: list[int]
+
+
+# ── Last sync (mtime tracking) ────────────────────────────────────────────────
+
+@router.get("/last-sync", dependencies=[Depends(_PERM_VIEW)])
+async def get_last_sync(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(func.max(Eccezione.created_at)))
+    last_sync = result.scalar_one_or_none()
+    return {"last_sync": last_sync.isoformat() if last_sync else None}
 
 
 # ── GET all ───────────────────────────────────────────────────────────────────

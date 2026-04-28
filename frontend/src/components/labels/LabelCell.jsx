@@ -1,6 +1,34 @@
 import { useEffect, useRef } from "react"
 import JsBarcode from "jsbarcode"
 
+// Formatta net_weight (in kg) come stringa leggibile: 0.5 → "500 g", 1.5 → "1,5 kg"
+function formatNetWeight(netWeight) {
+  if (!netWeight || netWeight <= 0) return null
+  if (netWeight < 1) return `${Math.round(netWeight * 1000)} g`
+  return `${netWeight.toLocaleString("it-IT", { maximumFractionDigits: 3 })} kg`
+}
+
+// Calcola prezzo unitario EU (EUR X/L o EUR X/KG) da stringa misura (es. "500 ml", "40 g")
+function calcUnitPrice(price, measureStr) {
+  if (!price || !measureStr) return null
+  const m = String(measureStr).trim().match(/^([\d,.]+)\s*(ml|cl|dl|l|g|kg)$/i)
+  if (!m) return null
+  const amount = parseFloat(m[1].replace(",", "."))
+  if (!amount || amount <= 0) return null
+  const unit = m[2].toLowerCase()
+  let base, label
+  switch (unit) {
+    case "ml": base = amount / 1000; label = "L"; break
+    case "cl": base = amount / 100;  label = "L"; break
+    case "dl": base = amount / 10;   label = "L"; break
+    case "l":  base = amount;        label = "L"; break
+    case "g":  base = amount / 1000; label = "KG"; break
+    case "kg": base = amount;        label = "KG"; break
+    default: return null
+  }
+  return `EUR ${Math.round(price / base)}/${label}`
+}
+
 /**
  * Layout etichetta (dal PDF reference):
  *
@@ -45,13 +73,16 @@ export default function LabelCell({ item, format }) {
     return `${cleaned}\u20AC`
   })()
 
+  const desc2 = item.description2 || formatNetWeight(item.net_weight) || ""
+  const unitPrice = calcUnitPrice(item.effective_price, desc2)
+
   return (
     <div className="label-cell">
       {/* ── TOP: 3 righe descrizione a sinistra + badge a destra ── */}
       <div className="label-top">
         <div className="label-top-left">
           <div className="label-desc-row1">{item.description}</div>
-          <div className="label-desc-row2">{item.description2 || "\u00A0"}</div>
+          <div className="label-desc-row2">{desc2 || "\u00A0"}</div>
           <div className="label-desc-row3">{item.category || "\u00A0"}</div>
         </div>
         <div className="label-top-right">
@@ -71,7 +102,7 @@ export default function LabelCell({ item, format }) {
         <div className="label-barcode">
           {item.barcode ? <svg ref={barcodeRef} /> : null}
         </div>
-        <div className="label-kgl">{"\u00A0"}</div>
+        <div className="label-kgl">{unitPrice || "\u00A0"}</div>
         <div className="label-zebra">{item.zebra}</div>
       </div>
     </div>

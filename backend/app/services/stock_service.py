@@ -209,6 +209,131 @@ async def cleanup_old_sessions(db: AsyncSession, entity: str, retention_days: in
 # Export Excel
 # ---------------------------------------------------------------------------
 
+async def get_alldata_stats(db: AsyncSession) -> dict:
+    result = await db.execute(text("""
+        SELECT
+            COUNT(*)                                              AS total_items,
+            COUNT(prezzo_promo)                                   AS items_with_promo,
+            COUNT(prezzo_bf)                                      AS items_with_bf,
+            COUNT(eccezione_tipo)                                 AS items_with_eccezione,
+            COALESCE(SUM(CASE WHEN is_bestseller THEN 1 ELSE 0 END), 0) AS items_bestseller,
+            COALESCE(SUM(CASE WHEN is_scrap_inv  THEN 1 ELSE 0 END), 0) AS items_scrap_inv,
+            COALESCE(SUM(CASE WHEN is_scrap_wd   THEN 1 ELSE 0 END), 0) AS items_scrap_wd,
+            COALESCE(SUM(CASE WHEN is_picking     THEN 1 ELSE 0 END), 0) AS items_picking
+        FROM ho.v_alldata
+    """))
+    row = result.mappings().one_or_none()
+
+    stock_info: dict[str, dict] = {}
+    for entity in ("IT01", "IT02", "IT03"):
+        r = await db.execute(
+            select(StockSession.stock_date, StockSession.store_codes_json)
+            .where(StockSession.entity == entity)
+            .order_by(StockSession.stock_date.desc())
+            .limit(1)
+        )
+        sess = r.first()
+        if sess:
+            stock_info[entity] = {
+                "date":        str(sess.stock_date),
+                "store_codes": json.loads(sess.store_codes_json) if sess.store_codes_json else [],
+            }
+        else:
+            stock_info[entity] = {"date": None, "store_codes": []}
+
+    return {
+        "total_items":          int(row["total_items"])          if row else 0,
+        "items_with_promo":     int(row["items_with_promo"])     if row else 0,
+        "items_with_bf":        int(row["items_with_bf"])        if row else 0,
+        "items_with_eccezione": int(row["items_with_eccezione"]) if row else 0,
+        "items_bestseller":     int(row["items_bestseller"])     if row else 0,
+        "items_scrap_inv":      int(row["items_scrap_inv"])      if row else 0,
+        "items_scrap_wd":       int(row["items_scrap_wd"])       if row else 0,
+        "items_picking":        int(row["items_picking"])        if row else 0,
+        "stock_date_it01":      stock_info["IT01"]["date"],
+        "stock_date_it02":      stock_info["IT02"]["date"],
+        "stock_date_it03":      stock_info["IT03"]["date"],
+        "store_codes_it01":     stock_info["IT01"]["store_codes"],
+        "store_codes_it02":     stock_info["IT02"]["store_codes"],
+        "store_codes_it03":     stock_info["IT03"]["store_codes"],
+    }
+
+
+async def export_alldata_xlsx(db: AsyncSession) -> io.BytesIO:
+    result = await db.execute(text("SELECT * FROM ho.v_alldata ORDER BY item_no"))
+    rows = result.mappings().all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ALLDATA"
+
+    if not rows:
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf
+
+    # Raccogli tutti i codici negozio presenti nei JSONB
+    stores: dict[str, set[str]] = {"IT01": set(), "IT02": set(), "IT03": set()}
+    for row in rows:
+        for ent, key in (("IT01", "stock_it01"), ("IT02", "stock_it02"), ("IT03", "stock_it03")):
+            if row[key]:
+                stores[ent].update(row[key].keys())
+    sc = {e: sorted(v) for e, v in stores.items()}
+
+    headers = [
+        "No.", "Description", "Description Local", "Warehouse",
+        "Last Cost", "Unit Price", "Item Cat", "Net Weight", "Barcode",
+        "VAT Code", "Units/Pack", "Model Store", "Batteries", "First RP",
+        "Category", "Barcode Ext", "VAT %", "GM %",
+        "Description1", "Description2", "Modulo", "Model Store Portale",
+        "Modulo Numerico", "Model Store Portale Num",
+        "Prezzo Promo", "Costo Promo", "Prezzo BF", "Costo BF",
+        "Ecc. Prezzo 1", "Ecc. Prezzo 2", "Ecc. Sconto",
+        "Ecc. Testo", "Ecc. Testo2", "Ecc. Categoria", "Ecc. Tipo",
+        "BestSeller", "Scrap Inv", "Scrap WD", "Picking",
+        "ADM IT01", "ADM IT02", "ADM IT03",
+    ]
+    headers += [f"IT01 {s}" for s in sc["IT01"]]
+    headers += [f"IT02 {s}" for s in sc["IT02"]]
+    headers += [f"IT03 {s}" for s in sc["IT03"]]
+    ws.append(headers)
+
+    def _n(v):
+        return float(v) if v is not None else None
+
+    for row in rows:
+        fixed = [
+            row["item_no"], row["description"], row["description_local"],
+            row["warehouse"], _n(row["last_cost"]), _n(row["unit_price"]),
+            row["item_cat"], _n(row["net_weight"]), row["barcode"],
+            row["vat_code"], row["units_per_pack"], row["model_store"],
+            row["batteries"], row["first_rp"], row["category"], row["barcode_ext"],
+            _n(row["vat_pct"]), _n(row["gm_pct"]),
+            row["description1"], row["description2"], row["modulo"],
+            row["model_store_portale"], _n(row["modulo_numerico"]), _n(row["model_store_portale_num"]),
+            _n(row["prezzo_promo"]), _n(row["costo_promo"]),
+            _n(row["prezzo_bf"]),    _n(row["costo_bf"]),
+            _n(row["eccezione_prezzo_1"]), _n(row["eccezione_prezzo_2"]),
+            row["eccezione_sconto"], row["eccezione_testo"], row["eccezione_testo2"],
+            row["eccezione_categoria"], row["eccezione_tipo"],
+            row["is_bestseller"], row["is_scrap_inv"], row["is_scrap_wd"], row["is_picking"],
+            row["adm_it01"], row["adm_it02"], row["adm_it03"],
+        ]
+        s1 = row["stock_it01"] or {}
+        s2 = row["stock_it02"] or {}
+        s3 = row["stock_it03"] or {}
+        fixed += [s1.get(s, 0) for s in sc["IT01"]]
+        fixed += [s2.get(s, 0) for s in sc["IT02"]]
+        fixed += [s3.get(s, 0) for s in sc["IT03"]]
+        ws.append(fixed)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
 async def export_stock_xlsx(
     db: AsyncSession,
     session_id: int,

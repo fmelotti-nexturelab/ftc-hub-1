@@ -37,6 +37,10 @@ const TABS = [
 const IMPORT_STEPS = [
   "Caricamento file nel database...",
   "Generazione file di archivio (tbl_ItemM, ItemM, ItemListPortale)...",
+  "Sincronizzazione ExpoList (TABLE / WALL)...",
+  "Sincronizzazione EcoList (articoli ECO)...",
+  "Sincronizzazione Eccezioni & BestSeller...",
+  "Sincronizzazione KGL (pesi corretti)...",
 ]
 
 function formatDate(iso) {
@@ -83,10 +87,11 @@ export default function ItemListPage() {
   const [importDone, setImportDone] = useState(false)
   const [importResult, setImportResult] = useState(null)
 
-  const { data: sessions = [], isLoading: loadingSessions } = useQuery({
+  const { data: sessions = [], isLoading: loadingSessions, isError: sessionsError, error: sessionsErrorDetail } = useQuery({
     queryKey: ["items-sessions", "IT01"],
     queryFn: () => itemsApi.getSessionsIT01().then(r => r.data),
     staleTime: 30_000,
+    retry: 1,
   })
 
   const { data: tblInfo, isLoading: loadingTbl } = useQuery({
@@ -302,6 +307,115 @@ export default function ItemListPage() {
     }
   }
 
+  async function syncExpoListIfChanged() {
+    try {
+      // Chiede all'agent la data di ultima modifica del file
+      const mtimeRes = await fetch(`${AGENT_URL}/expo-list-mtime`, { signal: AbortSignal.timeout(4000) })
+      if (!mtimeRes.ok) return { status: "warning", msg: "Agent non raggiungibile per ExpoList" }
+      const { exists, mtime } = await mtimeRes.json()
+      if (!exists) return { status: "warning", msg: "File tbl_ExpoList.xlsm non trovato sul percorso configurato" }
+
+      // Confronta con l'ultimo sync in DB
+      const { data: syncInfo } = await itemsApi.getExpoListLastSync()
+      const lastSync = syncInfo.last_sync ? new Date(syncInfo.last_sync) : null
+      const fileMtime = new Date(mtime)
+      if (lastSync && fileMtime <= lastSync) {
+        return { status: "done", msg: "ExpoList già aggiornata (file non modificato)" }
+      }
+
+      // File cambiato → leggi e sincronizza
+      const dataRes = await fetch(`${AGENT_URL}/expo-list-data`, { signal: AbortSignal.timeout(15000) })
+      if (!dataRes.ok) return { status: "warning", msg: "Errore lettura ExpoList dall'agent" }
+      const { items, count } = await dataRes.json()
+      if (!count) return { status: "warning", msg: "ExpoList vuota o nessun dato valido nel file" }
+
+      await itemsApi.syncExpoList(items)
+      return { status: "done", msg: `${count.toLocaleString("it-IT")} articoli sincronizzati (TABLE/WALL)` }
+    } catch (e) {
+      return { status: "warning", msg: e.message || "Errore sincronizzazione ExpoList" }
+    }
+  }
+
+  async function syncEcoListIfChanged() {
+    try {
+      const mtimeRes = await fetch(`${AGENT_URL}/eco-list-mtime`, { signal: AbortSignal.timeout(4000) })
+      if (!mtimeRes.ok) return { status: "warning", msg: "Agent non raggiungibile per EcoList" }
+      const { exists, mtime } = await mtimeRes.json()
+      if (!exists) return { status: "warning", msg: "File tbl_ECO.xlsx non trovato sul percorso configurato" }
+
+      const { data: syncInfo } = await itemsApi.getEcoListLastSync()
+      const lastSync = syncInfo.last_sync ? new Date(syncInfo.last_sync) : null
+      const fileMtime = new Date(mtime)
+      if (lastSync && fileMtime <= lastSync) {
+        return { status: "done", msg: "EcoList già aggiornata (file non modificato)" }
+      }
+
+      const dataRes = await fetch(`${AGENT_URL}/eco-list-data`, { signal: AbortSignal.timeout(15000) })
+      if (!dataRes.ok) return { status: "warning", msg: "Errore lettura EcoList dall'agent" }
+      const { items, count } = await dataRes.json()
+      if (!count) return { status: "warning", msg: "EcoList vuota o nessun dato valido nel file" }
+
+      await itemsApi.syncEcoList(items)
+      return { status: "done", msg: `${count.toLocaleString("it-IT")} articoli ECO sincronizzati` }
+    } catch (e) {
+      return { status: "warning", msg: e.message || "Errore sincronizzazione EcoList" }
+    }
+  }
+
+  async function syncEccezioniIfChanged() {
+    try {
+      const mtimeRes = await fetch(`${AGENT_URL}/eccezioni-mtime`, { signal: AbortSignal.timeout(4000) })
+      if (!mtimeRes.ok) return { status: "warning", msg: "Agent non raggiungibile per Eccezioni" }
+      const { exists, mtime } = await mtimeRes.json()
+      if (!exists) return { status: "warning", msg: "File tbl_Eccezioni.xlsm non trovato sul percorso configurato" }
+
+      const { data: syncInfo } = await itemsApi.getEccezioniLastSync()
+      const lastSync = syncInfo.last_sync ? new Date(syncInfo.last_sync) : null
+      const fileMtime = new Date(mtime)
+      if (lastSync && fileMtime <= lastSync) {
+        return { status: "done", msg: "Eccezioni & BestSeller già aggiornati (file non modificato)" }
+      }
+
+      const dataRes = await fetch(`${AGENT_URL}/eccezioni-data`, { signal: AbortSignal.timeout(15000) })
+      if (!dataRes.ok) return { status: "warning", msg: "Errore lettura Eccezioni dall'agent" }
+      const { eccezioni, bestseller, eccezioni_count, bestseller_count } = await dataRes.json()
+
+      await itemsApi.replaceEccezioni(eccezioni, bestseller)
+      return {
+        status: "done",
+        msg: `${eccezioni_count.toLocaleString("it-IT")} eccezioni · ${bestseller_count.toLocaleString("it-IT")} best seller sincronizzati`,
+      }
+    } catch (e) {
+      return { status: "warning", msg: e.message || "Errore sincronizzazione Eccezioni" }
+    }
+  }
+
+  async function syncKglIfChanged() {
+    try {
+      const mtimeRes = await fetch(`${AGENT_URL}/kgl-mtime`, { signal: AbortSignal.timeout(4000) })
+      if (!mtimeRes.ok) return { status: "warning", msg: "Agent non raggiungibile per KGL" }
+      const { exists, mtime } = await mtimeRes.json()
+      if (!exists) return { status: "warning", msg: "File tbl_KGL.xlsm non trovato sul percorso configurato" }
+
+      const { data: syncInfo } = await itemsApi.getKglListLastSync()
+      const lastSync = syncInfo.last_sync ? new Date(syncInfo.last_sync) : null
+      const fileMtime = new Date(mtime)
+      if (lastSync && fileMtime <= lastSync) {
+        return { status: "done", msg: "KGL già aggiornato (file non modificato)" }
+      }
+
+      const dataRes = await fetch(`${AGENT_URL}/kgl-data`, { signal: AbortSignal.timeout(15000) })
+      if (!dataRes.ok) return { status: "warning", msg: "Errore lettura KGL dall'agent" }
+      const { items, count } = await dataRes.json()
+      if (!count) return { status: "warning", msg: "KGL vuoto o nessun dato valido nel file" }
+
+      await itemsApi.syncKglList(items)
+      return { status: "done", msg: `${count.toLocaleString("it-IT")} pesi corretti sincronizzati` }
+    } catch (e) {
+      return { status: "warning", msg: e.message || "Errore sincronizzazione KGL" }
+    }
+  }
+
   async function handleImporta() {
     if (!fileObj) return
     setImporting(true)
@@ -326,6 +440,26 @@ export default function ItemListPage() {
         const genMsg = genErr.response?.data?.detail || genErr.message || "Errore generazione file"
         setStep(1, "warning", genMsg)
       }
+
+      // ── Step 2: Sincronizzazione ExpoList ──────────────────────────────────
+      setStep(2, "running")
+      const expoResult = await syncExpoListIfChanged()
+      setStep(2, expoResult.status, expoResult.msg)
+
+      // ── Step 3: Sincronizzazione EcoList ───────────────────────────────────
+      setStep(3, "running")
+      const ecoResult = await syncEcoListIfChanged()
+      setStep(3, ecoResult.status, ecoResult.msg)
+
+      // ── Step 4: Sincronizzazione Eccezioni & BestSeller ────────────────────
+      setStep(4, "running")
+      const eccResult = await syncEccezioniIfChanged()
+      setStep(4, eccResult.status, eccResult.msg)
+
+      // ── Step 5: Sincronizzazione KGL (pesi corretti) ───────────────────────
+      setStep(5, "running")
+      const kglResult = await syncKglIfChanged()
+      setStep(5, kglResult.status, kglResult.msg)
 
       setImportResult({ row_count: data.row_count })
       setFileObj(null)
@@ -631,7 +765,7 @@ export default function ItemListPage() {
           </div>
 
           {/* ── Tabella anagrafe ITEM IT01 da Check Prices ── */}
-          <ItemListTable entity="IT01" session={currentSession} loadingSession={loadingSessions} tblInfo={tblInfo} loadingTbl={loadingTbl} onDownload={handleDownloadIT01} downloading={downloadingIT01} onNewImport={resetFile} />
+          <ItemListTable entity="IT01" session={currentSession} loadingSession={loadingSessions} sessionError={sessionsError ? (sessionsErrorDetail?.response?.data?.detail || sessionsErrorDetail?.message || "Errore caricamento sessioni") : null} tblInfo={tblInfo} loadingTbl={loadingTbl} onDownload={handleDownloadIT01} downloading={downloadingIT01} onNewImport={resetFile} />
         </>
       )}
 
@@ -666,7 +800,7 @@ export default function ItemListPage() {
 }
 
 // ── Componente tabella anagrafe ITEM generico (IT01, IT02, ...) ──────────────
-export function ItemListTable({ entity, session = null, loadingSession = false, tblInfo = null, loadingTbl = false, onDownload = null, downloading = false, onNewImport = null }) {
+export function ItemListTable({ entity, session = null, loadingSession = false, sessionError = null, tblInfo = null, loadingTbl = false, onDownload = null, downloading = false, onNewImport = null }) {
   const [loading, setLoading] = useState(true)
   const [entry, setEntry] = useState(null)
   const [search, setSearch] = useState("")
@@ -842,6 +976,10 @@ export function ItemListTable({ entity, session = null, loadingSession = false, 
           ) : loadingSession ? (
             <span className="flex items-center gap-1 text-gray-400">
               <Loader2 size={10} className="animate-spin" aria-hidden="true" /> Caricamento...
+            </span>
+          ) : sessionError ? (
+            <span className="flex items-center gap-1 text-red-500">
+              <AlertCircle size={10} aria-hidden="true" /> Errore API: {sessionError}
             </span>
           ) : (
             <span className="text-gray-400">Nessun caricamento effettuato</span>

@@ -109,7 +109,7 @@ async def tbl_info(db: AsyncSession = Depends(get_db)):
             )
             user = user_result.scalar_one_or_none()
             if user:
-                created_by = f"{user.first_name} {user.last_name}".strip() or user.email
+                created_by = (user.full_name or "").strip() or user.email
 
     return {
         "exists": True,
@@ -128,11 +128,11 @@ async def list_sessions(db: AsyncSession = Depends(get_db)):
     users: dict = {}
     if user_ids:
         rows = await db.execute(
-            select(User.id, User.first_name, User.last_name, User.email)
+            select(User.id, User.full_name, User.email)
             .where(User.id.in_(user_ids))
         )
         for row in rows:
-            users[row.id] = f"{row.first_name} {row.last_name}".strip() or row.email
+            users[row.id] = (row.full_name or "").strip() or row.email
 
     return [
         {

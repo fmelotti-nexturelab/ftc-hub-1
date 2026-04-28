@@ -39,8 +39,8 @@ class StockItem(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     session_id = Column(BigInteger, ForeignKey("ho.stock_sessions.id", ondelete="CASCADE"), nullable=False)
     item_no = Column(String(50), nullable=False)
-    description = Column(String(500), nullable=False, default="")
-    description_local = Column(String(500), nullable=False, default="")
+    description = Column(Text, nullable=False, default="")
+    description_local = Column(Text, nullable=False, default="")
     adm_stock = Column(Integer, nullable=False, default=0)
 
     session = relationship("StockSession", back_populates="items")

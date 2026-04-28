@@ -225,3 +225,35 @@ class ItemPicking(Base):
     item_no = Column(String(50), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExpoList(Base):
+    """Tipo esposizione per articolo: TABLE (etichetta grande) o WALL (etichetta piccola)."""
+    __tablename__ = "expo_list"
+    __table_args__ = {"schema": "ho"}
+
+    item_no   = Column(String(50), primary_key=True)
+    expo_type = Column(String(10), nullable=False)
+    synced_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    synced_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="SET NULL"), nullable=True)
+
+
+class EcoList(Base):
+    """Articoli ECO — lista presenza da tbl_ECO.xlsx."""
+    __tablename__ = "eco_list"
+    __table_args__ = {"schema": "ho"}
+
+    item_no   = Column(String(50), primary_key=True)
+    synced_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    synced_by = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="SET NULL"), nullable=True)
+
+
+class KglList(Base):
+    """Peso corretto per articolo da tbl_KGL.xlsm (col D = PESO CORRETTO)."""
+    __tablename__ = "kgl_list"
+    __table_args__ = {"schema": "ho"}
+
+    item_no       = Column(String(50), primary_key=True)
+    peso_corretto = Column(Numeric(10, 4), nullable=False)
+    synced_at     = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    synced_by     = Column(UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="SET NULL"), nullable=True)

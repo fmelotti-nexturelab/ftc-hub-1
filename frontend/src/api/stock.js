@@ -32,6 +32,10 @@ export const stockApi = {
   admExtract: (stockDate, onDownloadProgress) =>
     apiClient.get("/api/stock/adm-extract", { params: { stock_date: stockDate }, responseType: "blob", onDownloadProgress }),
   deleteSession: (sessionId) => apiClient.delete(`/api/stock/sessions/${sessionId}`),
+  getAlldataStats: () => apiClient.get("/api/stock/alldata/stats"),
+  getAlldata: (params) => apiClient.get("/api/stock/alldata", { params }),
+  exportAlldata: (onDownloadProgress) =>
+    apiClient.get("/api/stock/alldata/export", { responseType: "blob", onDownloadProgress }),
   getStats: () => apiClient.get("/api/stock/stats"),
   getArchiveDates: (fileType, entity) =>
     apiClient.get("/api/archive/dates", { params: { file_type: fileType, entity } }),

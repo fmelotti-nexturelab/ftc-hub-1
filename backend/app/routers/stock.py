@@ -14,7 +14,9 @@ from app.models.auth import User
 from app.models.stock import StockItem, StockSession, StockStoreData
 from app.services.stock_service import (
     cleanup_old_sessions,
+    export_alldata_xlsx,
     export_stock_xlsx,
+    get_alldata_stats,
     parse_stock_header,
     save_stock_data,
 )
@@ -533,6 +535,108 @@ async def delete_session(
     await db.delete(sess)
     await db.commit()
     return {"message": "Sessione eliminata"}
+
+
+# ---------------------------------------------------------------------------
+# ALLDATA — vista ho.v_alldata (ItemList + promo + BF + eccezioni + stock)
+# ---------------------------------------------------------------------------
+
+@router.get("/alldata/stats", dependencies=[Depends(_PERM)])
+async def alldata_stats(db: AsyncSession = Depends(get_db)):
+    return await get_alldata_stats(db)
+
+
+@router.get("/alldata", dependencies=[Depends(_PERM)])
+async def alldata_query(
+    page: int = 1,
+    page_size: int = 50,
+    search: str = "",
+    db: AsyncSession = Depends(get_db),
+):
+    where = ""
+    params: dict = {}
+    if search.strip():
+        where = "WHERE item_no ILIKE :search OR description ILIKE :search OR description_local ILIKE :search"
+        params["search"] = f"%{search.strip()}%"
+
+    count_result = await db.execute(text(f"SELECT COUNT(*) FROM ho.v_alldata {where}"), params)
+    total = count_result.scalar()
+
+    rows = await db.execute(
+        text(f"""
+            SELECT item_no, description, description_local,
+                   unit_price, last_cost,
+                   prezzo_promo, costo_promo,
+                   prezzo_bf, costo_bf,
+                   eccezione_prezzo_1, eccezione_sconto, eccezione_testo, eccezione_tipo,
+                   is_bestseller, is_scrap_inv, is_scrap_wd, is_picking,
+                   expo_type, is_eco, peso_corretto,
+                   adm_it01, adm_it02, adm_it03,
+                   stock_it01, stock_it02, stock_it03,
+                   category, model_store, barcode, units_per_pack
+            FROM ho.v_alldata
+            {where}
+            ORDER BY item_no
+            LIMIT :limit OFFSET :offset
+        """),
+        {**params, "limit": page_size, "offset": (page - 1) * page_size},
+    )
+
+    def _f(v):
+        return float(v) if v is not None else None
+
+    return {
+        "items": [
+            {
+                "item_no":           r["item_no"],
+                "description":       r["description"],
+                "description_local": r["description_local"],
+                "unit_price":        _f(r["unit_price"]),
+                "last_cost":         _f(r["last_cost"]),
+                "prezzo_promo":      _f(r["prezzo_promo"]),
+                "costo_promo":       _f(r["costo_promo"]),
+                "prezzo_bf":         _f(r["prezzo_bf"]),
+                "costo_bf":          _f(r["costo_bf"]),
+                "eccezione_prezzo_1": _f(r["eccezione_prezzo_1"]),
+                "eccezione_sconto":  r["eccezione_sconto"],
+                "eccezione_testo":   r["eccezione_testo"],
+                "eccezione_tipo":    r["eccezione_tipo"],
+                "is_bestseller":     r["is_bestseller"],
+                "is_scrap_inv":      r["is_scrap_inv"],
+                "is_scrap_wd":       r["is_scrap_wd"],
+                "is_picking":        r["is_picking"],
+                "expo_type":         r["expo_type"],
+                "is_eco":            r["is_eco"],
+                "peso_corretto":     _f(r["peso_corretto"]),
+                "adm_it01":          r["adm_it01"],
+                "adm_it02":          r["adm_it02"],
+                "adm_it03":          r["adm_it03"],
+                "stock_it01":        r["stock_it01"] or {},
+                "stock_it02":        r["stock_it02"] or {},
+                "stock_it03":        r["stock_it03"] or {},
+                "category":          r["category"],
+                "model_store":       r["model_store"],
+                "barcode":           r["barcode"],
+                "units_per_pack":    r["units_per_pack"],
+            }
+            for r in rows.mappings()
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@router.get("/alldata/export", dependencies=[Depends(_PERM)])
+async def alldata_export(db: AsyncSession = Depends(get_db)):
+    buf = await export_alldata_xlsx(db)
+    from datetime import date as _date
+    filename = f"ALLDATA_{_date.today().isoformat().replace('-', '')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------

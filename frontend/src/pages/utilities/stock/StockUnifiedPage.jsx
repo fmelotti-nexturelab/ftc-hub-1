@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Package, LogOut, Scissors, FileOutput, PlayCircle, Upload, Eye, Search, ArrowLeft } from "lucide-react"
+import { Package, LogOut, Scissors, FileOutput, PlayCircle, Upload, Eye, Search, ArrowLeft, Database } from "lucide-react"
 import { stockApi } from "@/api/stock"
 import StockPage from "./StockPage"
 import StockUploadDialog from "./components/StockUploadDialog"
@@ -9,6 +9,7 @@ import GeneraTuttiModal from "./components/GeneraTuttiModal"
 import StockSplitModal from "./components/StockSplitModal"
 import EstraiAdmModal from "./components/EstraiAdmModal"
 import StockConsultaEntityView from "./components/StockConsultaEntityView"
+import AlldataView from "./components/AlldataView"
 
 const VALID_ENTITIES = ["IT01", "IT02", "IT03"]
 
@@ -35,6 +36,7 @@ export default function StockUnifiedPage() {
   const [showGeneraSingolo, setShowGeneraSingolo]   = useState(false)
   const [showStockSplit, setShowStockSplit]         = useState(false)
   const [showEstraiAdm, setShowEstraiAdm]           = useState(false)
+  const [showAlldataView, setShowAlldataView]       = useState(false)
   const [showUpload, setShowUpload]                 = useState(false)
   const [viewTableMode, setViewTableMode]           = useState(false)
   // Drill-down consulta per entity nel cross-entity mode: null | "IT01" | "IT02" | "IT03"
@@ -127,6 +129,24 @@ export default function StockUnifiedPage() {
             onBackToList={() => setViewTableMode(false)}
           />
         </>
+      ) : showAlldataView ? (
+        /* Vista tabella ALLDATA */
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowAlldataView(false)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition"
+            >
+              <ArrowLeft size={13} aria-hidden="true" />
+              Torna alle card
+            </button>
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+              <Database size={15} className="text-purple-600" aria-hidden="true" />
+              Stock ALLDATA
+            </span>
+          </div>
+          <AlldataView />
+        </div>
       ) : consultaEntity ? (
         /* Drill-down consulta: mostra la vista EntityView per la entity selezionata */
         <div className="space-y-3">
@@ -177,6 +197,17 @@ export default function StockUnifiedPage() {
                 </div>
                 <div className="font-semibold text-gray-800">Estrai ADM</div>
                 <div className="text-sm text-gray-500 mt-1">Export ADM a partire dagli stock generati</div>
+              </button>
+
+              <button
+                onClick={() => setShowAlldataView(true)}
+                className="bg-white rounded-xl border border-gray-200 p-6 text-left shadow-sm hover:shadow-md hover:border-purple-400 cursor-pointer transition-all"
+              >
+                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mb-4">
+                  <Database className="text-white" size={22} aria-hidden="true" />
+                </div>
+                <div className="font-semibold text-gray-800">Stock ALLDATA</div>
+                <div className="text-sm text-gray-500 mt-1">Vista unificata ItemList + prezzi + stock tutte le entity</div>
               </button>
             </div>
             <p className="text-xs text-gray-400">

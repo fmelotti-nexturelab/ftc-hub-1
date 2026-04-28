@@ -132,7 +132,7 @@ export default function StampaEtichettePage() {
           // Lookup via requested_code (il token originariamente digitato) se disponibile,
           // altrimenti fallback a zebra (item_no)
           const key = i.requested_code || i.zebra
-          r[i.rowId] = expoByZebra[key] || ""
+          r[i.rowId] = expoByZebra[key] || i.expo_type || ""
         })
         return r
       })
@@ -174,7 +174,7 @@ export default function StampaEtichettePage() {
       if (foundTemplate.has(code)) {
         // Clone client-side: nuova riga, stessa data, nuovo rowId, nuovo expo
         const original = foundTemplate.get(code)
-        clonesToAdd.push({ item: { ...original, rowId: nextRowId() }, expo })
+        clonesToAdd.push({ item: { ...original, rowId: nextRowId() }, expo: expo || original.expo_type || "" })
       } else {
         // Nuovo codice (o duplicato di un codice non ancora in tabella): va al backend.
         // Se già in newCodesExpo, l'expo più recente sostituisce quello vecchio.
@@ -300,7 +300,7 @@ export default function StampaEtichettePage() {
       document.head.appendChild(styleEl)
     }
     if (format === "large") {
-      styleEl.textContent = "@page { size: A4 landscape; margin: 14mm 30mm 14mm 33mm; }"
+      styleEl.textContent = "@page { size: A4 landscape; margin: 23mm 34mm 21mm 34mm; }"
     } else {
       styleEl.textContent = "@page { size: A4 portrait; margin: 16mm 4mm 13mm 23mm; }"
     }

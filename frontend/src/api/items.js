@@ -35,6 +35,7 @@ export const itemsApi = {
   getBlackFriday: () => apiClient.get("/api/items/blackfriday"),
   replaceBlackFriday: (rows) => apiClient.put("/api/items/blackfriday", { rows }),
 
+  getEccezioniLastSync: () => apiClient.get("/api/items/eccezioni/last-sync"),
   getEccezioni: () => apiClient.get("/api/items/eccezioni"),
   replaceEccezioni: (eccezioni, bestseller) => apiClient.put("/api/items/eccezioni", { eccezioni, bestseller }),
   appendEccezioni: (rows) => apiClient.post("/api/items/eccezioni/eccezioni", { rows }),
@@ -65,4 +66,13 @@ export const itemsApi = {
   deletePicking: (ids) => apiClient.delete("/api/items/picking", { data: { ids } }),
 
   enrichLabels: (zebraCodes, mode = "normal") => apiClient.post("/api/items/labels/enrich", { zebra_codes: zebraCodes, mode }),
+
+  getExpoListLastSync: () => apiClient.get("/api/items/expo-list/last-sync"),
+  syncExpoList: (items) => apiClient.post("/api/items/expo-list/sync", { items }),
+
+  getEcoListLastSync: () => apiClient.get("/api/items/eco-list/last-sync"),
+  syncEcoList: (items) => apiClient.post("/api/items/eco-list/sync", { items }),
+
+  getKglListLastSync: () => apiClient.get("/api/items/kgl-list/last-sync"),
+  syncKglList: (items) => apiClient.post("/api/items/kgl-list/sync", { items }),
 }

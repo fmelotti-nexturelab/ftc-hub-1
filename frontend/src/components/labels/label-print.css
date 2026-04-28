@@ -12,14 +12,14 @@
     top: 0; left: 0; width: 100%;
   }
 
-  /* ═══ GRANDI: A4 landscape 3x3 ═══ */
+  /* ═══ GRANDI: A4 landscape 3x3 — celle 77×55mm ═══ */
   .label-page-large {
     page-break-after: always;
-    width: 234mm;
+    width: 231mm;
     display: grid;
-    grid-template-columns: repeat(3, 77.2mm);
-    grid-template-rows: repeat(3, 54.9mm);
-    column-gap: 1.5mm;
+    grid-template-columns: repeat(3, 77mm);
+    grid-template-rows: repeat(3, 55mm);
+    gap: 0;
     padding: 0; margin: 0 auto;
   }
 
@@ -120,9 +120,11 @@
   .label-barcode svg { display: block; }
   .label-zebra {
     font-family: 'FrutigerLight', Helvetica, sans-serif;
-    color: #000;
+    color: #000 !important;
+    -webkit-text-fill-color: #000;
     white-space: nowrap;
     text-align: right;
+    text-decoration: none !important;
   }
   .label-kgl {
     font-family: 'FrutigerLight', Helvetica, sans-serif;

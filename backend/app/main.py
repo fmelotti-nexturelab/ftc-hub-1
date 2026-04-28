@@ -45,6 +45,7 @@ from app.routers.items import scrap_inv as items_scrap_inv_router
 from app.routers.items import scrap_wd as items_scrap_wd_router
 from app.routers.items import picking as items_picking_router
 from app.routers.items import labels as items_labels_router
+from app.routers.items import expo_list as items_expo_list_router
 from app.routers import operator_code as operator_code_router
 from app.routers import app_settings as app_settings_router
 from app.routers.admin import scheduler as admin_scheduler_router
@@ -121,6 +122,7 @@ app.include_router(items_scrap_inv_router.router)
 app.include_router(items_scrap_wd_router.router)
 app.include_router(items_picking_router.router)
 app.include_router(items_labels_router.router)
+app.include_router(items_expo_list_router.router)
 app.include_router(operator_code_router.router)
 app.include_router(app_settings_router.router)
 
