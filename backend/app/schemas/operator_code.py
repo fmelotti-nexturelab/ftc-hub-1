@@ -68,6 +68,10 @@ class BulkRowResult(BaseModel):
     note: str
 
 
+class BulkDeletePayload(BaseModel):
+    ids: List[str]
+
+
 class EvadiPayload(BaseModel):
     email: Optional[str] = None
 

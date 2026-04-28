@@ -35,6 +35,7 @@ from app.schemas.operator_code import (
     PoolPreviewRow,
     PoolPreviewResponse,
     PoolImportPayload,
+    BulkDeletePayload,
 )
 from app.schemas.tickets import TicketCreate
 from app.models.tickets import TicketPriority, Ticket, TicketStatus
@@ -117,17 +118,6 @@ async def _get_cumulative_ticket(db: AsyncSession) -> Optional[Ticket]:
     return result.scalar_one_or_none()
 
 
-async def _auto_close_if_all_evaded(db: AsyncSession) -> None:
-    count_result = await db.execute(
-        select(func.count()).select_from(OperatorCodeRequest)
-        .where(OperatorCodeRequest.is_evaded == False)
-    )
-    if (count_result.scalar() or 0) == 0:
-        ticket = await _get_cumulative_ticket(db)
-        if ticket:
-            ticket.status = TicketStatus.CLOSED
-            ticket.closed_at = datetime.now(timezone.utc)
-            await db.commit()
 
 
 @router.get(
@@ -306,16 +296,110 @@ async def close_ticket(
     if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
         raise HTTPException(403, "Accesso riservato alla gestione IT")
 
-    ticket = await _get_cumulative_ticket(db)
-    if not ticket:
-        raise HTTPException(404, "Nessun ticket aperto trovato")
-
-    from app.schemas.tickets import TicketStatusUpdate
-    await ticket_service.update_status(
-        db, ticket.id, TicketStatusUpdate(status=TicketStatus.CLOSED), current_user
+    # 1. Carica tutte le richieste evase
+    evaded_result = await db.execute(
+        select(OperatorCodeRequest).where(OperatorCodeRequest.is_evaded == True)
     )
+    evaded_reqs = evaded_result.scalars().all()
+    total = len(evaded_reqs)
 
-    return {"message": "Ticket chiuso"}
+    # 2. Upsert in operator_codes
+    inserted = 0
+    for req in evaded_reqs:
+        existing = await db.execute(
+            select(OperatorCode).where(
+                func.lower(OperatorCode.first_name) == req.first_name.lower(),
+                func.lower(OperatorCode.last_name) == req.last_name.lower(),
+                OperatorCode.is_active == True,
+            )
+        )
+        op = existing.scalar_one_or_none()
+        if op:
+            if req.assigned_code:
+                op.code = str(req.assigned_code)
+            if req.assigned_email:
+                op.email = req.assigned_email
+            if req.store_number:
+                op.store_number = req.store_number
+            if req.start_date:
+                op.start_date = req.start_date
+        else:
+            db.add(OperatorCode(
+                first_name=req.first_name,
+                last_name=req.last_name,
+                store_number=req.store_number,
+                start_date=req.start_date,
+                email=req.assigned_email,
+                code=str(req.assigned_code) if req.assigned_code else None,
+                is_active=True,
+                requested_by=req.requested_by,
+            ))
+            inserted += 1
+
+    # 3. Svuota tutte le richieste
+    await db.execute(delete(OperatorCodeRequest))
+    await db.commit()
+
+    # 4. Chiudi il ticket
+    ticket = await _get_cumulative_ticket(db)
+    if ticket:
+        from app.schemas.tickets import TicketStatusUpdate
+        await ticket_service.update_status(
+            db, ticket.id, TicketStatusUpdate(status=TicketStatus.CLOSED), current_user
+        )
+
+    return {"message": "Ticket chiuso", "total": total, "inserted": inserted, "updated": total - inserted}
+
+
+@router.post(
+    "/requests/mark-notified",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def mark_requests_notified(
+    body: BulkDeletePayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    result = await db.execute(
+        select(OperatorCodeRequest).where(
+            cast(OperatorCodeRequest.id, String).in_(body.ids)
+        )
+    )
+    reqs = result.scalars().all()
+    now = datetime.now(timezone.utc)
+    for req in reqs:
+        req.notification_sent_at = now
+    await db.commit()
+    return {"marked": len(reqs)}
+
+
+@router.delete(
+    "/requests/bulk-delete",
+    dependencies=[Depends(_PERM_VIEW)],
+)
+async def bulk_delete_requests(
+    body: BulkDeletePayload,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.department not in ("IT", "ADMIN", "SUPERUSER"):
+        raise HTTPException(403, "Accesso riservato alla gestione IT")
+
+    result = await db.execute(
+        select(OperatorCodeRequest).where(
+            cast(OperatorCodeRequest.id, String).in_(body.ids)
+        )
+    )
+    requests_to_delete = result.scalars().all()
+    for req in requests_to_delete:
+        await db.delete(req)
+
+    await db.commit()
+
+    return {"deleted": len(requests_to_delete)}
 
 
 @router.delete(
@@ -340,7 +424,7 @@ async def process_request(
     await db.delete(req)
     await db.commit()
 
-    await _auto_close_if_all_evaded(db)
+
 
     return {"message": "Richiesta eliminata"}
 
@@ -413,7 +497,7 @@ async def evadi_request(
     req.assigned_email = full_email
 
     await db.commit()
-    await _auto_close_if_all_evaded(db)
+
 
     return {"message": "Richiesta evasa", "assigned_code": next_code, "assigned_password": password}
 
@@ -502,7 +586,7 @@ async def bulk_evadi_requests(
         ).model_dump())
 
     await db.commit()
-    await _auto_close_if_all_evaded(db)
+
 
     ok = sum(1 for r in results if r["status"] == "ok")
     return {"results": results, "ok": ok, "errors": len(results) - ok}
@@ -734,11 +818,16 @@ async def bulk_request(
             requester_name = current_user.full_name or current_user.username
             inserted_count = sum(1 for r in results if r.status == "inserted")
             try:
+                inserted_names = "\n".join(
+                    f"  - {r.last_name} {r.first_name} — {r.store_number}"
+                    for r in results if r.status == "inserted"
+                )
                 ticket_data = TicketCreate(
                     title="Richiesta Codice Operatore",
                     description=(
                         f"Import massivo: {inserted_count} nuove richieste codice operatore in attesa di gestione.\n"
-                        f"Inoltrate da: {requester_name}"
+                        f"Inoltrate da: {requester_name}\n\n"
+                        f"Operatori:\n{inserted_names}"
                     ),
                     category_id=7,
                     subcategory_id=17,
@@ -769,7 +858,6 @@ async def generate_nav_files_endpoint(
 
     nav_filters = [
         OperatorCodeRequest.is_evaded == True,
-        OperatorCodeRequest.exported_at.is_(None),
         OperatorCodeRequest.assigned_code.isnot(None),
     ]
     if ids:
@@ -783,7 +871,7 @@ async def generate_nav_files_endpoint(
     to_export = result.scalars().all()
 
     if not to_export:
-        raise HTTPException(404, "Nessuna richiesta evasa da esportare")
+        return {"files": [], "count": 0}
 
     # Raggruppa per entity
     by_entity: dict = {}
@@ -1121,10 +1209,9 @@ async def request_operator_code(
         ticket_data = TicketCreate(
             title="Richiesta Codice Operatore",
             description=(
-                f"Nuove richieste di codice operatore in attesa di gestione.\n\n"
-                f"Prima richiesta: {data.first_name} {data.last_name} — {data.store_number}\n"
-                f"Data inizio: {data.start_date.strftime('%d/%m/%Y')}\n"
-                f"Inoltrata da: {requester_name}"
+                f"Nuove richieste di codice operatore in attesa di gestione.\n"
+                f"Inoltrata da: {requester_name}\n\n"
+                f"Operatori:\n  - {data.last_name} {data.first_name} — {data.store_number}"
             ),
             category_id=7,
             subcategory_id=17,

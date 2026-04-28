@@ -132,7 +132,7 @@ def _build_operator_code_email(
           <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;">
             <strong style="color:#1e3a5f;">{assigned_email}</strong>
           </td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;">
+          <td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;white-space:nowrap;">
             <strong>Tiger2023!</strong>
             <span style="font-size:11px;color:#9ca3af;margin-left:6px;">(cambiare al primo utilizzo)</span>
           </td>
@@ -159,19 +159,11 @@ def _build_operator_code_email(
           <td style="background:#1e3a5f;padding:28px 32px;">
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td>
-                  <div style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:1px;">
-                    flying tiger <span style="font-weight:300;">copenhagen</span>
-                  </div>
-                  <div style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:4px;letter-spacing:0.5px;">
-                    SOUTH EUROPE — IT DEPARTMENT
-                  </div>
-                </td>
+                <td></td>
                 <td align="right">
-                  <div style="background:rgba(255,255,255,0.12);border-radius:8px;padding:8px 14px;display:inline-block;">
-                    <span style="font-size:12px;color:rgba(255,255,255,0.8);font-weight:600;letter-spacing:0.5px;">
-                      CODICE OPERATORE
-                    </span>
+                  <div style="text-align:right;">
+                    <div style="font-size:11px;color:rgba(255,255,255,0.6);font-weight:600;letter-spacing:0.5px;">CODICE OPERATORE</div>
+                    <div style="font-size:15px;color:#ffffff;font-weight:900;letter-spacing:0.5px;margin-top:3px;">{last_name.upper()} {first_name.upper()}</div>
                   </div>
                 </td>
               </tr>
@@ -195,7 +187,7 @@ def _build_operator_code_email(
         <tr>
           <td style="padding:32px;">
 
-            <p style="margin:0 0 6px;font-size:16px;color:#111827;">Ciao <strong>{recipient_name}</strong>,</p>
+            <p style="margin:0 0 6px;font-size:16px;color:#111827;">Ciao,</p>
             <p style="margin:0 0 24px;font-size:14px;color:#6b7280;line-height:1.6;">
               ti informiamo che è stato assegnato un nuovo codice operatore per il negozio
               <strong style="color:#1e3a5f;">{store_number}</strong>.
@@ -291,7 +283,7 @@ async def notify_operator_code_assigned(
     sender_email: Optional[str] = None,
 ) -> None:
     """Invia email a SM e DM del negozio con i dati del nuovo operatore."""
-    subject = f"[FTC HUB] Nuovo operatore assegnato — {store_number}"
+    subject = f"Cod.Op {last_name}"
     from_header = (
         f"{sender_name} <{sender_email}>"
         if sender_name and sender_email

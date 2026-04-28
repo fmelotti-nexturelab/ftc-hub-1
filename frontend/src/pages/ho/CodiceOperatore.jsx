@@ -480,7 +480,9 @@ function ColumnImportWizard({ onImport, isImporting, onClose }) {
       // Converte dd/mm/yyyy → yyyy-mm-dd
       const p = sd.split("/")
       if (p.length === 3) sd = `${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`
-      const sn = (data.store_numbers[i] || "").toUpperCase()
+      const raw = (data.store_numbers[i] || "").toUpperCase()
+      // IT101 (5 char) → IT01001 (7 char): entity digit padded to 2, store digits padded to 3
+      const sn = raw.length === 5 ? raw.slice(0, 2) + raw[2].padStart(2, "0") + raw.slice(3).padStart(3, "0") : raw
       return {
         last_name:    ln[0].toUpperCase() + ln.slice(1).toLowerCase(),
         first_name:   (data.first_names[i] || "")[0]?.toUpperCase() + (data.first_names[i] || "").slice(1).toLowerCase(),
@@ -1042,7 +1044,7 @@ function EmailPreviewModal({ results, onClose, onConfirm, isSending }) {
               </div>
               <div className="text-gray-400">
                 <strong className="text-gray-500">Oggetto:</strong>{" "}
-                [FTC HUB] Nuovo operatore assegnato — {current.store_number}
+                Cod.Op {current.last_name}
               </div>
             </div>
             {current.html_preview ? (
@@ -1254,14 +1256,14 @@ function _formatDateDMY(isoStr) {
 }
 
 // ── Checklist avanzamento workflow ───────────────────────────────────────────
-function WorkflowChecklist({ isInProgress, pending, evaded, generatedFiles, dynamicCopied }) {
+function WorkflowChecklist({ isInProgress, pending, evaded, generatedFiles, notifyDone, dynamicCopied }) {
   if (!isInProgress && evaded.length === 0) return null
 
   const steps = [
     { label: "Presa in carico",   done: isInProgress || evaded.length > 0 },
     { label: "Evasione",          done: evaded.length > 0 && pending.length === 0 },
     { label: "File NAV",          done: generatedFiles.length > 0 },
-    { label: "Notifiche SM/DM",   done: evaded.some(r => r.notification_sent_at) },
+    { label: "Notifiche SM/DM",   done: notifyDone || evaded.some(r => r.notification_sent_at) },
     { label: "Dynamic.xlsx",      done: dynamicCopied },
   ]
   const doneCount = steps.filter(s => s.done).length
@@ -1307,6 +1309,10 @@ function GestioneView() {
   const [emailPreview, setEmailPreview] = useState(null)
   const [selectedEvaded, setSelectedEvaded] = useState(new Set())
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [selectedPending, setSelectedPending] = useState(new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [notifyShown, setNotifyShown] = useState(false)
+  const [closeResult, setCloseResult] = useState(null)
   const [dynamicRows, setDynamicRows] = useState(null)
   const [dynamicCopied, setDynamicCopied] = useState(false)
 
@@ -1376,20 +1382,43 @@ function GestioneView() {
   })
 
   const notifyMutation = useMutation({
-    mutationFn: ({ preview, ids, overrides = [] }) => operatorCodeApi.notifyOperators(preview, ids, overrides),
-    onSuccess: (res, { preview }) => {
-      if (preview) {
-        setEmailPreview(res.data)
-      } else {
-        setEmailPreview(null)
-        setSelectedEvaded(new Set())
-        setNotifyResult(res.data)
-        queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
-        const toExport = evaded.filter(r => r.assigned_email && !r.notification_sent_at)
-        if (toExport.length > 0) {
-          prepareDynamicRows(toExport)
-        }
+    mutationFn: ({ ids, overrides = [] }) => operatorCodeApi.notifyOperators(true, ids, overrides),
+    onSuccess: (res) => { setEmailPreview(res.data); setNotifyShown(true) },
+  })
+
+  const notifyViaAgentMutation = useMutation({
+    mutationFn: async ({ ids, previewResults, overrides = [] }) => {
+      const results = previewResults ??
+        (await operatorCodeApi.notifyOperators(true, ids, overrides)).data.results
+      const overrideMap = Object.fromEntries(overrides.map(o => [o.request_id, o]))
+      const sent = []
+      for (const item of results) {
+        if (item.error || !item.html_preview) continue
+        const smMail = overrideMap[item.request_id]?.sm_mail ?? item.sm_mail
+        const dmMail = overrideMap[item.request_id]?.dm_mail ?? item.dm_mail
+        const to = [smMail, dmMail].filter(Boolean).join(";")
+        if (!to) continue
+        const subject = `Cod.Op ${item.last_name}`
+        try {
+          const res = await fetch("http://localhost:9999/mail", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subject, html: item.html_preview, to, cc: "" }),
+          })
+          if (res.ok) sent.push(item.request_id)
+        } catch {}
       }
+      if (sent.length) await operatorCodeApi.markNotified(sent)
+      return { sent: sent.length, total: results.filter(r => !r.error && r.html_preview).length }
+    },
+    onSuccess: ({ sent, total }) => {
+      setEmailPreview(null)
+      setSelectedEvaded(new Set())
+      setNotifyResult({ sent, skipped: total - sent, results: [] })
+      setNotifyShown(true)
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      const toExport = evaded.filter(r => r.assigned_email && !r.notification_sent_at)
+      if (toExport.length > 0) prepareDynamicRows(toExport)
     },
   })
 
@@ -1402,9 +1431,20 @@ function GestioneView() {
     },
   })
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => operatorCodeApi.bulkDeleteRequests(ids),
+    onSuccess: () => {
+      setSelectedPending(new Set())
+      setConfirmBulkDelete(false)
+      queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
+      queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
+    },
+  })
+
   const closeTicketMutation = useMutation({
     mutationFn: () => operatorCodeApi.closeTicket(),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      setCloseResult(res.data)
       setNotifyResult(null)
       setDynamicRows(null)
       setDynamicCopied(false)
@@ -1413,6 +1453,7 @@ function GestioneView() {
       setEmailPreview(null)
       setBulkEvadiResult(null)
       setEmailSendEnabled(false)
+      setNotifyShown(false)
       queryClient.invalidateQueries({ queryKey: ["operator-code-requests"] })
       queryClient.invalidateQueries({ queryKey: ["sidebar-opcode-badge"] })
     },
@@ -1458,11 +1499,27 @@ function GestioneView() {
         const bytes = new Uint8Array(binary.length)
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
         const subFolder = await navFolder.getDirectoryHandle(entity, { create: true })
-        const fileHandle = await subFolder.getFileHandle(filename, { create: true })
+
+        // Trova un nome libero: se esiste già aggiunge _1, _2, ...
+        const dot = filename.lastIndexOf(".")
+        const base = dot >= 0 ? filename.slice(0, dot) : filename
+        const ext = dot >= 0 ? filename.slice(dot) : ""
+        let finalName = filename
+        try {
+          await subFolder.getFileHandle(filename, { create: false })
+          // File esiste — cerca progressivo libero
+          for (let n = 1; n <= 99; n++) {
+            const candidate = `${base}_${n}${ext}`
+            try { await subFolder.getFileHandle(candidate, { create: false }) }
+            catch { finalName = candidate; break }
+          }
+        } catch { /* file non esiste, usa il nome originale */ }
+
+        const fileHandle = await subFolder.getFileHandle(finalName, { create: true })
         const writable = await fileHandle.createWritable()
         await writable.write(bytes)
         await writable.close()
-        written.push(`NAV - MigrationTool/${entity}/${filename}`)
+        written.push(`NAV - MigrationTool/${entity}/${finalName}`)
       }
       return written
     },
@@ -1517,14 +1574,45 @@ function GestioneView() {
       {emailPreview && (
         <EmailPreviewModal
           results={emailPreview.results}
-          isSending={notifyMutation.isPending}
+          isSending={notifyViaAgentMutation.isPending}
           onClose={() => setEmailPreview(null)}
-          onConfirm={(overridesList) => notifyMutation.mutate({
-            preview: false,
+          onConfirm={(overridesList) => notifyViaAgentMutation.mutate({
             ids: emailPreview.results.map(r => r.request_id),
+            previewResults: emailPreview.results,
             overrides: overridesList,
           })}
         />
+      )}
+      {closeResult && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => setCloseResult(null)} onKeyDown={e => e.key === "Escape" && setCloseResult(null)}
+          role="button" tabIndex={0} aria-label="Chiudi">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-4 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center">
+              <CheckCircle size={28} className="text-emerald-600" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-800">Ticket chiuso</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-semibold text-gray-700">{closeResult.total}</span> {closeResult.total === 1 ? "richiesta elaborata" : "richieste elaborate"}
+              </p>
+              <div className="flex items-center justify-center gap-4 mt-3">
+                <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold px-3 py-1 rounded-full">
+                  {closeResult.inserted} nuovi operatori
+                </span>
+                <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 font-semibold px-3 py-1 rounded-full">
+                  {closeResult.updated} aggiornati
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setCloseResult(null)}
+              className="w-full py-2.5 bg-[#1e3a5f] hover:bg-[#2563eb] text-white text-sm font-semibold rounded-xl shadow transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+            >
+              Chiudi
+            </button>
+          </div>
+        </div>
       )}
       {bulkEvadiResult && (
         <BulkEvadiResultModal
@@ -1590,6 +1678,7 @@ function GestioneView() {
         pending={pending}
         evaded={evaded}
         generatedFiles={generatedFiles}
+        notifyDone={notifyShown}
         dynamicCopied={dynamicCopied}
       />
 
@@ -1669,44 +1758,92 @@ function GestioneView() {
       )}
 
       {/* Chiudi ticket */}
-      {dynamicRows && (
-        <div className="flex justify-end">
-          <button
-            onClick={() => closeTicketMutation.mutate()}
-            disabled={closeTicketMutation.isPending}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition"
-          >
-            <CheckCircle size={16} aria-hidden="true" />
-            {closeTicketMutation.isPending ? "Chiusura…" : "Chiudi ticket"}
-          </button>
-        </div>
-      )}
+      {(() => {
+        const allStepsDone =
+          (isInProgress || evaded.length > 0) &&
+          (evaded.length > 0 && pending.length === 0) &&
+          generatedFiles.length > 0 &&
+          (notifyShown || evaded.some(r => r.notification_sent_at)) &&
+          dynamicCopied
+        return allStepsDone ? (
+          <div className="flex justify-end">
+            <button
+              onClick={() => closeTicketMutation.mutate()}
+              disabled={closeTicketMutation.isPending}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xl shadow transition focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              <CheckCircle size={16} aria-hidden="true" />
+              {closeTicketMutation.isPending ? "Chiusura…" : "Chiudi ticket"}
+            </button>
+          </div>
+        ) : null
+      })()}
 
       {/* Tabella IN ATTESA */}
       {pending.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-600">
-              {pending.length} {pending.length === 1 ? "richiesta in attesa" : "richieste in attesa"}
-            </span>
-            <button
-              onClick={() => {
-                const rows = pending.map(req => ({
-                  id: req.id,
-                  email: (emailMap[req.id] || req.suggested_email || "").replace(/@.*$/, "").trim() || null,
-                }))
-                bulkEvadiMutation.mutate(rows)
-              }}
-              disabled={bulkEvadiMutation.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-green-500"
-            >
-              <CheckCircle size={13} aria-hidden="true" />
-              {bulkEvadiMutation.isPending ? "Evasione…" : `Evadi tutte (${pending.length})`}
-            </button>
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                aria-label="Seleziona tutte le richieste in attesa"
+                checked={pending.length > 0 && selectedPending.size === pending.length}
+                onChange={e => setSelectedPending(e.target.checked ? new Set(pending.map(r => r.id)) : new Set())}
+                className="rounded border-gray-300 accent-[#1e3a5f] focus:ring-[#2563eb]"
+              />
+              <span className="text-xs font-semibold text-gray-600">
+                {pending.length} {pending.length === 1 ? "richiesta in attesa" : "richieste in attesa"}
+                {selectedPending.size > 0 && <span className="text-blue-600 ml-1">({selectedPending.size} selezionate)</span>}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedPending.size > 0 && (
+                confirmBulkDelete ? (
+                  <span className="flex items-center gap-1">
+                    <button
+                      onClick={() => bulkDeleteMutation.mutate([...selectedPending])}
+                      disabled={bulkDeleteMutation.isPending}
+                      className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition disabled:opacity-40"
+                    >
+                      {bulkDeleteMutation.isPending ? "…" : `Sì, elimina ${selectedPending.size}`}
+                    </button>
+                    <button
+                      onClick={() => setConfirmBulkDelete(false)}
+                      className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-lg transition"
+                    >
+                      Annulla
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmBulkDelete(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold rounded-lg transition focus-visible:ring-2 focus-visible:ring-red-400"
+                  >
+                    <Trash2 size={13} aria-hidden="true" />
+                    Elimina selezionate ({selectedPending.size})
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => {
+                  const rows = pending.map(req => ({
+                    id: req.id,
+                    email: (emailMap[req.id] || req.suggested_email || "").replace(/@.*$/, "").trim() || null,
+                  }))
+                  bulkEvadiMutation.mutate(rows)
+                }}
+                disabled={bulkEvadiMutation.isPending}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-green-500"
+              >
+                <CheckCircle size={13} aria-hidden="true" />
+                {bulkEvadiMutation.isPending ? "Evasione…" : `Evadi tutte (${pending.length})`}
+              </button>
+            </div>
           </div>
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold">
+                <th scope="col" className="px-2 py-3 text-center w-8"></th>
                 <th scope="col" className="px-4 py-3 text-left">Negozio</th>
                 <th scope="col" className="px-4 py-3 text-left">Cognome</th>
                 <th scope="col" className="px-4 py-3 text-left">Nome</th>
@@ -1721,7 +1858,21 @@ function GestioneView() {
                 const emailPrefix = emailMap[req.id] ?? ""
                 const isPending = evadiMutation.isPending && evadiMutation.variables?.id === req.id
                 return (
-                  <tr key={req.id} className={`border-b border-gray-100 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                  <tr key={req.id} className={`border-b border-gray-100 ${selectedPending.has(req.id) ? "bg-blue-50/40" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                    <td className="px-2 py-2.5 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`Seleziona ${req.first_name} ${req.last_name}`}
+                        checked={selectedPending.has(req.id)}
+                        onChange={e => setSelectedPending(prev => {
+                          const next = new Set(prev)
+                          if (e.target.checked) next.add(req.id)
+                          else next.delete(req.id)
+                          return next
+                        })}
+                        className="rounded border-gray-300 accent-[#1e3a5f] focus:ring-[#2563eb]"
+                      />
+                    </td>
                     <td className="px-4 py-2.5 font-mono text-gray-500">{req.store_number}</td>
                     <td className="px-4 py-2.5 font-medium text-gray-800">{req.last_name}</td>
                     <td className="px-4 py-2.5 text-gray-700">{req.first_name}</td>
@@ -1850,15 +2001,19 @@ function GestioneView() {
               )}
               {(selectedEvaded.size > 0 || evaded.filter(r => !r.notification_sent_at).length > 0) && (
                 <button
-                  onClick={() => notifyMutation.mutate({
-                    preview: !emailSendEnabled,
-                    ids: selectedEvaded.size > 0 ? [...selectedEvaded] : null,
-                  })}
-                  disabled={notifyMutation.isPending}
+                  onClick={() => {
+                    const ids = selectedEvaded.size > 0 ? [...selectedEvaded] : null
+                    if (emailSendEnabled) {
+                      notifyViaAgentMutation.mutate({ ids })
+                    } else {
+                      notifyMutation.mutate({ ids })
+                    }
+                  }}
+                  disabled={notifyMutation.isPending || notifyViaAgentMutation.isPending}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-xs font-semibold rounded-lg shadow transition disabled:opacity-40 focus-visible:ring-2 ${emailSendEnabled ? "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500" : "bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-400"}`}
                 >
                   {emailSendEnabled ? <Send size={13} aria-hidden="true" /> : <Mail size={13} aria-hidden="true" />}
-                  {notifyMutation.isPending
+                  {(notifyMutation.isPending || notifyViaAgentMutation.isPending)
                     ? (emailSendEnabled ? "Invio…" : "Caricamento…")
                     : emailSendEnabled
                       ? `Invia Mail (${selectedEvaded.size > 0 ? selectedEvaded.size : evaded.filter(r => !r.notification_sent_at).length})`
