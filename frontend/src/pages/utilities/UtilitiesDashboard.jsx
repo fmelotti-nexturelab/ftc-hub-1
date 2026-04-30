@@ -1,17 +1,11 @@
 import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Users, Settings2, Database, TableProperties, Clock } from "lucide-react"
+import { Users, Settings2, Database, Clock, CalendarDays, Layers } from "lucide-react"
 import { utilitiesApi } from "@/api/utilities"
 import { useAuthStore } from "@/store/authStore"
 
 // Genera Tabelle è un contenitore: visibile se almeno una delle sue sotto-utility è abilitata
 const GENERA_CODES = ["utilities_stock_nav", "items_view", "check_prezzi"]
-
-function SectionTitle({ children }) {
-  return (
-    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">{children}</h3>
-  )
-}
 
 function CardButton({ path, icon: Icon, label, color, desc, soon, navigate }) {
   return (
@@ -53,30 +47,28 @@ export default function UtilitiesDashboard() {
     ] : []),
     ...(isItAdmin ? [
       { path: "/admin/scheduler", icon: Clock, label: "Task Scheduler", color: "bg-[#1e3a5f]", desc: "Gestisci i task schedulati del sistema" },
+      { path: "/ho/daily-activity", icon: CalendarDays, label: "Attività Giornaliere", color: "bg-[#1e3a5f]", desc: "Checklist operativa giornaliera con storico completamenti" },
     ] : []),
   ]
 
-  // Database
-  const dbModules = [
-    ...(!isError && access && GENERA_CODES.some((c) => access[c]?.can_manage) ? [
-      { path: "/utilities/genera-tabelle", icon: Database, label: "Genera Tabelle Database", color: "bg-violet-600", desc: "Genera le tabelle per i tool" },
-    ] : []),
-    ...(!isError && access && ["utilities_stores", "utilities_stock_nav", "utilities_sales", "items_view"].some((c) => access[c]?.can_view) ? [
-      { path: "/utilities/consulta-database", icon: TableProperties, label: "Consulta Tabelle Database", color: "bg-blue-500", desc: "Vedi il contenuto delle tabelle" },
-    ] : []),
-  ]
+  const generaTabella = !isError && access && GENERA_CODES.some((c) => access[c]?.can_manage)
+    ? [{ path: "/utilities/genera-tabelle", icon: Database, label: "Genera Tabelle Database", color: "bg-violet-600", desc: "Genera le tabelle per i tool" }]
+    : []
+
+  const converterCard = !isError && access?.items_view?.can_manage
+    ? [{ path: "/utilities/converter", icon: Layers, label: "Converter", color: "bg-[#1e3a5f]", desc: "Import staging NAV · Assembla Item Master IT01" }]
+    : []
+
+  const allModules = [...adminModules, ...generaTabella, ...converterCard]
 
   if (isLoading) {
     return <div className="py-16 text-center text-gray-400 text-sm">Caricamento...</div>
   }
 
-  const hasAdmin = adminModules.length > 0
-  const hasDb = dbModules.length > 0
-
-  if (!hasAdmin && !hasDb) {
+  if (allModules.length === 0) {
     return (
       <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-6">Utilities</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-6">Database Gestione</h2>
         <div className="py-16 text-center text-gray-400 text-sm">Nessuna utility disponibile per il tuo profilo.</div>
       </div>
     )
@@ -84,30 +76,11 @@ export default function UtilitiesDashboard() {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-gray-800 mb-6">Utilities</h2>
-
-      <div className="space-y-8">
-        {hasAdmin && (
-          <div>
-            <SectionTitle>Gestione &amp; Configurazione</SectionTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {adminModules.map((m) => (
-                <CardButton key={m.path} {...m} navigate={navigate} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {hasDb && (
-          <div>
-            <SectionTitle>Database</SectionTitle>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {dbModules.map((m) => (
-                <CardButton key={m.path} {...m} navigate={navigate} />
-              ))}
-            </div>
-          </div>
-        )}
+      <h2 className="text-xl font-bold text-gray-800 mb-6">Database Gestione</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {allModules.map((m) => (
+          <CardButton key={m.path} {...m} navigate={navigate} />
+        ))}
       </div>
     </div>
   )

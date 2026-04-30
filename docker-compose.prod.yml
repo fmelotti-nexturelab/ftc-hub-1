@@ -17,7 +17,9 @@ services:
       - D:/:/mnt/f
       - D:/FTC_HUB_Backup:/mnt/backup
       # Vedi nota nel base: il router agent-installer legge da /navision_agent
+      # e /nav_agent (nuovo agente Python)
       - ./navision_agent:/navision_agent:ro
+      - ./nav_agent:/nav_agent:ro
 
   frontend:
     build:

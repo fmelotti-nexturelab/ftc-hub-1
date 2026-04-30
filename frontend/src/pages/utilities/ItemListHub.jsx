@@ -6,22 +6,22 @@ const CARDS = [
     path: "/utilities/consulta-database/item-list/it01",
     label: "ItemList IT01",
     desc: "Consulta l'anagrafe articoli IT01",
-    color: "bg-blue-100 text-blue-700",
     iconColor: "bg-blue-500",
+    Icon: List,
   },
   {
     path: "/utilities/consulta-database/item-list/it02",
     label: "ItemList IT02",
     desc: "Consulta l'anagrafe articoli IT02",
-    color: "bg-emerald-100 text-emerald-700",
     iconColor: "bg-emerald-500",
+    Icon: List,
   },
   {
     path: "/utilities/consulta-database/item-list/it03",
     label: "ItemList IT03",
     desc: "Consulta l'anagrafe articoli IT03",
-    color: "bg-violet-100 text-violet-700",
     iconColor: "bg-violet-500",
+    Icon: List,
   },
 ]
 
@@ -48,14 +48,14 @@ export default function ItemListHub() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {CARDS.map(({ path, label, desc, iconColor }) => (
+        {CARDS.map(({ path, label, desc, iconColor, Icon }) => (
           <button
             key={path}
             onClick={() => navigate(path)}
             className="bg-white rounded-xl border border-gray-200 p-6 text-left shadow-sm hover:shadow-md hover:border-[#2563eb] transition-all cursor-pointer"
           >
             <div className={`w-12 h-12 ${iconColor} rounded-xl flex items-center justify-center mb-4`}>
-              <List className="text-white" size={22} aria-hidden="true" />
+              <Icon className="text-white" size={22} aria-hidden="true" />
             </div>
             <div className="font-semibold text-gray-800">{label}</div>
             <div className="text-sm text-gray-500 mt-1">{desc}</div>

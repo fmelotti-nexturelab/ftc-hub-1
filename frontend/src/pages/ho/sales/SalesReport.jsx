@@ -4,6 +4,7 @@ import { useAuthStore } from "@/store/authStore"
 import { LogOut, CheckCircle2, Clock, Mail, Loader2, AlertCircle } from "lucide-react"
 import { useState } from "react"
 import { salesApi } from "@/api/ho/sales"
+import { AGENT_URL } from "@/lib/navAgent"
 import MailRecipients, { useMailRecipients, useRecipientEmails, MailRecipientsSummary } from "@/components/shared/MailRecipients"
 
 const fmt = (n) =>
@@ -143,7 +144,7 @@ export default function SalesReport() {
 
     try {
       // Prova via agente locale → Outlook COM
-      const res = await fetch("http://localhost:9999/mail", {
+      const res = await fetch(`${AGENT_URL}/mail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subject, html, to, cc }),

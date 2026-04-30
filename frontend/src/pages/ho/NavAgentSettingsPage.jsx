@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Settings, Save, Check, AlertCircle, FolderOpen, Loader2 } from "lucide-react"
+import { Settings, Save, Check, AlertCircle, FolderOpen, Loader2, Download } from "lucide-react"
 import { navAgentApi } from "@/api/ho/navAgent"
+import { navisionApi } from "@/api/navision"
 import { useAuthStore } from "@/store/authStore"
 
 const CONFIG_FIELDS = [
@@ -9,7 +10,7 @@ const CONFIG_FIELDS = [
     key: "agent_url",
     label: "URL NAV Agent",
     description: "Indirizzo dove gira nav_agent.py sul tuo PC. Il browser si connette direttamente a questo URL per aprire/chiudere sessioni RDP.",
-    placeholder: "http://localhost:9999",
+    placeholder: "http://localhost:19999",
     span: 2,
   },
   {
@@ -71,10 +72,25 @@ export default function NavAgentSettingsPage() {
 
   const [draft, setDraft] = useState({})
   const [browsingFolder, setBrowsingFolder] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadMsg, setDownloadMsg] = useState(null)
+
+  const handleDownloadInstaller = async () => {
+    setDownloading(true)
+    setDownloadMsg(null)
+    try {
+      await navisionApi.downloadAgentInstaller()
+      setDownloadMsg({ ok: true, text: "Download completato — esegui installa_agente.bat dallo zip scaricato" })
+    } catch {
+      setDownloadMsg({ ok: false, text: "Errore nel download dell'installer" })
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const agentUrl = useMemo(() => {
     if (!data?.items) return "http://localhost:9999"
-    return data.items.find(i => i.config_key === "agent_url")?.config_value ?? "http://localhost:9999"
+    return data.items.find(i => i.config_key === "agent_url")?.config_value ?? "http://localhost:19999"
   }, [data])
 
   useEffect(() => {
@@ -245,6 +261,35 @@ export default function NavAgentSettingsPage() {
             Solo visualizzazione — contatta un amministratore per modificare le impostazioni.
           </div>
         )}
+      </div>
+
+      {/* ── Download agente ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Installa / Aggiorna NAV Agent</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Scarica il pacchetto agente (v2, Python). Estrai lo zip ed esegui{" "}
+              <span className="font-mono text-gray-600">installa_agente.bat</span>{" "}
+              per installare o aggiornare l&apos;agente sul tuo PC.
+            </p>
+            {downloadMsg && (
+              <p className={`text-xs mt-2 ${downloadMsg.ok ? "text-green-600" : "text-red-600"}`}>
+                {downloadMsg.text}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadInstaller}
+            disabled={downloading}
+            aria-label="Scarica installer agente NAV"
+            className="shrink-0 flex items-center gap-2 border border-[#1e3a5f] text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white font-semibold py-2 px-4 rounded-xl transition text-sm disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+          >
+            {downloading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Download size={15} aria-hidden="true" />}
+            {downloading ? "Download..." : "Scarica Agente"}
+          </button>
+        </div>
       </div>
     </div>
   )

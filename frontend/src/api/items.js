@@ -75,4 +75,8 @@ export const itemsApi = {
 
   getKglListLastSync: () => apiClient.get("/api/items/kgl-list/last-sync"),
   syncKglList: (items) => apiClient.post("/api/items/kgl-list/sync", { items }),
+
+  getSalesL2WLastSync: () => apiClient.get("/api/items/sales-l2w/last-sync"),
+  syncSalesL2W: (items, week_from, week_to) =>
+    apiClient.post("/api/items/sales-l2w/sync", { items, week_from, week_to }),
 }

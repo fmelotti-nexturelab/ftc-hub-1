@@ -10,7 +10,7 @@ import * as XLSX from "xlsx/dist/xlsx.full.min.js"
 import { getFolderHandle } from "@/utils/folderStorage"
 import { itemsApi } from "@/api/items"
 import { loadItem } from "@/lib/checkPrezziStore"
-import { checkAgentHealth } from "@/lib/navAgent"
+import { checkAgentHealth, AGENT_URL } from "@/lib/navAgent"
 import EccezioniPanel from "./EccezioniPanel"
 import ScrapInvPanel from "./ScrapInvPanel"
 import ScrapWdPanel from "./ScrapWdPanel"
@@ -20,7 +20,6 @@ import PickingPanel from "./PickingPanel"
 // Aperto in Excel desktop via protocollo ms-excel:ofe|u|<url> dal NAV agent.
 const CONVERTER_SHAREPOINT_URL = "https://zebragroup.sharepoint.com/sites/IT01_Commercial/Files/15%20-%20Converitore%20item%20list%20NAV/New%20Converter%20Item%20List.xlsx"
 const CONVERTER_FILENAME_MATCH = "New Converter Item List"
-const AGENT_URL = "http://localhost:9999"
 
 const TABS = [
   { id: "IT01",         label: "ItemList IT01",      soon: false },

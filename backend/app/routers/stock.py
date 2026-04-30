@@ -570,10 +570,13 @@ async def alldata_query(
                    prezzo_bf, costo_bf,
                    eccezione_prezzo_1, eccezione_sconto, eccezione_testo, eccezione_tipo,
                    is_bestseller, is_scrap_inv, is_scrap_wd, is_picking,
-                   expo_type, is_eco, peso_corretto,
+                   expo_type, is_eco, peso_corretto, kgl_l,
                    adm_it01, adm_it02, adm_it03,
                    stock_it01, stock_it02, stock_it03,
-                   category, model_store, barcode, units_per_pack
+                   sales_it01, sales_it02, sales_it03,
+                   category, model_store, barcode, units_per_pack,
+                   item_cat, net_weight, vat_pct, gm_pct,
+                   first_rp, description1, description2, modulo
             FROM ho.v_alldata
             {where}
             ORDER BY item_no
@@ -608,16 +611,28 @@ async def alldata_query(
                 "expo_type":         r["expo_type"],
                 "is_eco":            r["is_eco"],
                 "peso_corretto":     _f(r["peso_corretto"]),
+                "kgl_l":             _f(r["kgl_l"]),
                 "adm_it01":          r["adm_it01"],
                 "adm_it02":          r["adm_it02"],
                 "adm_it03":          r["adm_it03"],
                 "stock_it01":        r["stock_it01"] or {},
                 "stock_it02":        r["stock_it02"] or {},
                 "stock_it03":        r["stock_it03"] or {},
+                "sales_it01":        r["sales_it01"] or {},
+                "sales_it02":        r["sales_it02"] or {},
+                "sales_it03":        r["sales_it03"] or {},
                 "category":          r["category"],
                 "model_store":       r["model_store"],
                 "barcode":           r["barcode"],
                 "units_per_pack":    r["units_per_pack"],
+                "item_cat":          r["item_cat"],
+                "net_weight":        _f(r["net_weight"]),
+                "vat_pct":           _f(r["vat_pct"]),
+                "gm_pct":            _f(r["gm_pct"]),
+                "first_rp":          _f(r["first_rp"]),
+                "description1":      r["description1"],
+                "description2":      r["description2"],
+                "modulo":            r["modulo"],
             }
             for r in rows.mappings()
         ],

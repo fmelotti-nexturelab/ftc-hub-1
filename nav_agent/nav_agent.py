@@ -1,15 +1,19 @@
 """ftchub-nav-agent — agent locale per operazioni desktop (Excel COM, RDP, ExpoList)
-Porta: 9999
+Porta: 19999
 """
 
 import json
 import os
 import subprocess
+import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 
 import openpyxl
+import requests
+import urllib3
 import uvicorn
 import win32com.client
 import win32con
@@ -19,19 +23,20 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ── Percorso ExpoList ────────────────────────────────────────────────────────
-# La directory base può essere sovrascritta tramite variabile d'ambiente
-# EXPO_LIST_BASE_DIR (utile se il percorso utente cambia tra installazioni).
+# ── Percorsi file ─────────────────────────────────────────────────────────────
+# Le directory base possono essere sovrascritte tramite variabili d'ambiente.
 _EXPO_BASE = Path(
     os.environ.get(
         "EXPO_LIST_BASE_DIR",
         r"C:\Users\fmelo\Zebra A S\One Italy Stores - Files",
     )
 )
-EXPO_LIST_PATH = _EXPO_BASE / r"00 - Estrazioni\97 - Service\01 - Tables\tbl_ExpoList.xlsm"
+EXPO_LIST_PATH      = _EXPO_BASE / r"00 - Estrazioni\97 - Service\01 - Tables\tbl_ExpoList.xlsm"
 ECO_LIST_PATH       = _EXPO_BASE / r"00 - Estrazioni\97 - Service\01 - Tables\tbl_ECO.xlsx"
 ECCEZIONI_LIST_PATH = _EXPO_BASE / r"00 - Estrazioni\97 - Service\01 - Tables\tbl_Eccezioni.xlsm"
 KGL_LIST_PATH       = _EXPO_BASE / r"00 - Estrazioni\97 - Service\01 - Tables\tbl_KGL.xlsm"
@@ -66,6 +71,21 @@ def _find_workbook(xl, filename_match: str):
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
+
+
+@app.get("/version")
+def version():
+    return {"version": "2", "type": "ftchub-nav-agent"}
+
+
+@app.post("/restart")
+def restart():
+    """Riavvia il processo agente (usato dal frontend per applicare aggiornamenti)."""
+    def _do():
+        time.sleep(0.4)
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    threading.Thread(target=_do, daemon=True).start()
+    return {"ok": True}
 
 
 @app.post("/open")
@@ -110,6 +130,32 @@ def kill_sessions():
                 pass
     win32gui.EnumWindows(_enum, None)
     return {"killed": killed}
+
+
+@app.post("/browse-folder")
+def browse_folder():
+    """Apre un FolderBrowserDialog Windows nativo tramite PowerShell."""
+    ps_script = (
+        "Add-Type -AssemblyName System.Windows.Forms;"
+        "$dlg = New-Object System.Windows.Forms.FolderBrowserDialog;"
+        "$dlg.Description = 'Seleziona la cartella';"
+        "$dlg.ShowNewFolderButton = $false;"
+        "$r = $dlg.ShowDialog();"
+        "if ($r -eq 'OK') { Write-Output $dlg.SelectedPath }"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell", "-NonInteractive", "-Command", ps_script],
+            capture_output=True, text=True, timeout=60,
+        )
+        path = result.stdout.strip()
+        if path:
+            return {"ok": True, "path": path}
+        return {"ok": False, "cancelled": True}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "cancelled": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/open-converter")
@@ -376,9 +422,9 @@ def kgl_data():
     items = []
 
     # Riga 1: metadato Power Query → skip
-    # Riga 2: header (Nr., Descrizione, ..., PESO CORRETTO, ...) → skip
-    # Dati da riga 3; col A = item_no, col D (indice 3) = peso_corretto
-    for row in ws.iter_rows(min_row=3, max_col=4, values_only=True):
+    # Riga 2: header (Nr., Descrizione, ..., PESO CORRETTO, ..., KG\L) → skip
+    # Dati da riga 3; col A = item_no, col D (indice 3) = peso_corretto, col G (indice 6) = kgl_l
+    for row in ws.iter_rows(min_row=3, max_col=7, values_only=True):
         item_no = row[0]
         peso    = row[3]
         if not item_no or peso is None:
@@ -390,14 +436,243 @@ def kgl_data():
             peso_val = float(str(peso).replace(",", "."))
         except (ValueError, TypeError):
             continue
-        if peso_val > 0:
-            items.append({"item_no": item_no_str, "peso_corretto": peso_val})
+        if peso_val <= 0:
+            continue
+        kgl_l_val = None
+        raw_kgl_l = row[6] if len(row) > 6 else None
+        if raw_kgl_l is not None:
+            try:
+                v = float(str(raw_kgl_l).replace(",", "."))
+                if v > 0:
+                    kgl_l_val = v
+            except (ValueError, TypeError):
+                pass
+        items.append({"item_no": item_no_str, "peso_corretto": peso_val, "kgl_l": kgl_l_val})
 
     wb.close()
     return {"items": items, "count": len(items)}
 
 
+
+# ── Bridge Sync ──────────────────────────────────────────────────────────────
+
+_BRIDGE_SUBFOLDER = r"15 - Converitore item list NAV\BRIDGE_Converter_FTCHUB.xlsx"
+
+
+def _extract_item_type_bi(stat_name: str) -> str:
+    if stat_name and str(stat_name).strip() == "Fixed":
+        return "NA CORE"
+    return "TAIL"
+
+
+def _parse_master_bi(ws) -> list[dict]:
+    result = {}
+    for row in ws.iter_rows(min_row=2, max_col=6, values_only=True):
+        item_no = str(row[0]).strip() if row[0] is not None else ""
+        if not item_no:
+            continue
+        barcode_ext = None
+        try:
+            if row[5] is not None:
+                barcode_ext = int(float(str(row[5])))
+        except (ValueError, TypeError):
+            pass
+        result[item_no] = {
+            "item_no":      item_no,
+            "category":     str(row[3]).strip() if row[3] is not None else None,
+            "subcategory":  str(row[4]).strip() if row[4] is not None else None,
+            "barcode_ext":  barcode_ext,
+            "item_type_bi": _extract_item_type_bi(str(row[2]) if row[2] is not None else ""),
+        }
+    return list(result.values())
+
+
+def _parse_price(ws) -> list[dict]:
+    items = []
+    for row in ws.iter_rows(min_row=5, max_col=2, values_only=True):
+        item_no = str(row[0]).strip() if row[0] is not None else ""
+        if not item_no:
+            continue
+        try:
+            crp = float(str(row[1]).replace(",", "."))
+        except (ValueError, TypeError):
+            continue
+        items.append({"item_no": item_no, "country_rp": crp})
+    return items
+
+
+_DISPLAY_KEYWORDS = [
+    "Table", "Wall", "Behind the till", "Fridge", "Card wall",
+    "Surprice bag area", "Bin", "Sales unit", "Candle wall",
+]
+
+
+def _extract_display_modulo(vm_module: str) -> str:
+    if not vm_module or not vm_module.strip():
+        return "ND"
+    for kw in _DISPLAY_KEYWORDS:
+        if kw in vm_module:
+            return kw
+    return "ND"
+
+
+def _parse_display(ws) -> list[dict]:
+    result = {}
+    for row in ws.iter_rows(min_row=2, max_col=3, values_only=True):
+        item_no = str(row[0]).strip() if row[0] is not None else ""
+        if not item_no:
+            continue
+        vm_module = str(row[1]).strip() if row[1] is not None else ""
+        try:
+            flag = bool(int(float(str(row[2])))) if row[2] is not None else False
+        except (ValueError, TypeError):
+            flag = False
+        result[item_no] = {
+            "item_no":              item_no,
+            "vm_module":            vm_module or None,
+            "flag_hanging_display": flag,
+            "modulo":               _extract_display_modulo(vm_module),
+        }
+    return list(result.values())
+
+
+def _parse_box_size(ws) -> list[dict]:
+    result = {}
+    for row in ws.iter_rows(min_row=2, max_col=3, values_only=True):
+        item_no = str(row[0]).strip() if row[0] is not None else ""
+        if not item_no:
+            continue
+        try:
+            box_val = int(float(str(row[2])))
+            result[item_no] = max(box_val, 1)
+        except (ValueError, TypeError):
+            continue
+    return [{"item_no": k, "box_size": v} for k, v in result.items()]
+
+
+BRIDGE_SHEETS = [
+    {
+        "key":      "price",
+        "sheet":    "Price",
+        "endpoint": "/api/items/converter/price/import-json",
+        "parse":    _parse_price,
+    },
+    {
+        "key":      "box_size",
+        "sheet":    "BOX SIZE",
+        "endpoint": "/api/items/converter/box-size/import-json",
+        "parse":    _parse_box_size,
+    },
+    {
+        "key":      "display",
+        "sheet":    "Display",
+        "endpoint": "/api/items/converter/display/import-json",
+        "parse":    _parse_display,
+    },
+    {
+        "key":      "master_bi",
+        "sheet":    "Master Data BI",
+        "endpoint": "/api/items/converter/master-bi/import-json",
+        "parse":    _parse_master_bi,
+    },
+]
+
+
+def _refresh_excel_bridge(file_path: Path) -> None:
+    import pythoncom
+    pythoncom.CoInitialize()
+    xl = win32com.client.Dispatch("Excel.Application")
+    xl.Visible = False
+    xl.DisplayAlerts = False
+    wb = None
+    try:
+        wb = xl.Workbooks.Open(str(file_path))
+        for conn in wb.Connections:
+            try:
+                conn.OLEDBConnection.BackgroundQuery = False
+            except Exception:
+                try:
+                    conn.ODBCConnection.BackgroundQuery = False
+                except Exception:
+                    pass
+        wb.RefreshAll()
+        xl.CalculateUntilAsyncQueriesDone()
+        wb.Save()
+    finally:
+        if wb is not None:
+            try:
+                wb.Close(False)
+            except Exception:
+                pass
+        try:
+            xl.Quit()
+        except Exception:
+            pass
+        pythoncom.CoUninitialize()
+
+
+class BridgeSyncRequest(BaseModel):
+    no_excel:    bool = False
+    backend_url: str
+    token:       str
+
+
+@app.post("/bridge-sync")
+def bridge_sync(req: BridgeSyncRequest):
+    headers = {"Authorization": f"Bearer {req.token}", "Content-Type": "application/json"}
+    base = req.backend_url.rstrip("/")
+    ssl = base.startswith("https")
+
+    # Leggi commercial_files_path dal backend
+    try:
+        r = requests.get(f"{base}/api/items/converter/config", headers=headers, verify=not ssl, timeout=15)
+        r.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Errore config backend: {e}")
+
+    commercial_path = r.json().get("commercial_files_path", "").strip()
+    if not commercial_path:
+        raise HTTPException(status_code=400, detail="commercial_files_path non configurato in FTC HUB — Impostazioni > One Italy Commercial")
+
+    username = os.environ.get("USERNAME", "")
+    converter_path = Path(f"C:\\Users\\{username}\\{commercial_path}\\{_BRIDGE_SUBFOLDER}")
+
+    if not converter_path.exists():
+        raise HTTPException(status_code=404, detail=f"File non trovato: {converter_path}")
+
+    if not req.no_excel:
+        try:
+            _refresh_excel_bridge(converter_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Errore refresh Excel: {e}")
+
+    wb = openpyxl.load_workbook(str(converter_path), read_only=True, data_only=True)
+    results = {}
+    errors  = []
+
+    for cfg in BRIDGE_SHEETS:
+        if cfg["sheet"] not in wb.sheetnames:
+            errors.append(f'Foglio "{cfg["sheet"]}" non trovato nel file')
+            continue
+        try:
+            items = cfg["parse"](wb[cfg["sheet"]])
+            r = requests.post(
+                f"{base}{cfg['endpoint']}",
+                json={"items": items},
+                headers=headers,
+                verify=not ssl,
+                timeout=180,
+            )
+            r.raise_for_status()
+            results[cfg["key"]] = r.json().get("synced", len(items))
+        except Exception as e:
+            errors.append(f'{cfg["key"]}: {e}')
+
+    wb.close()
+    return {"results": results, "errors": errors}
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=9999, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=19999, log_level="warning")

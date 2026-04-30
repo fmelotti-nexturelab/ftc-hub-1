@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   Monitor, LogOut, Terminal, AlertTriangle,
-  Play, CircleCheck, Download,
+  Play, CircleCheck, Download, Settings,
 } from "lucide-react"
 import { navisionApi } from "@/api/navision"
 import { useAuthStore } from "@/store/authStore"
 import {
+  AGENT_URL,
   SESSION_BUTTONS,
   buildRdpPath,
   getRdpFolder,
@@ -90,6 +91,18 @@ export default function NavisionPage() {
     addLog(ok ? "Agente attivo!" : "Agente non raggiungibile — scarica e installa l'agente")
   }
 
+  async function handleRestartAgent() {
+    addLog("Riavvio agente in corso…")
+    try {
+      await fetch(`${AGENT_URL}/restart`, { method: "POST" })
+    } catch {
+      // Il processo si chiude prima di rispondere — è normale
+    }
+    // Attende che l'agente si riavvii, poi ri-verifica
+    await new Promise(r => setTimeout(r, 2500))
+    await handleRetryAgent()
+  }
+
   async function handleDownloadAgent() {
     addLog("Download installer agente…")
     try {
@@ -143,6 +156,14 @@ export default function NavisionPage() {
           <h1 className="text-xl font-bold text-gray-800">Navision</h1>
         </div>
         <button
+          onClick={() => navigate("/utilities/navision/settings")}
+          aria-label="Impostazioni NAV Agent"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
+        >
+          <Settings size={15} aria-hidden="true" />
+          Impostazioni
+        </button>
+        <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition focus-visible:ring-2 focus-visible:ring-[#2563eb]"
         >
@@ -161,12 +182,20 @@ export default function NavisionPage() {
             <p className="text-sm font-semibold text-gray-800">Microsoft Dynamics NAV 2009 R2</p>
             <p className="text-xs text-gray-400 mt-0.5">Sessioni Remote Desktop per Navision</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-1">
             {agentOk === true && (
-              <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
-                <CircleCheck size={14} aria-hidden="true" />
-                Agent OK
-              </span>
+              <>
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                  <CircleCheck size={14} aria-hidden="true" />
+                  Agent OK
+                </span>
+                <button
+                  onClick={handleRestartAgent}
+                  className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 transition"
+                >
+                  Riavvia
+                </button>
+              </>
             )}
             {agentOk === null && (
               <span className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
@@ -239,7 +268,7 @@ export default function NavisionPage() {
           <div className="mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700" role="alert">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>Configura la <strong>cartella dei file RDP</strong> nelle impostazioni.</span>
-            <button onClick={() => navigate("/settings")} className="ml-auto shrink-0 underline hover:text-amber-900 transition">
+            <button onClick={() => navigate("/utilities/navision/settings")} className="ml-auto shrink-0 underline hover:text-amber-900 transition">
               Vai a Impostazioni
             </button>
           </div>

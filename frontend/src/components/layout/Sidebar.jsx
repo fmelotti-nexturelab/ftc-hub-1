@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { useAuthStore } from "@/store/authStore"
 import { authApi } from "@/api/auth"
 import { ticketsApi } from "@/api/tickets"
-import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck, Tag, Trash2 } from "lucide-react"
+import { LogOut, Ticket, UserCircle, BookOpen, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, XCircle, Wrench, Settings, Globe, UserCheck, Tag, Trash2, CalendarDays, Database } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { diagnosticsApi } from "@/api/diagnostics"
@@ -337,13 +337,24 @@ export default function Sidebar() {
           </div>
           <NavLink
             to="/utilities"
+            end
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
               ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
             }
           >
             <Wrench size={17} aria-hidden="true" />
-            <span>Database</span>
+            <span>Database Gestione</span>
+          </NavLink>
+          <NavLink
+            to="/utilities/consulta-database"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-1.5 rounded-lg mb-1 text-sm transition-all
+              ${isActive ? "bg-white/15 text-white font-medium" : "text-white/70 hover:bg-white/10 hover:text-white"}`
+            }
+          >
+            <Database size={17} aria-hidden="true" />
+            <span>Database Lettura</span>
           </NavLink>
           {canView("navision") && (
             <NavLink

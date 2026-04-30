@@ -60,7 +60,7 @@ export default function ConsultaDatabase() {
           <Database size={18} className="text-[#1e3a5f]" />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Consulta Database</h1>
+          <h1 className="text-xl font-bold text-gray-800">Database Lettura</h1>
           <p className="text-xs text-gray-400 mt-0.5">Vedi il contenuto delle tabelle</p>
         </div>
         <button

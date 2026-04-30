@@ -8,6 +8,7 @@ import {
   Upload, XCircle, Info, ChevronRight, ChevronLeft, Columns, MailPlus, MailCheck, MailX, Send, Trash2,
 } from "lucide-react"
 import { operatorCodeApi } from "@/api/ho/operatorCode"
+import { AGENT_URL } from "@/lib/navAgent"
 import { getFolderHandle } from "@/utils/folderStorage"
 
 const inputClass = "w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2563eb] focus:border-transparent outline-none transition"
@@ -1400,7 +1401,7 @@ function GestioneView() {
         if (!to) continue
         const subject = `Cod.Op ${item.last_name}`
         try {
-          const res = await fetch("http://localhost:9999/mail", {
+          const res = await fetch(`${AGENT_URL}/mail`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subject, html: item.html_preview, to, cc: "" }),

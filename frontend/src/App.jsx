@@ -42,6 +42,9 @@ import OperatorCodesConsultPage from "@/pages/utilities/OperatorCodesConsultPage
 import OperatorCodesHub from "@/pages/utilities/OperatorCodesHub"
 import OperatorCodePoolPage from "@/pages/utilities/OperatorCodePoolPage"
 import StampaEtichettePage from "@/pages/utilities/StampaEtichettePage"
+import NavAgentSettingsPage from "@/pages/ho/NavAgentSettingsPage"
+import DailyActivityPage from "@/pages/ho/DailyActivityPage"
+import ConverterPage from "@/pages/utilities/ConverterPage"
 
 
 function RoleRedirect() {
@@ -73,13 +76,16 @@ export default function App() {
         <Route path="ho/sales/report" element={<SalesReport />} />
         <Route path="ho/sales/excluded" element={<ExcludedStores />} />
         <Route path="utilities/navision" element={<NavisionPage />} />
+        <Route path="utilities/navision/settings" element={<NavAgentSettingsPage />} />
         <Route path="ho/codice-operatore" element={<CodiceOperatore />} />
+        <Route path="ho/daily-activity" element={<DailyActivityPage />} />
         <Route path="admin" element={<RoleRoute roles={["ADMIN", "IT"]}><AdminUsers /></RoleRoute>} />
         <Route path="admin/support" element={<RoleRoute roles={["ADMIN", "IT"]}><SupportLookup /></RoleRoute>} />
         <Route path="admin/ticket-config" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketConfig /></RoleRoute>} />
         <Route path="admin/scheduler" element={<RoleRoute roles={["ADMIN", "IT"]}><SchedulerPage /></RoleRoute>} />
         <Route path="utilities" element={<UtilitiesDashboard />} />
         <Route path="utilities/consulta-database" element={<ConsultaDatabase />} />
+        <Route path="utilities/converter" element={<ConverterPage />} />
         <Route path="utilities/genera-tabelle" element={<GeneraTabelle />} />
         <Route path="utilities/stores" element={<StoresPage />} />
         <Route path="utilities/ticket-database" element={<RoleRoute roles={["ADMIN", "IT"]}><TicketDatabase /></RoleRoute>} />

@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   DollarSign, LogOut, ClipboardPaste, Play, CheckCircle, XCircle, HelpCircle,
-  Trash2, Upload, FileSpreadsheet, AlertTriangle, X, Loader2,
+  Trash2, Upload, FileSpreadsheet, AlertTriangle, X, Loader2, Send,
 } from "lucide-react"
 import { checkPrezziApi } from "@/api/checkPrezzi"
+import { converterRefApi } from "@/api/items/converterRef"
 import { parseCambiPrezziFile, rowsToTsv } from "@/lib/xlsxCambiPrezzi"
 import {
   loadItem, saveItem,
@@ -170,7 +171,7 @@ function LoadingOverlay({ show, message = "Caricamento dati in corso..." }) {
   )
 }
 
-function PasteArea({ label, hint, value, onChange, rowCount, loading, onPaste, savedAt, savedBy, onClear }) {
+function PasteArea({ label, hint, value, onChange, rowCount, loading, onPaste, savedAt, savedBy, onClear, onSendToConverter, sendToConverterLoading }) {
   return (
     <div className="space-y-1.5">
       {/* min-h per allinearsi con la row-label del DropZoneLista che ha i bottoni */}
@@ -183,6 +184,21 @@ function PasteArea({ label, hint, value, onChange, rowCount, loading, onPaste, s
           </span>
         )}
         <div className="flex-1" />
+        {rowCount > 0 && onSendToConverter && (
+          <button
+            type="button"
+            onClick={onSendToConverter}
+            disabled={sendToConverterLoading}
+            className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md border border-blue-200 hover:border-blue-400 hover:bg-blue-50 text-blue-600 transition disabled:opacity-50"
+            aria-label="Invia dati Anagrafe ad Appoggio Converter"
+          >
+            {sendToConverterLoading
+              ? <Loader2 size={11} className="animate-spin" aria-hidden="true" />
+              : <Send size={11} aria-hidden="true" />
+            }
+            {sendToConverterLoading ? "Invio..." : "→ Converter"}
+          </button>
+        )}
         {rowCount > 0 && onClear && (
           <button
             type="button"
@@ -633,6 +649,23 @@ export default function CheckPrezziPage() {
   }
 
   // ── Upload lista cambi prezzi (drag & drop xlsx) ───────────────────────────
+  const [sendToConverterLoading, setSendToConverterLoading] = useState(false)
+  const [sendToConverterResult, setSendToConverterResult]   = useState(null)
+
+  async function handleSendToConverter() {
+    setSendToConverterLoading(true)
+    setSendToConverterResult(null)
+    try {
+      const res = await converterRefApi.importFromTsv(data.item)
+      setSendToConverterResult({ ok: true, msg: `${(res.data.synced).toLocaleString("it-IT")} righe importate nell'Appoggio Converter` })
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || "Errore sconosciuto"
+      setSendToConverterResult({ ok: false, msg })
+    } finally {
+      setSendToConverterLoading(false)
+    }
+  }
+
   const [parseError, setParseError]   = useState(null)
   const [mismatchOpen, setMismatchOpen] = useState(false)
   const [pendingParsed, setPendingParsed] = useState(null) // { rows, filename, detectedEntities }
@@ -859,6 +892,8 @@ export default function CheckPrezziPage() {
             savedAt={data.itemSavedAt}
             savedBy={data.itemSavedBy}
             onClear={() => handleClearField("item")}
+            onSendToConverter={activeEntity === "IT01" ? handleSendToConverter : undefined}
+            sendToConverterLoading={sendToConverterLoading}
           />
           <PasteArea
             label={`Listino PRICE ${activeEntity}`}
@@ -873,6 +908,30 @@ export default function CheckPrezziPage() {
             onClear={() => handleClearField("price")}
           />
         </div>
+
+        {sendToConverterResult && (
+          <div
+            className={`flex items-start gap-2 rounded-lg px-3 py-2 text-xs border ${
+              sendToConverterResult.ok
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-red-50 border-red-200 text-red-700"
+            }`}
+            role="alert"
+          >
+            {sendToConverterResult.ok
+              ? <CheckCircle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+              : <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            }
+            <span>{sendToConverterResult.msg}</span>
+            <button
+              onClick={() => setSendToConverterResult(null)}
+              className="ml-auto shrink-0 opacity-60 hover:opacity-100"
+              aria-label="Chiudi"
+            >
+              <X size={12} aria-hidden="true" />
+            </button>
+          </div>
+        )}
 
         {parseError && (
           <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700" role="alert">

@@ -1,7 +1,7 @@
 // Helper condivisi per parlare con ftchub_nav_agent.ps1 (localhost:9999).
 // Usati sia da NavisionPage che dai drill-down entity in GeneraTabelle.
 
-export const AGENT_URL = "http://localhost:9999"
+export const AGENT_URL = "http://localhost:19999"
 
 // Fallback filenames — usati solo se il config backend non ha il valore
 export const RDP_FILENAMES_DEFAULT = {
@@ -45,7 +45,16 @@ export function agentFocusRdp() {
 export async function checkAgentHealth() {
   try {
     const res = await fetch(`${AGENT_URL}/ping`, { signal: AbortSignal.timeout(2000) })
-    return res.ok
+    if (!res.ok) return false
+    // Verifica che sia il nuovo agente Python (non il vecchio PowerShell)
+    try {
+      const ver = await fetch(`${AGENT_URL}/version`, { signal: AbortSignal.timeout(2000) })
+      if (!ver.ok) return false
+      const data = await ver.json()
+      return data.type === "ftchub-nav-agent"
+    } catch {
+      return false
+    }
   } catch {
     return false
   }

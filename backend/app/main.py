@@ -15,6 +15,7 @@ from app.models import items  # noqa: F401
 from app.models import file_archive  # noqa: F401
 from app.models import operator_code  # noqa: F401
 from app.models import app_settings  # noqa: F401
+from app.models import daily_tasks  # noqa: F401
 
 from app.routers import auth as auth_router
 from app.routers import test_rbac
@@ -46,8 +47,10 @@ from app.routers.items import scrap_wd as items_scrap_wd_router
 from app.routers.items import picking as items_picking_router
 from app.routers.items import labels as items_labels_router
 from app.routers.items import expo_list as items_expo_list_router
+from app.routers.items import converter_ref as items_converter_ref_router
 from app.routers import operator_code as operator_code_router
 from app.routers import app_settings as app_settings_router
+from app.routers.ho import daily_tasks as daily_tasks_router
 from app.routers.admin import scheduler as admin_scheduler_router
 from app.models import scheduler as scheduler_models  # noqa: F401
 from app.services.scheduler import scheduler_service
@@ -123,8 +126,10 @@ app.include_router(items_scrap_wd_router.router)
 app.include_router(items_picking_router.router)
 app.include_router(items_labels_router.router)
 app.include_router(items_expo_list_router.router)
+app.include_router(items_converter_ref_router.router)
 app.include_router(operator_code_router.router)
 app.include_router(app_settings_router.router)
+app.include_router(daily_tasks_router.router)
 
 
 @app.get("/api/health")

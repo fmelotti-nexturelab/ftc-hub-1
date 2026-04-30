@@ -52,8 +52,9 @@ services:
       - ${STORAGE_MOUNT:-./data}:/mnt/f/FTC_HUB_Archivio
       - "${BACKUP_MOUNT:-./data/backups}:/mnt/backup"
       # Montato read-only: il router /api/ho/navision/agent-installer
-      # serve i file da /navision_agent leggendoli da qui
+      # serve i file da /navision_agent (vecchio) e /nav_agent (nuovo Python)
       - ./navision_agent:/navision_agent:ro
+      - ./nav_agent:/nav_agent:ro
     ports:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

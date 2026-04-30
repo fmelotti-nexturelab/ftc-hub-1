@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle, Check, Search } from "lucide-react"
+import { Settings, FolderOpen, RefreshCw, Unlink, CheckCircle, AlertCircle, Check } from "lucide-react"
 import { useStockFolder } from "@/hooks/useStockFolder"
 import { useFolderConnect } from "@/hooks/useFolderConnect"
 import { useAuthStore } from "@/store/authStore"
+import { AGENT_URL } from "@/lib/navAgent"
 
 const STOCK_DEPTS = ["SUPERUSER", "ADMIN", "IT"]
 
@@ -131,7 +132,7 @@ function NavisionFolderSetting() {
   async function browseViaAgent() {
     setBrowsing(true)
     try {
-      const res = await fetch("http://localhost:9999/browse-folder", {
+      const res = await fetch(`${AGENT_URL}/browse-folder`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",

@@ -30,6 +30,9 @@ RDP_FILES_DIR = os.path.normpath(RDP_FILES_DIR)
 AGENT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "navision_agent")
 AGENT_DIR = os.path.normpath(AGENT_DIR)
 
+NEW_AGENT_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "nav_agent")
+NEW_AGENT_DIR = os.path.normpath(NEW_AGENT_DIR)
+
 VALID_RDP_KEYS = {
     "it01_classic": "NAV IT01 Classic",
     "it02_classic": "NAV IT02 Classic",
@@ -95,17 +98,16 @@ async def update_config(
     dependencies=[Depends(require_permission("navision"))],
 )
 async def download_agent_installer():
-    """Scarica il pacchetto installer dell'agente NAV come zip."""
+    """Scarica il pacchetto installer del nuovo agente NAV (Python) come zip."""
     files_to_include = [
-        ("FTCHubNavAgent.exe", "FTCHubNavAgent.exe"),
-        ("ftchub_nav_agent.ps1", "ftchub_nav_agent.ps1"),
+        (os.path.join("dist", "ftchub-nav-agent.exe"), "ftchub-nav-agent.exe"),
         ("installa_agente.bat", "installa_agente.bat"),
     ]
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for src_name, arc_name in files_to_include:
-            src_path = os.path.join(AGENT_DIR, src_name)
+            src_path = os.path.join(NEW_AGENT_DIR, src_name)
             if os.path.isfile(src_path):
                 zf.write(src_path, arc_name)
 
